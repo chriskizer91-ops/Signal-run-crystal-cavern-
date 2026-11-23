@@ -1,5 +1,5 @@
 # put work/<module>.js back into the game file. usage: python3 splice.py <game.html> <module> [<module> ...]
-import sys, os
+import sys, re, os
 HERE = os.path.dirname(os.path.abspath(__file__))
 P = sys.argv[1]; s = open(P, encoding='utf-8').read()
 names = ['bridge','camp','campus','marina','plants','power','vehicles']

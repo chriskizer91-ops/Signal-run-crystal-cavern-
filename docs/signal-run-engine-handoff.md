@@ -1,6 +1,6 @@
 # Signal Run — engine & state handoff (read this first in any new session)
 
-Status as of 23 Nov 2026: **v9 (signal-run-v9-stalactite-cavern.html, ~917 KB)** is current.
+Status as of 23 Nov 2026: **v10 (signal-run-v10-flight-and-trails.html, ~920 KB)** is current.
 
 **Everything lives in the GitHub repo `chriskizer91-ops/Signal-run-crystal-cavern-`:** the game (`game/signal-run.html` plus every older version), the CaveLib mirror, patch scripts, all model modules and model tools, agent briefs, tests, these docs and screenshots. Start there in a new session, and read its `CLAUDE.md`. It is one self-contained HTML file: WebGL 2, no images; every texture, mesh and sound is generated in code.
 - Design plans: `claude/signal-run-caves-design.md`.
@@ -57,6 +57,21 @@ It started as a rendering benchmark: 147M triangles at full detail, plus a "10M 
   - In the campaign, D-8 needs its **power coupling**, which lies at the end of the crystal cavern's north gallery beside a dropped pack.
   - New Opus 5.5 sub-agent models: `dripstone` (10 kit pieces) and `worklight` (flood mast, power coupling, dropped pack). `deepdoor` gained D-8, D-9 and D-10 variants.
   - The surface is pixel-identical to v8.
+- **v10: steadier flying and route trails** (from Christopher's feedback: "not immediately obvious where each cavern entrance is", flying too slippery, too fast in caves, can't hover).
+  - **Flying** (the `update()` air branch):
+    - Horizontal speed eases toward stick direction × top speed, instead of piling up acceleration. Let go and you slow to a stop.
+      - Underground: top speed 11 m/s (boost 17), steer rate 3.2, brake rate 3.0.
+      - Surface: 48 m/s (boost = upgrades), rate 1.8, brake 1.6.
+    - Climbing underground is 9 m/s (boost 15), versus 28 (45) on the surface.
+    - **Hover**: after using the jet (`state.hover`, cleared on landing), letting go holds your height for 2.2 fuel/s. DIVE sinks (max −16 m/s underground) and letting go of DIVE hovers again. Out of fuel, or after walking off a ledge, you fall as before (glide fins still slow the fall).
+    - Measured in the crystal cavern (`tests/flight.py`): slide after letting go 14.3 m → 2.9 m; top speed 48 → 11 m/s; climb 28 → 9 m/s; height held exactly. On the surface the slide went from 44.5 m to 26.4 m, and top speed is unchanged.
+    - Hint texts now say "let go to hover".
+  - **Route stakes**: `ROUTES` are precomputed by `src/node/routes.js` (A* over a 2 m floor grid, preferring gentle ground and hopping cliffs only when needed) and pasted into the game.
+    - D-8 trail: 95 m, 13 stakes, 2 jetpack hops. D-9 trail: 156 m, 18 stakes.
+    - `STAKES` are drawn with the `worklight/route_stake` model (292 triangles).
+    - Their amber lights grow with distance, so the trail reads across a cavern, and a pulse runs along each trail toward the door.
+    - Crystals and dripstone are kept 1.5 m clear of the stakes (`nearRoute`).
+  - The surface is pixel-identical to v9.
 
 ## Map facts (metres; y is up)
 - World 3072 × 3072 (48 × 48 tiles of 64 m). Canyon floor ≈ 95, lowest terrain 87.5, highest ≈ 632.
@@ -330,7 +345,8 @@ Use headless Chrome through Playwright with `--use-angle=swiftshader --enable-un
 - Wait 15–30 s before each screenshot so frames and close-up chunks catch up.
 - `__bench.CAVR.off = { crys:1, life:1, spore:1, rock:1, props:1, pool:1, line:1 }` hides parts one at a time. This is useful for finding which draw causes a visual problem.
 - For still shots, set `__bench.game.paused = true`. Rendering continues but physics stops, so a falling player stays put while frames catch up.
-- `__bench.DOOR`, `DOORS`, `PARTS`, `FLOODS` and `DRIPR` expose the door, coupling, light and stalactite-cavern state.
+- `__bench.DOOR`, `DOORS`, `PARTS`, `FLOODS`, `STAKES` and `DRIPR` expose the door, coupling, light, trail and stalactite-cavern state.
+- `tests/flight.py` measures flying (climb, hover, top speed, slide, dive) in the old version against the new one. `tests/surface_compare.py <old version file>` compares the surface start view.
 - Cavern test views must use heights relative to `CV.CAV.y`, because the cavern moved in v8.
 - Phone checks: viewport 915 × 412 with `has_touch`, and touches sent through CDP `Input.dispatchTouchEvent`.
 

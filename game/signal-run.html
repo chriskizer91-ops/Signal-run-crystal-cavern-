@@ -104,9 +104,9 @@
   <p>The array has gone dark. Find seven power cells hidden around the canyon and fly them home.</p>
   <div class="mrow"><button id="mContinue" hidden>Continue</button><button id="mPlay" class="big">Campaign</button><button id="mFree" class="big">Free play</button><button id="mNew">New campaign</button><button id="mBench">Benchmark</button></div>
   <p class="modes"><b>Campaign:</b> power all 7 dishes to open the deep door. <b>Free play:</b> everything unlocked.</p>
-  <p class="keys">WASD move · Space jetpack · Shift boost · C dive · drag to look · wheel to zoom<br>Esc menu · R back to the lookout · N sound · I details</p>
+  <p class="keys">WASD move · Space jetpack (let go to hover) · Shift boost · C dive · drag to look · wheel to zoom<br>Esc menu · R back to the lookout · N sound · I details</p>
 </div></div>
-<div id="hint" class="card">WASD move · Space jetpack · Shift boost · C dive · drag to look · wheel to zoom</div>
+<div id="hint" class="card">WASD move · Space jetpack (let go to hover) · Shift boost · C dive · drag to look · wheel to zoom</div>
 <div id="touch"><div id="tzone"><div id="tbase"><div id="tknob"></div></div></div><div id="tBoost" class="tb">BOOST</div><div id="tDive" class="tb">DIVE</div><div id="tJet" class="tb">JET</div></div>
 <script>
 function TerrainLib() {
@@ -1739,7 +1739,7 @@ function touchOn() {
   if (document.body.classList.contains('touch')) return;
   document.body.classList.add('touch');
   $('hint').textContent = 'Left thumb moves · drag to look · pinch to zoom · hold JET to fly';
-  document.querySelector('#menu .keys').innerHTML = 'Left thumb moves · drag the view to look · pinch to zoom<br>Hold JET to climb, let go to drift · DIVE drops fast · BOOST on/off';
+  document.querySelector('#menu .keys').innerHTML = 'Left thumb moves · drag the view to look · pinch to zoom<br>Hold JET to climb, let go to hover · hold DIVE to go down · BOOST on/off';
 }
 if (matchMedia('(pointer: coarse)').matches) touchOn();
 addEventListener('touchstart', touchOn, { passive: true });
@@ -9380,12 +9380,45 @@ const ASSET_DEFS = {
     return b;
   }
 
+  // =========================================================================================================
+  // 4. ROUTE STAKE: survey stake on a weighted foot plate, bolted into the rock, clip-on marker light on top.
+  //    Placed every few metres from landing to exit door; the game pulses an amber glow on the light centre.
+  // =========================================================================================================
+  const STK_R = 0.016, STK_TOP = 0.78, STK_LY = 0.84, STK_LENS = [0.95, 0.9, 0.7, 0.3];
+  const STAKE_ATTACH = [[0, STK_LY, 0]];
+  function buildStake(detail) {
+    const b = new MB();
+    if (!detail) {
+      b.lathe([[0.1, 0], [0.02, 0.03]], 4, GUN_D);                                                  // foot plate
+      b.lathe([[STK_R, 0.02, ORANGE], [STK_R, 0.5, BLACK], [STK_R, 0.57, ORANGE], [STK_R, STK_TOP]], 4, ORANGE);   // shaft with one band
+      b.lathe([[0.042, STK_TOP, STK_LENS], [0.042, 0.9, GUN_D], [0, 0.9]], 6, GUN_D);                  // light: lens + cap
+      return b;
+    }
+    // weighted hex foot plate with bevelled top, sunk a little into the rock, plus three rock-bolt heads
+    b.lathe([[0.1, -0.02], [0.1, 0.012], [0.075, 0.028], [0.02, 0.03]], 6, GUN_D);
+    for (let k = 0; k < 3; k++) { b.push(mulAll(rotY(k * TAU / 3 + 0.5), tr(0.068, 0.03, 0))); b.box(0, 0, 0, 0.022, 0.014, 0.022, STEEL); b.pop(); }
+    // pointed stake: steel tip driven through the plate into the rock, orange shaft with black bands
+    b.lathe([[0, -0.08, STEEL], [STK_R, 0.03, ORANGE], [STK_R, 0.28, BLACK], [STK_R, 0.34, ORANGE],
+             [STK_R, 0.5, BLACK], [STK_R, 0.56, ORANGE], [STK_R, 0.7, BLACK], [STK_R, 0.745, GUN_D], [STK_R, STK_TOP]], 6, ORANGE);
+    // pale reflective tape strip on the front and back faces
+    for (const a of [PI / 3, PI + PI / 3]) b.lathe([[STK_R + 0.0015, 0.37], [STK_R + 0.0015, 0.47]], 1, ST_W, a, a + PI / 3);
+    // clip-on bracket gripping the stake top
+    b.box(0, 0.762, 0, 0.044, 0.026, 0.044, ORANGE_D);
+    // marker light: dark base, pale lens band, dark cap (0.084 across, 0.12 tall, centre at y 0.84)
+    b.lathe([[0.042, STK_TOP, GUN_D], [0.042, 0.795, STK_LENS], [0.041, 0.885, GUN_D], [0.03, 0.9, GUN_D], [0, 0.9]], 8, GUN_D);
+    // route tag on the side of the shaft, stencilled code facing +z
+    b.box(STK_R + 0.037, 0.63, 0, 0.07, 0.045, 0.004, BONE);
+    text(b, 'R-8', STK_R + 0.037, 0.63, 0.0025, 0.026, ST_K, true);
+    return b;
+  }
+
   return {
     name: 'worklight',
     items: [
       { name: 'flood_mast', budget: 6000, build: buildFlood, colliders: [], attach: FLOOD_ATTACH },
       { name: 'power_coupling', budget: 1500, build: buildCoupling, colliders: [] },
-      { name: 'dropped_pack', budget: 2000, build: buildPack, colliders: [] }
+      { name: 'dropped_pack', budget: 2000, build: buildPack, colliders: [] },
+      { name: 'route_stake', budget: 300, build: buildStake, colliders: [], attach: STAKE_ATTACH }
     ]
   };
 }) },
@@ -10150,7 +10183,9 @@ const PARTS = [                              // the power couplings (campaign): 
   { door: 'D-8', at: CV.floorNear(-44, -163, -179), packYaw: 0.6 },
   { door: 'D-9', at: CV.floorNear(170, -300, -60), packYaw: 2.1 },
 ];
-const STATION_PROPS = [], FLOODS = [];
+const STATION_PROPS = [], FLOODS = [], STAKES = [];
+const ROUTES = {"D-8":[[1453,-180.13,1504],[1461,-180.13,1502],[1469,-179.88,1502],[1475,-179.25,1502],[1477,-172.75,1502],[1485,-171.13,1500],[1493,-170.88,1496],[1501,-171.13,1494],[1507,-171.13,1490],[1509,-173.13,1488],[1511,-176.63,1486],[1515,-180,1480],[1519,-180.75,1474]],"D-9":[[1567,-311.5,1467],[1573,-315.25,1463],[1581,-318.5,1459],[1589,-321.25,1459],[1597,-324.5,1459],[1605,-327.13,1459],[1613,-329,1459],[1621,-330.5,1459],[1629,-331.63,1459],[1637,-332,1459],[1645,-331.63,1459],[1653,-331.63,1459],[1661,-330.13,1457],[1669,-328.88,1459],[1675,-327.13,1459],[1683,-324.38,1459],[1691,-320,1461],[1699,-314.63,1465]]};   // the research team's route stakes, landing -> exit door (src/node/routes.js)
+const nearRoute = p => { for (const k in ROUTES) for (const q of ROUTES[k]) if (Math.abs(q[1] - p[1]) < 3.5 && Math.hypot(q[0] - p[0], q[2] - p[2]) < 1.5) return true; return false; };
 function doorReady(D) { return D.name !== 'D-9'; }      // D-9: the flooded level beyond comes in the next build
 function doorUnlocked(D) {
   if (!doorReady(D)) return false; if (game.free) return true; if (D.i === 0) return game.online >= 7;
@@ -10215,6 +10250,12 @@ function doorInit() {
     const lp = [0, 1, 2].map(k => lamps.reduce((t, q) => t + q[k], 0) / lamps.length), tg = [D.x, D.y + 1.3, D.z], dir = norm([tg[0] - lp[0], tg[1] - lp[1], tg[2] - lp[2]]);
     FLOODS.push({ door: D, x: p[0], y, z: p[1], yaw, lamps, lp, dir, mesh: fm, m: new Float32Array(mulAll(tr(p[0], y, p[1]), rotY(yaw))) });
   }
+  // route stakes, each turned to face the next one, its light where the model says
+  const sk = assetItem('worklight', 'route_stake'), sa = sk && sk.it.attach && sk.it.attach[0] ? sk.it.attach[0] : [0, 0.86, 0];
+  for (const name in ROUTES) ROUTES[name].forEach((p, i, arr) => {
+    const q = arr[Math.min(i + 1, arr.length - 1)], yaw = i < arr.length - 1 ? Math.atan2(q[0] - p[0], q[2] - p[2]) : 0, c = Math.cos(yaw), s = Math.sin(yaw);
+    STAKES.push({ route: name, i, n: arr.length, p, mesh: sk, m: new Float32Array(mulAll(tr(p[0], p[1], p[2]), rotY(yaw))), light: [p[0] + c * sa[0] + s * sa[2], p[1] + sa[1], p[2] - s * sa[0] + c * sa[2]] });
+  });
   // the couplings and the packs dropped beside them
   const pc = assetItem('worklight', 'power_coupling'), pk = assetItem('worklight', 'dropped_pack');
   PARTS.forEach(p => {
@@ -10234,6 +10275,7 @@ function drawDoor() {
   }
   for (const p of STATION_PROPS) { const d = dist(p.p); if (d < 140) draw(p, p.m, d); }
   for (const F of FLOODS) if (F.mesh) { const d = dist([F.x, F.y, F.z]); if (d < 180) draw(F.mesh, F.m, d); }
+  for (const k of STAKES) if (k.mesh) { const d = dist(k.p); if (d < 110) draw(k.mesh, k.m, d < 30 ? 0 : 99); }
   PARTS.forEach((p, k) => {
     if (p.pack) { const d = dist(p.pack.p); if (d < 120) draw(p.pack.mesh, p.pack.m, d); }
     if (game.free || !p.at || cave.parts[k] || !p.mesh) return; const d = dist(p.at); if (d > 120) return;
@@ -10246,6 +10288,10 @@ function drawDoorLamp() {                    // glows: door status lamps, the wo
   for (const D of DOORS) {
     const L = D.lamp; if (dist(L) > 140) continue; const on = doorUnlocked(D), k = on ? 1.3 : 0.55 + 0.45 * Math.max(0, Math.sin(state.time * 1.7));
     glowDraw(crystal, mulAll(tr(L[0], L[1], L[2]), sc(0.07, 0.07, 0.07)), on ? 0.25 : 1.0, on ? 1.0 : 0.12, on ? 0.45 : 0.08, k, 0);
+  }
+  for (const k of STAKES) {                 // stake lights: a pulse runs along each trail toward the door
+    const L = k.light, d = dist(L); if (d > 240) continue; const h = (state.time * 3.2) % (k.n + 5), w = Math.max(0, 1 - Math.abs(k.i - h) / 1.6), g = 0.8 + 1.6 * w, sz = (0.1 + 0.06 * w) * Math.max(1, d / 9);   // grows with distance so the trail reads from across a cavern
+    glowDraw(crystal, mulAll(tr(L[0], L[1], L[2]), sc(sz, sz * 1.3, sz)), 1.0, 0.55 + 0.2 * w, 0.12, g, 0);
   }
   for (const F of FLOODS) for (const L of F.lamps) if (dist(L) < 400) glowDraw(crystal, mulAll(tr(L[0], L[1], L[2]), sc(0.34, 0.24, 0.34)), 1.0, 0.92, 0.74, 1.7, 0);
   if (!game.free) PARTS.forEach((p, k) => { if (!p.at || cave.parts[k]) return; const b = 0.75 + 0.08 * Math.sin(state.time * 2 + k); if (dist(p.at) < 160) glowDraw(crystal, mulAll(tr(p.at[0], p.at[1] + b, p.at[2]), rotY(state.time), sc(0.2, 0.3, 0.2)), 0.4, 0.95, 1.0, 0.9, 0); });
@@ -10278,7 +10324,7 @@ function dripScatter(hits) {
   const tangent = n => { const a = norm(cross(n, Math.abs(n[1]) > 0.9 ? [1, 0, 0] : [0, 1, 0])); return [a, cross(n, a)]; };
   const land = [C.drop[0], CV.floorAt(C.drop[0], C.y + 20, C.drop[1]), C.drop[1]];
   const D9 = DOORS.find(d => d.name === 'D-9'), d9f = D9 ? doorWorld(D9, 0, -6) : null;
-  const clear = p => (Math.hypot(p[0] - land[0], p[2] - land[2]) < 6.5 && p[1] < land[1] + 5) || (d9f && Math.hypot(p[0] - d9f[0], p[2] - d9f[1]) < 10 && p[1] < D9.y + 7) || FLOODS.some(F => Math.hypot(p[0] - F.x, p[2] - F.z) < 3.5 && p[1] < F.y + 5);
+  const clear = p => nearRoute(p) || (Math.hypot(p[0] - land[0], p[2] - land[2]) < 6.5 && p[1] < land[1] + 5) || (d9f && Math.hypot(p[0] - d9f[0], p[2] - d9f[1]) < 10 && p[1] < D9.y + 7) || FLOODS.some(F => Math.hypot(p[0] - F.x, p[2] - F.z) < 3.5 && p[1] < F.y + 5);
   const down = () => norm([(r() - 0.5) * 0.1, -1, (r() - 0.5) * 0.1]), up = () => norm([(r() - 0.5) * 0.16, 1, (r() - 0.5) * 0.16]);
   for (const h of hits) {
     const p = h.p, n = h.n, floor = n[1] > 0.55, ceil = n[1] < -0.5, tint = tintAt(p);
@@ -10733,7 +10779,7 @@ function cavernScatter(hits) {
   const hueAt = p => { const reg = Math.sin(p[0] * 0.035 + 1.3) + Math.cos(p[2] * 0.03 - 0.4) + Math.sin((p[0] + p[2]) * 0.02 + p[1] * 0.04);   // cyan fields, violet fields, mixed where they meet
     return reg > 0.35 ? 0.02 + r() * 0.22 : reg < -0.35 ? 0.72 + r() * 0.28 : r(); };
   const tangent = n => { const a = norm(cross(n, Math.abs(n[1]) > 0.9 ? [1, 0, 0] : [0, 1, 0])); return [a, cross(n, a)]; };
-  const nearCamp = p => p[1] < C.y - 10 && (Math.hypot(p[0] - C.drop[0], p[2] - C.drop[1]) < 4.5 || CAMP.some(c => Math.hypot(p[0] - CAMP_AT[0] - c[1], p[2] - CAMP_AT[1] - c[2]) < (c[0] === 'survey_deck' ? 6.5 : 4.2)));
+  const nearCamp = p => nearRoute(p) || p[1] < C.y - 10 && (Math.hypot(p[0] - C.drop[0], p[2] - C.drop[1]) < 4.5 || CAMP.some(c => Math.hypot(p[0] - CAMP_AT[0] - c[1], p[2] - CAMP_AT[1] - c[2]) < (c[0] === 'survey_deck' ? 6.5 : 4.2)));
   hits.forEach((h, i) => {
     const p = h.p, n = h.n, floor = n[1] > 0.55, ceil = n[1] < -0.45, under = p[1] < C.pool - 0.2;
     // crystals: about half the hits grow a crystal (clusters and singles), a few become big
@@ -10874,10 +10920,10 @@ function update(dt) {
     const prev = [state.px, state.py + 1, state.pz];
     // momentum: quick to respond on foot, weighty in the air
     if (state.grounded) { const sp = fast ? 14 : 7, k = Math.min(1, dt * 12); state.vx += ((ml > 0 ? mx * sp : 0) - state.vx) * k; state.vz += ((ml > 0 ? mz * sp : 0) - state.vz) * k; }
-    else {
-      const vmax = boost ? (play ? game.vmaxBoost : 130) : 48, acc = boost ? 75 : 36;
-      if (ml > 0) { state.vx += mx * acc * dt; state.vz += mz * acc * dt; } else { const dg = Math.exp(-0.9 * dt); state.vx *= dg; state.vz *= dg; }
-      const sp = Math.hypot(state.vx, state.vz); if (sp > vmax) { const k = Math.max(vmax / sp, Math.exp(-2.5 * dt)); state.vx *= k; state.vz *= k; }
+    else {   // in the air: steer toward where the stick points, and let go to slow to a stop instead of sliding on
+      const ug = cave.under, vmax = boost ? (ug ? 17 : play ? game.vmaxBoost : 130) : (ug ? 11 : 48);
+      const rate = ml > 0 ? (ug ? 3.2 : boost ? 1.4 : 1.8) : (ug ? 3.0 : 1.6), k = 1 - Math.exp(-rate * dt);
+      state.vx += ((ml > 0 ? mx * vmax : 0) - state.vx) * k; state.vz += ((ml > 0 ? mz * vmax : 0) - state.vz) * k;
       if (play && boost && ml > 0) game.fuel = Math.max(0, game.fuel - 6 * dt);
     }
     // move, sliding along cliffs and landmarks instead of passing through them
@@ -10896,18 +10942,21 @@ function update(dt) {
     let floorY = floorAt(state.px, state.pz, state.py);
     if (floorY > 1e8) floorY = CV.floorAt(state.px, state.py, state.pz, true);   // pressed against cave rock: land on the floor, not on the wall
     // jetpack: Space climbs, letting go settles into a slow free drift down, C dives
-    if (jet) { state.vy = Math.min(state.vy + 60 * dt, boost ? 45 : 28); state.grounded = false; if (play) game.fuel = Math.max(0, game.fuel - (boost ? 14 : 9) * dt); }
+    if (jet) { state.vy = Math.min(state.vy + 60 * dt, boost ? (cave.under ? 15 : 45) : (cave.under ? 9 : 28)); state.grounded = false; state.hover = true; if (play) game.fuel = Math.max(0, game.fuel - (boost ? 14 : 9) * dt); }
     if (state.grounded) { if (state.py - floorY > 0.9) state.grounded = false; else { state.py = floorY; state.vy = 0; if (play) game.fuel = Math.min(game.tank, game.fuel + 45 * dt); } }
     if (!state.grounded) {
-      if (!jet) { const capV = drop ? -75 : play ? game.fallCap : -12; state.vy = state.vy < capV ? Math.min(capV, state.vy + 90 * dt) : Math.max(capV, state.vy - 26 * dt); }
+      if (!jet) {
+        if (state.hover && !drop && hasFuel) { state.vy += (0 - state.vy) * Math.min(1, dt * 4); if (play) game.fuel = Math.max(0, game.fuel - 2.2 * dt); }   // hovering
+        else { const capV = drop ? (cave.under ? -16 : -75) : play ? game.fallCap : -12; state.vy = state.vy < capV ? Math.min(capV, state.vy + 90 * dt) : Math.max(capV, state.vy - 26 * dt); }
+      }
       state.py = Math.min(1800, state.py + state.vy * dt);
       if (cave.under) { const c = CV.ceilAt(state.px, state.py, state.pz); if (c < 1e8 && c > state.py + 1.0 && state.py + 1.85 > c) { state.py = c - 1.85; if (state.vy > 0) state.vy = 0; } }
-      if (state.py <= floorY) { if (state.vy < -20) thud(0.5, 180); else if (state.vy < -3) thud(0.2, 240); state.py = floorY; state.vy = 0; state.grounded = true; }
+      if (state.py <= floorY) { if (state.vy < -20) thud(0.5, 180); else if (state.vy < -3) thud(0.2, 240); state.py = floorY; state.vy = 0; state.grounded = true; state.hover = false; }
     }
     const ease = (cur, to, rate) => cur + (to - cur) * Math.min(1, dt * rate);
     state.moving = state.grounded ? hs > 0.4 : ml > 0;
     state.airK = ease(state.airK, state.grounded ? 0 : 1, 7); state.gait = ease(state.gait, state.grounded ? Math.min(1, hs / 6) : 0, 9); if (state.grounded && hs > 0.3) state.walk += dt * (3 + hs * 0.85);
-    state.thrust = ease(state.thrust, jet ? 1 : state.grounded ? 0 : (keys.Space && !hasFuel) ? 0.12 : drop ? 0.08 : 0.38, 10); state.hspeed = ease(state.hspeed, hs, 6);
+    state.thrust = ease(state.thrust, jet ? 1 : state.grounded ? 0 : (keys.Space && !hasFuel) ? 0.12 : drop ? 0.08 : state.hover && hasFuel ? 0.55 : 0.38, 10); state.hspeed = ease(state.hspeed, hs, 6);
     if (cave.under) cave.ceil = CV.ceilAt(state.px, state.py, state.pz);
     caveUpdate(dt);
     if (play) gameUpdate(dt, prev);
@@ -11265,7 +11314,7 @@ function start() {
   })();
 }
 canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); $('banner').hidden = false; $('banner').textContent = 'The graphics context was lost (the GPU ran out of memory or was reset). Reload the page to restart.'; });
-window.__bench = { DOOR, DOORS, PARTS, FLOODS, DRIPR, state, stats, cam, sel, selfCheck, setMode, resetView, cycleOverlay, toggleDetails, shared, cache, pending, T, get perf() { return hudPerf; }, get gpu() { return gpuName; }, get gpuMs() { return gpuMs; }, get world() { return world; }, get evictions() { return evictions; }, placedLog, props, place, K, game, cells, dishes, courses, colliders, floorAt, startPlay, startBench, showMenu, get plantTotal() { return plantTotal; }, cave, line, CV, caveTeleport, update, CAVR, cavePrebuild, get workerMode() { return workerMode; }, get light() { return lightInfo; }, pose, get charTris() { return [charFullTris, charLowTris]; }, groundAt, MAX_FULL, N_FULL, TRIM_LOD, N_SEL, keys };
+window.__bench = { DOOR, DOORS, PARTS, FLOODS, STAKES, DRIPR, state, stats, cam, sel, selfCheck, setMode, resetView, cycleOverlay, toggleDetails, shared, cache, pending, T, get perf() { return hudPerf; }, get gpu() { return gpuName; }, get gpuMs() { return gpuMs; }, get world() { return world; }, get evictions() { return evictions; }, placedLog, props, place, K, game, cells, dishes, courses, colliders, floorAt, startPlay, startBench, showMenu, get plantTotal() { return plantTotal; }, cave, line, CV, caveTeleport, update, CAVR, cavePrebuild, get workerMode() { return workerMode; }, get light() { return lightInfo; }, pose, get charTris() { return [charFullTris, charLowTris]; }, groundAt, MAX_FULL, N_FULL, TRIM_LOD, N_SEL, keys };
 start();
 })();
 

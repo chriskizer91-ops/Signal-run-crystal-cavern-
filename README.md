@@ -6,7 +6,7 @@ It started as a canyon rendering benchmark: 147 million triangles of terrain, a 
 - **Surface:** the radio array is dark. Find 7 power cells and fly them back with your jetpack.
 - **Underground:** an old mine shaft leads down into caves. You have a headlamp with a battery and a glowing guideline so you can find your way out. Below that, a series of giant caverns are stacked deeper and deeper, joined by sealed doors and drop shafts.
 
-**Play it:** open [`game/signal-run.html`](game/signal-run.html) (download it, then open the file in your browser).
+**Play it:** open [`game/signal-run.html`](game/signal-run.html) (v10) (download it, then open the file in your browser).
 
 ## Where things are
 
@@ -41,6 +41,9 @@ It started as a canyon rendering benchmark: 147 million triangles of terrain, a 
   - The **stalactite cavern** below the crystal cavern, reached through door D-8.
   - Work floodlights by each deeper door.
   - In the campaign, a power coupling to find for each deeper door.
+- **v10:**
+  - Steadier flying: you stop when you let go, it's slower in caves, and you hover when you let go of JET (hold DIVE to go down).
+  - Glowing route stakes lead from each cavern's landing to its exit door.
 
 ## What's next
 1. The **flooded cavern** behind door D-9: swimming in murky water, creepy fish you only glimpse, and lore to read.

@@ -60,6 +60,12 @@ Christopher, after seeing the crystal cavern: "We absolutely have to have an add
 
 **Build order:** one cavern at a time, with screenshots after each.
 
+**Finding the way (v10, Christopher's choice):**
+- **Glowing route stakes** left by the research team run from each landing to that cavern's exit door, with a light pulse travelling toward the door.
+- No on-screen marker and no flashing beacon (he chose the in-world trail only).
+
+**Flying (v10):** no more sliding after letting go, slower and steadier in caves, and **hover** when you let go of JET (DIVE to go down).
+
 **Built in v9:**
 - D-8 with its work light, and its coupling at the end of the crystal cavern's north gallery.
 - The 126 m drop into the stalactite cavern.

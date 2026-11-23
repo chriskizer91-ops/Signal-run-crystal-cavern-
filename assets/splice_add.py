@@ -1,6 +1,6 @@
 # add (or replace) new model groups in the game's ASSET_DEFS. usage: python3 splice_add.py <game.html> <module> [...]
-import sys, os
-HERE = os.path.dirname(os.path.abspath(__file__)), re
+import sys, re, os
+HERE = os.path.dirname(os.path.abspath(__file__))
 P = sys.argv[1]; s = open(P, encoding='utf-8').read()
 for n in sys.argv[2:]:
     w = open(os.path.join(HERE, 'modules', '%s.js' % n), encoding='utf-8').read().strip()

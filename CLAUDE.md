@@ -46,12 +46,14 @@ The same three docs also live in the claude.ai Project "Build" as `claude/*.md`.
   - `&at=mine | cave | door | cavern | d8 | drip | d9`
   - `&cavedbg=N` (rock shader debug views)
   - `__bench.CAVR.off = {crys:1, life:1, …}` hides parts to find a visual bug
-- Before delivering, always compare the surface start view against the previous version (`tests/surf7.py` pattern). It has stayed 100% identical since v7.
+- Before delivering, always compare the surface start view against the previous version: `python3 tests/surface_compare.py <previous version file name>`. It has stayed 100% identical since v7.
+- `tests/flight.py` measures how flying feels (climb, hover, top speed, slide, dive) in old against new.
 - Tests write screenshots into the folder they run from. Run them from `tests/`; PNGs there are git-ignored.
 
 ## Where the project is
 - **Done:**
   - v9: crystal cavern (D-7) → stalactite cavern (D-8) → door D-9, which stays shut.
+  - v10: steadier flying (no slide, cave speeds, hover) and glowing route stakes. Trails come from `src/node/routes.js`; rerun it and re-paste `ROUTES` if a cavern changes.
   - Campaign and Free play modes.
   - Couplings for deeper doors in the campaign.
 - **Next:**

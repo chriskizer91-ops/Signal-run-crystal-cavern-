@@ -459,12 +459,45 @@ window.MODDEF = { fn: (function (K) {
     return b;
   }
 
+  // =========================================================================================================
+  // 4. ROUTE STAKE: survey stake on a weighted foot plate, bolted into the rock, clip-on marker light on top.
+  //    Placed every few metres from landing to exit door; the game pulses an amber glow on the light centre.
+  // =========================================================================================================
+  const STK_R = 0.016, STK_TOP = 0.78, STK_LY = 0.84, STK_LENS = [0.95, 0.9, 0.7, 0.3];
+  const STAKE_ATTACH = [[0, STK_LY, 0]];
+  function buildStake(detail) {
+    const b = new MB();
+    if (!detail) {
+      b.lathe([[0.1, 0], [0.02, 0.03]], 4, GUN_D);                                                  // foot plate
+      b.lathe([[STK_R, 0.02, ORANGE], [STK_R, 0.5, BLACK], [STK_R, 0.57, ORANGE], [STK_R, STK_TOP]], 4, ORANGE);   // shaft with one band
+      b.lathe([[0.042, STK_TOP, STK_LENS], [0.042, 0.9, GUN_D], [0, 0.9]], 6, GUN_D);                  // light: lens + cap
+      return b;
+    }
+    // weighted hex foot plate with bevelled top, sunk a little into the rock, plus three rock-bolt heads
+    b.lathe([[0.1, -0.02], [0.1, 0.012], [0.075, 0.028], [0.02, 0.03]], 6, GUN_D);
+    for (let k = 0; k < 3; k++) { b.push(mulAll(rotY(k * TAU / 3 + 0.5), tr(0.068, 0.03, 0))); b.box(0, 0, 0, 0.022, 0.014, 0.022, STEEL); b.pop(); }
+    // pointed stake: steel tip driven through the plate into the rock, orange shaft with black bands
+    b.lathe([[0, -0.08, STEEL], [STK_R, 0.03, ORANGE], [STK_R, 0.28, BLACK], [STK_R, 0.34, ORANGE],
+             [STK_R, 0.5, BLACK], [STK_R, 0.56, ORANGE], [STK_R, 0.7, BLACK], [STK_R, 0.745, GUN_D], [STK_R, STK_TOP]], 6, ORANGE);
+    // pale reflective tape strip on the front and back faces
+    for (const a of [PI / 3, PI + PI / 3]) b.lathe([[STK_R + 0.0015, 0.37], [STK_R + 0.0015, 0.47]], 1, ST_W, a, a + PI / 3);
+    // clip-on bracket gripping the stake top
+    b.box(0, 0.762, 0, 0.044, 0.026, 0.044, ORANGE_D);
+    // marker light: dark base, pale lens band, dark cap (0.084 across, 0.12 tall, centre at y 0.84)
+    b.lathe([[0.042, STK_TOP, GUN_D], [0.042, 0.795, STK_LENS], [0.041, 0.885, GUN_D], [0.03, 0.9, GUN_D], [0, 0.9]], 8, GUN_D);
+    // route tag on the side of the shaft, stencilled code facing +z
+    b.box(STK_R + 0.037, 0.63, 0, 0.07, 0.045, 0.004, BONE);
+    text(b, 'R-8', STK_R + 0.037, 0.63, 0.0025, 0.026, ST_K, true);
+    return b;
+  }
+
   return {
     name: 'worklight',
     items: [
       { name: 'flood_mast', budget: 6000, build: buildFlood, colliders: [], attach: FLOOD_ATTACH },
       { name: 'power_coupling', budget: 1500, build: buildCoupling, colliders: [] },
-      { name: 'dropped_pack', budget: 2000, build: buildPack, colliders: [] }
+      { name: 'dropped_pack', budget: 2000, build: buildPack, colliders: [] },
+      { name: 'route_stake', budget: 300, build: buildStake, colliders: [], attach: STAKE_ATTACH }
     ]
   };
 }) };
