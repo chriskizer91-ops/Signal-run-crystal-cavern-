@@ -1,0 +1,41 @@
+<!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0;background:#222"><canvas id="c" width="1280" height="960"></canvas>
+<script src="assetkit.js"></script>
+<script>
+const q=new URLSearchParams(location.search), item=q.get('item'), detail=+(q.get('detail')||1), mode=+(q.get('mode')||0);
+const sc=document.createElement('script'); sc.src=q.get('f'); sc.onload=run; sc.onerror=()=>{window.__err='load failed';window.__done=1}; document.body.appendChild(sc);
+function run(){ try {
+  const K=AssetKit(), mod=MODDEF.fn(K), it=mod.items.find(i=>i.name===item); const b=it.build(detail), pk=b.pack(), bd=b.bounds();
+  const gl=document.getElementById('c').getContext('webgl2');
+  const sh=(t,s)=>{const o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);if(!gl.getShaderParameter(o,gl.COMPILE_STATUS))throw gl.getShaderInfoLog(o);return o;};
+  const p=gl.createProgram(); gl.attachShader(p,sh(gl.VERTEX_SHADER,`#version 300 es
+layout(location=0) in vec3 aP; layout(location=1) in vec3 aN; layout(location=2) in vec4 aC; uniform mat4 uVP; out vec3 vN,vW; out vec4 vC;
+void main(){vN=aN;vW=aP;vC=aC;gl_Position=uVP*vec4(aP,1.);}`)); gl.attachShader(p,sh(gl.FRAGMENT_SHADER,`#version 300 es
+precision highp float; in vec3 vN,vW; in vec4 vC; uniform vec3 uCam; uniform int uMode; out vec4 o;
+void main(){ vec3 n=normalize(vN), v=normalize(uCam-vW); if(dot(n,v)<0.) n=-n; vec3 L=normalize(vec3(0.56,0.5,0.66));
+ vec3 col=vC.rgb*vC.rgb; float a=vC.a, g=a<=0.5?a*2.:0.; vec3 c;
+ if(uMode==1){            // crystal: r = inner glow, g = facet tint shift, b = cloudiness; hue comes from the instance (cyan here)
+   vec3 hue=mix(vec3(0.18,0.9,1.0),vec3(0.72,0.32,1.0),0.25+0.5*vC.g); float fr=pow(1.-max(dot(n,v),0.),3.);
+   c=hue*hue*(0.05+0.3*max(dot(n,L),0.))*(1.-0.5*vC.b)+hue*vC.r*1.3+hue*fr*0.55*(0.3+vC.r)+vec3(1.)*pow(max(dot(n,normalize(L+v)),0.),80.)*0.8*(1.-vC.b);
+ } else if(uMode==2){     // glow life: rgb = colour, alpha = how strongly it glows
+   c=col*(0.08+0.5*max(dot(n,L),0.))+vC.rgb*vC.a*1.3;
+ } else {
+ c=col*(vec3(1.,.9,.74)*3.0*max(dot(n,L),0.)+mix(vec3(.36,.27,.2),vec3(.42,.58,.9),n.y*.5+.5)*0.6);
+ c+=vec3(1.,.95,.85)*pow(max(dot(n,normalize(L+v)),0.),mix(24.,180.,g))*(0.2+2.2*g); }
+ c*=0.95; c=(c*(2.51*c+0.03))/(c*(2.43*c+0.59)+0.14); o=vec4(pow(clamp(c,0.,1.),vec3(1./2.2)),1.); }`)); gl.linkProgram(p); gl.useProgram(p); gl.uniform1i(gl.getUniformLocation(p,'uMode'),mode);
+  const mkv=(buf,idx)=>{const va=gl.createVertexArray();gl.bindVertexArray(va);const vb=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,vb);gl.bufferData(gl.ARRAY_BUFFER,buf,gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,28,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,3,gl.FLOAT,false,28,12);gl.enableVertexAttribArray(2);gl.vertexAttribPointer(2,4,gl.UNSIGNED_BYTE,true,28,24);
+    const ib=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ib);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,idx,gl.STATIC_DRAW);return {va,n:idx.length};};
+  const obj=mkv(pk.buf,pk.idx);
+  const g=new K.MB(); const R0=Math.max(bd.max[0]-bd.min[0],bd.max[2]-bd.min[2])*2+4; g.box((bd.min[0]+bd.max[0])/2,-0.05,(bd.min[2]+bd.max[2])/2,R0,0.1,R0,mode?[0.25,0.24,0.26,0]:[0.78,0.64,0.47,0]); const gp=g.pack(), ground=mkv(gp.buf,gp.idx);
+  const c=[(bd.min[0]+bd.max[0])/2,(bd.min[1]+bd.max[1])/2,(bd.min[2]+bd.max[2])/2], r=Math.hypot(bd.max[0]-bd.min[0],bd.max[1]-bd.min[1],bd.max[2]-bd.min[2])/2;
+  const views=[[0.7,0.35,1.0],[3.6,0.3,1.0],[1.57,0.1,1.0],[0.9,0.22,0.6]];
+  gl.enable(gl.DEPTH_TEST); if(mode) gl.clearColor(0.03,0.04,0.06,1); else gl.clearColor(0.62,0.72,0.84,1); gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+  views.forEach(([yaw,pit,zoom],k)=>{ gl.viewport((k%2)*640,(k<2?480:0),640,480);
+    const d=r*1.2*zoom/Math.tan(0.45), e=[c[0]+d*Math.cos(pit)*Math.sin(yaw),c[1]+d*Math.sin(pit),c[2]+d*Math.cos(pit)*Math.cos(yaw)];
+    const f=K.norm(K.sub(c,e)), s=K.norm(K.cross(f,[0,1,0])), u=K.cross(s,f), V=new Float64Array([s[0],u[0],-f[0],0,s[1],u[1],-f[1],0,s[2],u[2],-f[2],0,-K.dot(s,e),-K.dot(u,e),K.dot(f,e),1]);
+    const t=1/Math.tan(0.45), n=Math.max(0.01,d-r*3), fa=d+r*3, P=new Float64Array([t/(640/480),0,0,0,0,t,0,0,0,0,(fa+n)/(n-fa),-1,0,0,2*fa*n/(n-fa),0]);
+    gl.uniformMatrix4fv(gl.getUniformLocation(p,'uVP'),false,new Float32Array(K.mul(P,V))); gl.uniform3fv(gl.getUniformLocation(p,'uCam'),e);
+    for(const m of (mode?[obj]:[ground,obj])){gl.bindVertexArray(m.va);gl.drawElements(gl.TRIANGLES,m.n,gl.UNSIGNED_INT,0);} });
+  window.__info={tris:b.tris,bounds:bd};
+} catch(e){ window.__err=String(e); } window.__done=1; }
+</script></body></html>
