@@ -1,6 +1,6 @@
 # Signal Run — Caves & Mine Expansion (design plan)
 
-Status (23 Nov 2026): **partly built.** Current game file: signal-run-v9-stalactite-cavern.html (also `game/signal-run.html` in the GitHub repo `chriskizer91-ops/Signal-run-crystal-cavern-`). See `claude/signal-run-engine-handoff.md` for how the built parts work.
+Status (23 Nov 2026): **partly built.** Current game file: signal-run-v11-flooded-cavern.html (also `game/signal-run.html` in the GitHub repo `chriskizer91-ops/Signal-run-crystal-cavern-`). See `claude/signal-run-engine-handoff.md` for how the built parts work.
 
 ## Built so far
 - **v4: Level 1.**
@@ -46,7 +46,7 @@ Christopher, after seeing the crystal cavern: "We absolutely have to have an add
    - Stalactites, stalagmites, fluted columns, flowstone curtains, rimstone pools, and a glowworm "starry" ceiling.
    - Warm calcite colours, lit by the headlamp and its door's floodlight.
    - Exit door D-9.
-3. **Flooded cavern**: you get into the water and swim with your headlamp in murky water.
+3. **Flooded cavern** (**built in v11**): you get into the water and swim with your headlamp in murky water.
    - **Creepy fish:** big enough to look dangerous, barely seen, very fast. They never attack, but they're interested in you and keep their distance. You see glowing eyes, or something darting past.
    - **Lore text you read** there: something creepy.
 4. **Giant crystal cavern** (deeper): more massive, thicker crystals, brighter glow.
@@ -63,6 +63,14 @@ Christopher, after seeing the crystal cavern: "We absolutely have to have an add
 **Finding the way (v10, Christopher's choice):**
 - **Glowing route stakes** left by the research team run from each landing to that cavern's exit door, with a light pulse travelling toward the door.
 - No on-screen marker and no flashing beacon (he chose the in-world trail only).
+
+**Built in v11, the flooded cavern:**
+- D-9 opens onto a 70 m drop to the beach of a black lake.
+- There is a dive station with a readable dive log.
+- Swimming works like the flying: you float, DIVE goes down, JET goes up, and with neither you hold your depth.
+- Suit air lasts 75 s; running out means you black out and wake on the shore.
+- 7 fish circle at the edge of the murk, flee your lamp, dart past and peek from under the surface. Their eyes shine in your light.
+- The trail and the research team's old line lead down to a perfectly smooth bore at the bottom, where D-10 is sealed (the next build).
 
 **Flying (v10):** no more sliding after letting go, slower and steadier in caves, and **hover** when you let go of JET (DIVE to go down).
 

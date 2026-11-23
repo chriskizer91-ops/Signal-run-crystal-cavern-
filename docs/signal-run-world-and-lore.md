@@ -34,6 +34,21 @@ Status (23 Nov 2026): Christopher is **sitting with these ideas**. Treat everyth
 - **The survey camp** on the cavern's landing ledge: deck, field lab, crates, instrument mast, core drill, fallen shelter. Left in a hurry.
 - **The suit's humidity sensor**: 97% in the cavern, and the visor fogs.
 
+- **The flooded cavern (v11)** holds the research team's **dive station**: a floating platform, air tanks, their line spool and a **dive log terminal**.
+  - At the bottom of the lake is **the bore**: a perfectly round, glass-smooth tunnel with a ring cut every half metre. It is not natural and not human-made, and it is older than the rock is supposed to be. The team sealed it with D-10.
+  - Their old guideline runs into the bore and ends **cut clean** at the door.
+  - The lake's **fish** are big, pale and fast. They never attack, but they watch: eyes at the edge of the light, flaring in your lamp.
+
+### Dive log (draft text, Christopher may rewrite any of it)
+1. *DAY 1:* Lake is 31 m deep, 4 °C, visibility 8 m, sealed (no inflow, no current). Dives 1 and 2 clean.
+2. *DAY 3:* "Something big passed under me at the 20 m line. Kel says it was my own bubbles… Bubbles don't swim against you."
+3. *DAY 6:* Found the bore. Perfectly round, glass-smooth, rings every half metre. "Not water-cut. Not ours." Cores older than the rock should be.
+4. *DAY 9:* "Eyes at the edge of the light. They follow the line back to the platform… All of us have seen them now."
+5. *DAY 11:* Kel went into the bore alone. "His line runs forty metres in and stops. Cut clean. Not frayed. Cut."
+6. *DAY 12:* "We are sealing D-10 in the bore, and D-9 behind us. Couplings pulled. If you are reading this, the array is listening again, and something has heard it. Do not dive alone. Do not follow the lights."
+
+This draft ties together several open ideas: something unearthed, ancient non-human builders, the array and the signal, and the couplings. None of it is locked.
+
 ## Surface reskin (done in v5/v6)
 - **Vehicles:** rugged outpost truck KR-07, scout buggy, cargo trailer.
 - **Camp:** hab shelter, data table, survey scanner, heater beacon, comms mast, sealed cases.

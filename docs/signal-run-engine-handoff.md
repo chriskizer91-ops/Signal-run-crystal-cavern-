@@ -1,6 +1,6 @@
 # Signal Run — engine & state handoff (read this first in any new session)
 
-Status as of 23 Nov 2026: **v10 (signal-run-v10-flight-and-trails.html, ~920 KB)** is current.
+Status as of 23 Nov 2026: **v11 (signal-run-v11-flooded-cavern.html, ~1.0 MB)** is current.
 
 **Everything lives in the GitHub repo `chriskizer91-ops/Signal-run-crystal-cavern-`:** the game (`game/signal-run.html` plus every older version), the CaveLib mirror, patch scripts, all model modules and model tools, agent briefs, tests, these docs and screenshots. Start there in a new session, and read its `CLAUDE.md`. It is one self-contained HTML file: WebGL 2, no images; every texture, mesh and sound is generated in code.
 - Design plans: `claude/signal-run-caves-design.md`.
@@ -72,6 +72,7 @@ It started as a rendering benchmark: 147M triangles at full detail, plus a "10M 
     - Their amber lights grow with distance, so the trail reads across a cavern, and a pulse runs along each trail toward the door.
     - Crystals and dripstone are kept 1.5 m clear of the stakes (`nearRoute`).
   - The surface is pixel-identical to v9.
+- **v11: the flooded cavern** behind D-9 (details in its own section below). The surface is pixel-identical to v10.
 
 ## Map facts (metres; y is up)
 - World 3072 × 3072 (48 × 48 tiles of 64 m). Canyon floor ≈ 95, lowest terrain 87.5, highest ≈ 632.
@@ -325,6 +326,54 @@ These tools lived in the temporary workspace and are easy to recreate from this 
 - **Humidity**: 99% and visor fog 0.5 in the hall, with a toast the first time.
 - **Numbers** (headless, wide views): stalactite cavern ≈ 1.2–1.6M triangles submitted; D-9 area ≈ 0.6M.
 
+## The flooded cavern (v11)
+- **Geometry (CaveLib):**
+  - `LKE` is the lake hall, kind 11 (AMP 1.6): centre (1794, −410, 1471), radii 80 × 50 × 70.
+  - **Water surface `CV.LAKE.water` = −421.5.** `lakeFloor()` is a deep bowl, about 33 m deep in the middle, tilted so the west is high, with a beach 1.5–3 m above the water (`BEACH` −420). There are boulders and silt mounds under the water.
+  - **D-9**: its drift now runs to x 1736 and drops through the smooth tube at (1733, 1471), from −314 to −386. You land on the beach at about −419.9.
+  - **The bore**, kind 12, is perfectly smooth (no roughness), radius 2.8. It is horizontal at y −449.2 from x 1802 to 1876, then slopes down to (1914, −470). Its vertex kind is 4, so the shader can find it.
+  - **D-10**: at (1844, −452, 1471) inside the bore, under water. The tunnel runs +x and it has no drift.
+  - `CAVE_AREA` reaches x 2004.
+  - Exports: `CV.LAKE` (centre, radii, `water`, `drop`, `bore`, `boreR`), `lakeFloor`, `lakeK`.
+- **Swimming** (`update()`):
+  - `swim` = underground and chest (feet + 1.1) under water (`inWater()`: the lake ellipsoid or the bore box).
+  - In water you float: grounded is cleared every frame and the jetpack is off. Horizontal speed eases to 3.4 m/s (boost 5.5). JET swims up at 2.6 m/s, DIVE goes down at 2.8 m/s, and with neither you hold your depth.
+  - At the surface you float with your head out (feet at water −1.25). Walk out where the floor rises.
+  - Measured: 16.6 m in 5 s at the surface; 13 m deeper after 5 s of DIVE.
+- **Suit air** (`LAKER.air`): drains in 75 s with your head under water and refills at 40%/s above. It shows as "· Air N%" in the HUD.
+  - At 30% a warning toast appears.
+  - At 0 you black out (fade) and wake on the beach (`caveTeleport('lake')`) with full air: "…with no memory of swimming back."
+- **Look:**
+  - `GLSL_COMMON` adds `uLke`/`uLkeR` (`lkK()`) and `uUW` (camera under water, water level, density 0.115).
+  - With the camera under water, `haze()` fogs everything with murk and adds the headlamp beam glowing in the water.
+  - From above, things under the water are fogged by how far the view travels through water.
+  - Props underground now use `haze()` too (the surface still uses `fogit`).
+  - Rock in the lake hall is dark slate, with silt on up-facing surfaces under water and a dark algae ring at the waterline. The bore is black, glassy and wet, with a groove every 0.5 m.
+  - `LAKE_FS` draws the surface: a dark mirror from above with ripples and reflected glowworms; from below, a dim rippling ceiling.
+  - `SILT_VS/FS`: 2,600 silt motes wrap around the camera when it is under water and catch the lamp.
+- **Kits** (`LAKER`, reusing `dripstone`): stalactites and soda straws above, a drowned forest of stalagmites below 2.5 m depth, drapery, helictites and sparse glowworm threads and lights. About 2,900 instances and 8,200 glowworm lights.
+- **Fish** (`deepfish` module by a sub-agent: `lurker` 2.7 m, `darter` 1.7 m; both have eye attach points):
+  - There are 7 (4 lurkers, 3 darters). `FISH_VS` bends each body with a wave running head to tail (`uSw`: phase, amplitude, length, wave number).
+  - **Behaviour (`fishUpdate`):**
+    - With the player in the water, they circle at 11–15 m.
+    - They flee when the lamp points at them (within 13 m) or when you come within 6 m.
+    - About every 14–32 s one **darts** across 4 m in front of the camera at 11 m/s.
+    - With the player on the shore, every 16–32 s a fish **peeks** 1.6 m under the surface 7–12 m away.
+    - Otherwise they wander the deep water, avoiding rock and the surface.
+  - **Eyeshine** (`drawLakeGlow`): pale yellow-green glows at the eye attach points. They flare when the headlamp points at them and fade with distance, and from above water they fade with depth.
+- **Dive station** (`divesite` module by a sub-agent):
+  - `dive_platform` floats at the waterline; there are also `tank_rack`, `log_terminal` (with a screen glow), `line_spool` and `dropped_dive_light`. All are around `STATION_AT` (just north of the landing).
+  - A `flood_mast` on the beach, aimed out over the water, joins `FLOODS`.
+  - **The team's old guideline** (`LAKER.oldLine`, a pale line, LINE shader vK = 2) runs from the spool along the D-10 trail and into the bore, ending cut off at D-10.
+- **The dive log** (`LOG`, 6 pages; draft text, see the lore doc):
+  - A "Read the dive log" button (`#logBtn`) appears only within 3 m of the terminal (key E on a laptop).
+  - `#logCard` has Back, Next and Close (arrow keys and Esc work too) and pauses the game while open.
+- **Trail** (`ROUTES['D-10']`): 9 stakes down the beach and across the lake floor to the bore's mouth, plus 2 inside the bore.
+- **Doors:** D-9 now opens (free play, or the campaign with its coupling). **D-10 is not ready**: "sealed tight… (The giant crystal cavern comes in the next build.)"
+- **Draw zone 3** (camera below −345) skips chunks above −350, except along the D-9 drop. Zone 2 skips below −355, except along the D-9 drop.
+- **Numbers** (headless): about 0.48–0.9M triangles submitted around the lake. No errors.
+- **Teleports:** `&at=lake` (the beach), `&at=d10` (under water in the bore). `__bench` adds `LAKER`, `inWater`, `logShow`. Tests: `tests/lake1.py` (views), `tests/lake2.py` (drop, swim, air, log in numbers).
+
 ## Controls
 - Keyboard: WASD move, Space jetpack, Shift boost, C dive, drag to look, wheel to zoom, Esc menu, R back to the lookout, N sound, I details.
 - Phone: as in v3.
@@ -354,7 +403,7 @@ Use headless Chrome through Playwright with `--use-angle=swiftshader --enable-un
 - Rock up close still looks a bit tile-like (it reuses the terrain's rock texture).
 - Sky and water are Earth-like on purpose (terraformed), and the timber mine fits the colonists' own mine.
 - Not built yet:
-  - **next: the flooded cavern behind D-9**: swimming, murky water, creepy fast fish that keep their distance (glowing eyes), lore text to read. Then the giant crystal cavern below it.
+  - **next: the giant crystal cavern** behind D-10, down the bore: more massive, thicker crystals, brighter glow. Add D-10's coupling (in the lake) for the campaign.
   - the ancient alien artifact site
   - flares, the scanner
   - wall-touch feedback, hard mode and sonar, first-person view

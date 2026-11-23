@@ -52,6 +52,12 @@
   body.preview #hud { top: 52px; } body.preview #menu { display: none; } [hidden] { display: none !important; }
   #ustat { font: 600 13px system-ui, sans-serif; color: #ffd98a; text-shadow: 0 1px 3px rgba(0, 0, 0, .9); }
   #visor { position: fixed; inset: 0; pointer-events: none; opacity: 0; z-index: 2; background: radial-gradient(ellipse at center, rgba(200,230,235,0) 50%, rgba(190,222,228,.16) 70%, rgba(212,234,238,.5) 92%, rgba(225,240,242,.72) 100%); }
+  #logBtn { position: fixed; left: 50%; bottom: 112px; transform: translateX(-50%); z-index: 5; padding: 9px 18px; border-radius: 10px; background: rgba(13, 17, 23, .85); border: 1px solid rgba(150, 240, 220, .5); color: #bff5e8; font: 600 14px system-ui, sans-serif; }
+  #logCard { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 7; width: min(520px, 88vw); padding: 20px 22px 14px; background: rgba(6, 14, 14, .93); border: 1px solid rgba(150, 240, 220, .35); border-radius: 12px; color: #cfeee6; font: 15px/1.5 ui-monospace, Menlo, monospace; box-shadow: 0 0 40px rgba(60, 200, 180, .15); }
+  #logTitle { font-weight: 700; color: #8ff0d8; margin-bottom: 10px; letter-spacing: .04em; }
+  #logText { white-space: pre-wrap; min-height: 130px; }
+  #logCard .lrow { display: flex; gap: 8px; align-items: center; margin-top: 14px; } #logCard .lrow span { margin-right: auto; opacity: .7; font-size: 13px; }
+  #logCard button { padding: 6px 12px; border-radius: 8px; background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .18); color: inherit; font: 600 13px system-ui, sans-serif; } #logCard button:disabled { opacity: .35; }
   #fade { position: fixed; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity 1.5s; z-index: 6; } #fade.on { opacity: 1; }
   /* touch controls: only on phones/tablets, only while playing */
   #touch { display: none; }
@@ -97,6 +103,8 @@
 <div id="ghud"><div id="fuel" title="Jetpack fuel"><i id="fuelBar"></i></div><span id="gstat"></span><span id="ustat" hidden></span><button id="gMenu">Menu</button></div>
 <div id="marker" hidden><i></i><span id="markerTxt"></span></div>
 <div id="toast"></div>
+<button id="logBtn" hidden>Read the dive log</button>
+<div id="logCard" hidden><div id="logTitle"></div><div id="logText"></div><div class="lrow"><span id="logPage"></span><button id="logPrev">‹ Back</button><button id="logNext">Next ›</button><button id="logClose">Close</button></div></div>
 <div id="fade"></div>
 <div id="visor"></div>
 <div id="menu" hidden><div class="mcard">
@@ -507,7 +515,7 @@ function CaveLib(cfg) {
   const CH = 24, YCUT = -24, SHW = 1.9, SHB = -50;               // chunk size, nothing meshed above YCUT, shaft half-width and bottom
   const STATION = { x: SX, y: -53, z: SZ, hx: 6.5, hy: 3, hz: 5.5, floor: -56 };
   const LIGHT = [SX, SHB - 1.5, SZ];
-  const AMP = [1.15, 0.3, 0.03, 1.35, 0.25, 2.3, 1.2, 0.3, 1.7, 0.6];   // 8: stalactite hall, 9: its fluted columns   // + smooth natural tube (the door drop: no ledges to snag on)   // + crystal cavern, rock columns                    // rock roughness by kind: natural tunnel, mine drift, shaft, natural room, mine room
+  const AMP = [1.15, 0.3, 0.03, 1.35, 0.25, 2.3, 1.2, 0.3, 1.7, 0.6, 0, 1.6, 0];   // 11: the flooded cavern, 12: the smooth bore (not natural)   // 8: stalactite hall, 9: its fluted columns   // + smooth natural tube (the door drop: no ledges to snag on)   // + crystal cavern, rock columns                    // rock roughness by kind: natural tunnel, mine drift, shaft, natural room, mine room
   const AMPMAX = 2.9;
   const RIM = cfg.rim || null;                                   // ground heights around the shaft opening: above them is open air
   function rimH(x, z) {
@@ -570,8 +578,13 @@ function CaveLib(cfg) {
   const DOORDEF = [
     { name: 'D-7', at: [0, -56, 5.5], dir: [0, 1], drift: [[0, -56, 3.5], [0, -56.4, 21]] },
     { name: 'D-8', at: [84, -180, -15], dir: [1, 0], drift: [[72, -180, -15], [121, -180.4, -15]] },
-    { name: 'D-9', at: [262, -313, -15], dir: [1, 0], drift: [[252, -313, -15], [284, -313.2, -15]] },
+    { name: 'D-9', at: [262, -313, -15], dir: [1, 0], drift: [[252, -313, -15], [292, -313.2, -15]] },
+    { name: 'D-10', at: [400, -452, -15], dir: [1, 0], drift: null },   // sealed inside the smooth bore at the bottom of the lake
   ];
+  // the flooded cavern: below and east of the stalactite cavern, a dome over a black lake; a smooth round bore leaves from its bottom
+  const LKE = { c: [350, -410, -15], r: [80, 50, 70], water: -421.5, beach: -420 };
+  const BORE = [[358, -449.2, -15], [432, -449.2, -15], [470, -470, -15]], BORER = 2.8;
+  NAT.push({ name: 'D-9 drop', pts: [[289, -314, -15, 3.6], [289, -340, -15, 4.4], [289, -362, -15, 5.0], [289, -386, -15, 5.6]], straight: true, smooth: true });
   NAT.push({ name: 'D-8 drop', pts: [[120, -181, -15, 3.6], [120, -205, -15, 4.4], [120, -235, -15, 5.0], [120, -268, -15, 5.6]], straight: true, smooth: true });
   const ROOMS = [  // natural rooms: centre, radii, floor
     { name: 'breakthrough hall', c: [205, -62, 50], r: [17, 9, 15], floor: -68 },
@@ -592,7 +605,7 @@ function CaveLib(cfg) {
     const pts = m.pts.map(L), id = pathId++; minePaths.push(pts);
     for (let i = 0; i < pts.length - 1; i++) S.push([1, id, pts[i][0], pts[i][1], pts[i][2], pts[i + 1][0], pts[i + 1][1], pts[i + 1][2], 0, 0, 0]);
   }
-  for (const dd of DOORDEF) { const a = L(dd.drift[0]), b = L(dd.drift[1]); S.push([1, pathId++, a[0], a[1], a[2], b[0], b[1], b[2], 0, 0, 0]); }   // door drifts: cut later, no timber
+  for (const dd of DOORDEF) { if (!dd.drift) continue; const a = L(dd.drift[0]), b = L(dd.drift[1]); S.push([1, pathId++, a[0], a[1], a[2], b[0], b[1], b[2], 0, 0, 0]); }   // door drifts: cut later, no timber
   const natPaths = [];
   function cr(p0, p1, p2, p3, t) { const t2 = t * t, t3 = t2 * t; return p1.map((_, k) => 0.5 * (2 * p1[k] + (-p0[k] + p2[k]) * t + (2 * p0[k] - 5 * p1[k] + 4 * p2[k] - p3[k]) * t2 + (-p0[k] + 3 * p1[k] - 3 * p2[k] + p3[k]) * t3)); }
   NAT.forEach((n, ni) => {
@@ -635,6 +648,18 @@ function CaveLib(cfg) {
     const q = dripH(x, z) / DSTEP, k = floor(q), f = q - k; if (f > 0.8) return -1e9;
     const lv = k * DSTEP - 0.07; return dripFloor(x, z) < lv - 0.015 ? lv : -1e9;
   }
+  // the lake hall's floor: a deep bowl, a beach just above the water on the west side where the drop lands
+  const LX = SX + LKE.c[0], LY = LKE.c[1], LZ = SZ + LKE.c[2], LRX = LKE.r[0], LRY = LKE.r[1], LRZ = LKE.r[2], WATER = LKE.water, BEACH = LKE.beach;
+  S.push([11, pathId++, LX, LY, LZ, LRX, LRY, LRZ, 0, 0, 0]);
+  { const id = pathId++; for (let i = 0; i < BORE.length - 1; i++) { const a = L(BORE[i]), b = L(BORE[i + 1]); S.push([12, id, a[0], a[1], a[2], b[0], b[1], b[2], BORER, BORER, 0]); } }
+  function lakeFloor(x, z) {
+    const u = (x - LX) / LRX, v = (z - LZ) / LRZ, t = sqrt(u * u + v * v) + vn(x * 0.03, 7.7, z * 0.03, 61) * 0.12;
+    let h = LY - LRY + 6 + 36 * Math.pow(max(0, t - 0.08), 1.4) + 20 * min(1, max(0, -u * 0.95 + 0.02)) + vn(x * 0.07, 3.3, z * 0.07, 62) * 1.6;
+    const d = h - BEACH - 0.3; if (d > 0) h = BEACH + 0.3 + (d < 6 ? d * 0.25 : 1.5 + (d - 6));    // a low beach 1.5-3 m above the water
+    else h += vn(x * 0.21, 2.9, z * 0.21, 64) * 0.9 * min(1, -d / 4);                             // boulders and silt mounds under the water
+    return h + vn(x * 0.25, 1.1, z * 0.25, 63) * 0.25;
+  }
+  function lakeK(x, y, z) { const a = (x - LX) / LRX, b = (y - LY) / LRY, c = (z - LZ) / LRZ; return sqrt(a * a + b * b + c * c); }
   function dripK(x, y, z) { const a = (x - DX) / DRX, b = (y - DY) / DRY, c = (z - DZ) / DRZ; return sqrt(a * a + b * b + c * c); }
   // the cavern floor: a bowl rising to the walls in flat ledges with steep cliffs between them
   function cavFloor(x, z) {
@@ -651,7 +676,7 @@ function CaveLib(cfg) {
   function segBox(i) {
     const o = i * 11, k = SG[o];
     if (k === 2) return [SG[o + 2] - SHW, SHB - 1, SG[o + 4] - SHW, SG[o + 2] + SHW, TOP + 50, SG[o + 4] + SHW];
-    if (k === 5 || k === 8) return [SG[o + 2] - SG[o + 5] - 6, SG[o + 3] - SG[o + 6] - 8, SG[o + 4] - SG[o + 7] - 6, SG[o + 2] + SG[o + 5] + 6, SG[o + 3] + SG[o + 6] + 6, SG[o + 4] + SG[o + 7] + 6];
+    if (k === 5 || k === 8 || k === 11) return [SG[o + 2] - SG[o + 5] - 6, SG[o + 3] - SG[o + 6] - 8, SG[o + 4] - SG[o + 7] - 6, SG[o + 2] + SG[o + 5] + 6, SG[o + 3] + SG[o + 6] + 6, SG[o + 4] + SG[o + 7] + 6];
     if (k === 3 || k === 4) return [SG[o + 2] - SG[o + 5], SG[o + 3] - SG[o + 6], SG[o + 4] - SG[o + 7], SG[o + 2] + SG[o + 5], SG[o + 3] + SG[o + 6], SG[o + 4] + SG[o + 7]];
     if (k === 1) { const e = 3.8; return [min(SG[o + 2], SG[o + 5]) - e, min(SG[o + 3], SG[o + 6]) - 0.5, min(SG[o + 4], SG[o + 7]) - e, max(SG[o + 2], SG[o + 5]) + e, max(SG[o + 3], SG[o + 6]) + 4.5, max(SG[o + 4], SG[o + 7]) + e]; }
     const r = max(SG[o + 8], SG[o + 9]); return [min(SG[o + 2], SG[o + 5]) - r, min(SG[o + 3], SG[o + 6]) - r, min(SG[o + 4], SG[o + 7]) - r, max(SG[o + 2], SG[o + 5]) + r, max(SG[o + 3], SG[o + 6]) + r, max(SG[o + 4], SG[o + 7]) + r];
@@ -692,6 +717,17 @@ function CaveLib(cfg) {
       const rx = SG[o + 5], ry = SG[o + 6], rz = SG[o + 7], qx = (x - ax) / rx, qy = (y - ay) / ry, qz = (z - az) / rz, fl = SG[o + 8];
       gFloor = fl; const d = (sqrt(qx * qx + qy * qy + qz * qz) - 1) * min(rx, ry, rz);
       return d > fl - y ? d : fl - y;
+    }
+    if (k === 11) {
+      const qx = (x - ax) / LRX, qy = (y - ay) / LRY, qz = (z - az) / LRZ, fl = lakeFloor(x, z);
+      gFloor = fl; let d = (sqrt(qx * qx + qy * qy + qz * qz) - 1) * LRY;
+      if (qy > 0) d -= 6 * qy * vn(x * 0.035, 0.7, z * 0.035, 65);
+      const df = (fl - y) * 0.3; return d > df ? d : df;
+    }
+    if (k === 12) {
+      const bx = SG[o + 5] - ax, by = SG[o + 6] - ay, bz = SG[o + 7] - az, px = x - ax, py = y - ay, pz = z - az;
+      let t = (px * bx + py * by + pz * bz) / (bx * bx + by * by + bz * bz); t = t < 0 ? 0 : t > 1 ? 1 : t;
+      const dx = px - bx * t, dy = py - by * t, dz = pz - bz * t; gFloor = ay + by * t - BORER; return sqrt(dx * dx + dy * dy + dz * dz) - BORER;
     }
     if (k === 8) {
       const qx = (x - ax) / DRX, qy = (y - ay) / DRY, qz = (z - az) / DRZ, fl = dripFloor(x, z);
@@ -747,6 +783,8 @@ function CaveLib(cfg) {
     const b = base(x, y, z); let a = AMP[gKind]; const lim = AMPMAX + 0.6;
     if (b > lim || b < -lim) return b;
     if (gKind === 5 || gKind === 6) { x -= COFF[0]; y -= COFF[1]; z -= COFF[2]; }   // the cavern keeps the rock it was designed with
+    if (gKind === 12) return b;                                                                // the bore is perfectly smooth
+    if (gKind === 11) { if (y < gFl + 2.2) a = 0.15; else return b + a * fbm(x * 0.6, y * 0.6, z * 0.6) + 0.4 * fbm(x * 1.3, y * 0.5, z * 1.3); }
     if (gKind === 8) { if (y < gFl + 2.2) a = 0.1; else return b + a * fbm(x * 0.6, y * 0.6, z * 0.6) + 0.55 * fbm(x * 0.9, y * 0.12, z * 0.9) + 0.35 * fbm(x * 1.7, y * 1.7, z * 1.7); }   // flowstone ribs run down the walls
     if (gKind === 5) { if (y < gFl - COFF[1] + 2.2) a = 0.12; else return b + a * fbm(x * 0.6, y * 0.6, z * 0.6) + 0.5 * fbm(x * 1.7, y * 1.7, z * 1.7); }
     else if (y < gFl - (gKind === 6 ? COFF[1] : 0) + 1.0) a *= 0.3;
@@ -820,7 +858,7 @@ function CaveLib(cfg) {
     let minY = 1e9, maxY = -1e9;
     for (let v = 0; v < nv; v++) {
       const x = V[v * 6], y = V[v * 6 + 1], z = V[v * 6 + 2], nx = V[v * 6 + 3], ny = V[v * 6 + 4], nz = V[v * 6 + 5];
-      base(x, y, z); const kind = gKind === 1 || gKind === 4 ? 1 : gKind === 2 ? 0.5 : 0;
+      base(x, y, z); const kind = gKind === 1 || gKind === 4 ? 1 : gKind === 2 ? 0.5 : gKind === 12 ? 4 : 0;
       buf.set([x, y, z, nx, ny, nz, dayAt(x, y, z, nx, ny, nz), kind], v * 8);
       if (y < minY) minY = y; if (y > maxY) maxY = y;
     }
@@ -857,7 +895,8 @@ function CaveLib(cfg) {
   return { CH, YCUT, SHW, SHB, TOP, SX, SZ, STATION, LIGHT, chunks, segCount: NS, minePaths, natPaths, sdf, base, meshChunk, floorAt, ceilAt, floorNear, dayAt, dayK, inShaft, kindAt,
     CAV: { x: CX, y: CY, z: CZ, rx: RX, ry: RY, rz: RZ, pool: POOL, drop: [SX, SZ + 20] }, cavFloor, cavK, COLW,
     DOORS: DOORDEF.map(d => ({ name: d.name, x: SX + d.at[0], z: SZ + d.at[2], floor: d.at[1], dir: d.dir })), DOOR: { x: SX + DOORDEF[0].at[0], z: SZ + DOORDEF[0].at[2], floor: DOORDEF[0].at[1] },
-    DRIP: { x: DX, y: DY, z: DZ, rx: DRX, ry: DRY, rz: DRZ, drop: [SX + 120, SZ - 15], step: DSTEP }, dripFloor, dripWater, dripK, DCOLW };
+    DRIP: { x: DX, y: DY, z: DZ, rx: DRX, ry: DRY, rz: DRZ, drop: [SX + 120, SZ - 15], step: DSTEP }, dripFloor, dripWater, dripK, DCOLW,
+    LAKE: { x: LX, y: LY, z: LZ, rx: LRX, ry: LRY, rz: LRZ, water: WATER, drop: [SX + 289, SZ - 15], bore: BORE.map(p => [SX + p[0], p[1], SZ + p[2]]), boreR: BORER }, lakeFloor, lakeK };
 }
 
 (function () {
@@ -959,7 +998,7 @@ function runPreview() {
 const GLSL_COMMON = `
 uniform vec3 uCam, uSun, uFog; uniform sampler2D uSh; uniform vec4 uDam; // dam circle cx,cz,R, damX
 uniform vec4 uShMap; uniform highp sampler2DShadow uChS; uniform mat4 uChM; uniform float uChK, uT;
-uniform vec4 uUG, uLd, uHole, uCav, uDrp, uFdP, uFdD; uniform vec3 uFlP, uFlD, uCavR, uDrpR;   // underground: x on/off, y headlamp, z daylight here, w exposure; shaft light; ground hole
+uniform vec4 uUG, uLd, uHole, uCav, uDrp, uFdP, uFdD, uLke, uUW; uniform vec3 uFlP, uFlD, uCavR, uDrpR, uLkeR;   // underground: x on/off, y headlamp, z daylight here, w exposure; shaft light; ground hole
 const float WL=${WL.toFixed(1)}, RL=${RL.toFixed(1)}, WORLD=${WORLD.toFixed(1)};
 float hash11(float p){ p=fract(p*0.1031); p*=p+33.33; p*=p+p; return fract(p); }
 float hash21(vec2 p){ vec3 q=fract(vec3(p.xyx)*0.1031); q+=dot(q,q.yzx+33.33); return fract((q.x+q.y)*q.z); }
@@ -974,7 +1013,14 @@ float cavK(vec3 w){ vec3 q=(w-uCav.xyz)/uCavR; return (1.-smoothstep(0.92,1.4,le
 vec3 cavAmb(vec3 w){ return cavK(w)*vec3(0.05,0.16,0.18)*(0.55+0.9*vnoise3(w*0.035)); }   // light from all the glowing life, patchy
 float drpK(vec3 w){ vec3 q=(w-uDrp.xyz)/uDrpR; return (1.-smoothstep(0.95,1.35,length(q)))*uDrp.w; }   // 1 inside the stalactite cavern
 vec3 drpAmb(vec3 w, vec3 n){ float hy=smoothstep(uDrp.y-uDrpR.y*0.6, uDrp.y+uDrpR.y*0.8, w.y); return drpK(w)*vec3(0.016,0.046,0.05)*(0.4+0.6*max(n.y,0.)+0.9*hy*max(-n.y,0.))*(0.75+0.5*vnoise3(w*0.04)); }      // soft blue-green light from the glowworm ceiling
-vec3 haze(vec3 c, vec3 w){ float d=length(w-uCam); c=mix(c, vec3(0.012,0.05,0.06), (1.-exp(-d*0.0065))*cavK(w)*0.85); return mix(c, vec3(0.010,0.026,0.029), (1.-exp(-d*0.0085))*drpK(w)*0.85); }
+float lkK(vec3 w){ vec3 q=(w-uLke.xyz)/uLkeR; return (1.-smoothstep(0.95,1.3,length(q)))*uLke.w; }   // 1 inside the flooded cavern
+vec3 haze(vec3 c, vec3 w){ float d=length(w-uCam); c=mix(c, vec3(0.012,0.05,0.06), (1.-exp(-d*0.0065))*cavK(w)*0.85); c=mix(c, vec3(0.010,0.026,0.029), (1.-exp(-d*0.0085))*drpK(w)*0.85);
+  c=mix(c, vec3(0.004,0.008,0.009), (1.-exp(-d*0.008))*lkK(w)*0.8);
+  if(uUW.x>0.5){ vec3 v=(w-uCam)/max(d,1e-3), q=uCam+v*min(d,5.); float cs=dot(normalize(q-uFlP),uFlD);   // under water: murk, and the lamp's beam glowing in it
+    vec3 murk=vec3(0.004,0.017,0.016)+vec3(0.06,0.11,0.10)*smoothstep(0.82,0.97,cs)*uUG.y*(1.-exp(-min(d,9.)*0.3));
+    c=mix(c, murk, 1.-exp(-d*uUW.w)); }
+  else if(w.y<uUW.y){ float lk=lkK(w); if(lk>0.){ vec3 v=normalize(w-uCam); float path=(uUW.y-w.y)/max(-v.y,0.1); c=mix(c, vec3(0.003,0.012,0.012), (1.-exp(-path*uUW.w*1.2))*lk); } }   // looking down into the lake
+  return c; }
 vec3 floodL(vec3 w, vec3 n){ if(uFdP.w<=0.) return vec3(0.); vec3 L=uFdP.xyz-w; float d=length(L); vec3 l=L/max(d,1e-3); float cs=dot(-l,uFdD.xyz);   // the research team's work light
   float cone=smoothstep(uFdD.w-0.25,uFdD.w+0.12,cs)*0.85+0.15; return vec3(1.,0.9,0.74)*uFdP.w*cone*(max(dot(n,l),0.)*0.85+0.15)*30./(30.+d*d*0.35); }
 vec3 flashL(vec3 w, vec3 n){ vec3 L=uFlP-w; float d=length(L); vec3 l=L/max(d,1e-3); float cs=dot(-l,uFlD);
@@ -1110,7 +1156,7 @@ void main(){
     vec3 sky=mix(uFog*0.9, vec3(0.2,0.42,0.85), pow(max(rd.y,0.),0.5)); sky=mix(sky, vec3(0.5,0.36,0.25), smoothstep(0.05,-0.3,rd.y));
     c=mix(c, sky*1.5, clamp(gloss*(0.08+0.92*fr),0.,1.)*0.8);
   }
-  c=tone(fogit(c,vW));
+  c=tone(uUG.x>0.5 ? haze(c,vW) : fogit(c,vW));
   if(uOverlay>0) c=mix(c,vec3(0.75,0.4,0.9),0.35);
   o=vec4(c,clamp(glint*0.7,0.,1.));
 }`;
@@ -1247,10 +1293,17 @@ void main(){
   float dk=drpK(w);
   if(dk>0.){ vec3 lime=mix(vec3(0.60,0.52,0.42),vec3(0.82,0.76,0.64),band); lime=mix(lime, vec3(0.50,0.33,0.19), smoothstep(0.62,0.86,vnoise3(w*vec3(0.14,0.7,0.14)))*0.55);
     lime*=(0.8+0.4*mix(0.5,alb,0.6))*(0.85+0.3*vnoise3(w*vec3(0.8,0.15,0.8))); col=mix(col, lime, dk); }
+  float lk=lkK(w);
+  if(lk>0.){ vec3 sl=mix(vec3(0.27,0.30,0.29),vec3(0.44,0.46,0.42),band)*(0.8+0.4*vnoise3(w*0.5));
+    float uw=smoothstep(uUW.y+0.3,uUW.y-0.8,w.y);
+    sl=mix(sl, vec3(0.42,0.39,0.33)*(0.85+0.3*vnoise3(w*1.3)), uw*smoothstep(0.2,0.8,n.y));
+    sl=mix(sl, vec3(0.08,0.14,0.08), (1.-smoothstep(0.,0.6,abs(w.y-uUW.y-0.1)))*0.85);
+    col=mix(col, sl, lk); }
+  if(k>3.5){ float g=abs(fract(w.x*2.)-0.5); col=vec3(0.05,0.055,0.06)*mix(1.,0.35,smoothstep(0.43,0.48,g)); }
   col=pow(col,vec3(1.6));
   vec3 L=uFlP-w; vec3 l=normalize(L);
   vec3 fl=flashL(w,n)+floodL(w,n);
-  float wet=max(smoothstep(0.55,0.8,vnoise(w.xz*0.35+w.y*0.5))*step(k,1.5), dk*(0.55+0.45*vnoise3(w*0.4)));
+  float wet=max(smoothstep(0.55,0.8,vnoise(w.xz*0.35+w.y*0.5))*step(k,1.5), dk*(0.55+0.45*vnoise3(w*0.4))); if(k>3.5) wet=1.; else wet=max(wet, lk*smoothstep(uUW.y+0.8,uUW.y-0.5,w.y));
   float sp=pow(max(dot(n,normalize(l+v)),0.),60.)*(0.12+1.3*wet);
   vec3 c=col*(fl+vec3(0.9,0.95,1.05)*vD.x*2.2+0.0012)+fl*sp*0.5;
   float ck=cavK(w), face=0.25+0.75*max(0.,dot(n,normalize(uCav.xyz+vec3(0.,-25.,0.)-w)));
@@ -1348,6 +1401,43 @@ void main(){ gl_Position=uVP*vec4(aP.xyz,1.); float d=length(aP.xyz-uCam); gl_Po
 const WORM_FS = `#version 300 es
 precision highp float; in float vA; out vec4 o;
 void main(){ vec2 q=gl_PointCoord*2.-1.; float r=dot(q,q); if(r>1.) discard; float a=(1.-r)*vA; o=vec4(vec3(0.32,0.95,0.82)*a, a*0.6); }`;
+const LAKE_FS = `#version 300 es
+precision highp float; in vec3 vW; out vec4 o;
+${GLSL_COMMON}
+void main(){ vec2 p=vW.xz; float t=uT; bool below=uCam.y<vW.y;
+  vec3 n=normalize(vec3((vnoise(p*0.9+t*0.25)-0.5)*0.05+sin(p.x*1.7+t*0.6)*0.01, 1., (vnoise(p*0.8-t*0.2+7.)-0.5)*0.05+cos(p.y*1.5+t*0.5)*0.01)); if(below) n=-n;
+  vec3 v=normalize(uCam-vW); float fr=0.03+0.97*pow(1.-abs(dot(n,v)),5.);
+  vec3 fl=flashL(vW,n), fd=floodL(vW,n), L=normalize(uFlP-vW), Lf=normalize(uFdP.xyz-vW);
+  float sp=pow(max(dot(n,normalize(L+v)),0.),220.)*uUG.y*2.2, spf=pow(max(dot(n,normalize(Lf+v)),0.),220.)*uFdP.w*1.2;
+  vec3 c;
+  if(below){ c=vec3(0.006,0.02,0.018)+(length(fl)+length(fd))*vec3(0.05,0.09,0.08)*(0.6+0.8*vnoise(p*3.+t)); c=mix(c,c*2.5,fr); }   // the surface from beneath: a dim, rippling ceiling
+  else { vec3 body=vec3(0.002,0.008,0.008)+(length(fl)+length(fd))*vec3(0.01,0.03,0.028);
+    vec3 rd=reflect(-v,n); float stars=smoothstep(0.94,1.,vnoise(rd.xz/max(rd.y,0.2)*12.))*0.25*lkK(vW);
+    c=mix(body, vec3(0.003,0.008,0.009)+vec3(0.3,0.95,0.85)*stars, fr)+vec3(1.,.95,.85)*sp+vec3(1.,.9,.74)*spf; }
+  c=haze(c,vW); o=vec4(tone(c*uUG.w), below?0.85:0.9); }`;
+const FISH_VS = `#version 300 es
+layout(location=0) in vec3 aP; layout(location=1) in vec3 aN; layout(location=2) in vec4 aC;
+uniform mat4 uVP, uM; uniform vec4 uSw; out vec3 vW; out vec3 vN; out vec4 vC;
+void main(){ float L=uSw.z, s=clamp((L*0.5-aP.x)/L,0.,1.), amp=uSw.y*L*0.11*(0.08+0.92*s*s), ph=uSw.x-aP.x*uSw.w;   // a wave runs head to tail, growing toward the tail
+  vec3 p=aP+vec3(0.,0.,sin(ph)*amp); float sl=-cos(ph)*amp*uSw.w;
+  vec3 n=normalize(vec3(aN.x-aN.z*sl, aN.y, aN.z));
+  vec4 w=uM*vec4(p,1.); vW=w.xyz; vN=normalize(mat3(uM)*n); vC=aC; gl_Position=uVP*w; }`;
+const FISH_FS = `#version 300 es
+precision highp float; in vec3 vW; in vec3 vN; in vec4 vC; out vec4 o;
+${GLSL_COMMON}
+void main(){ vec3 n=normalize(vN), v=normalize(uCam-vW); if(dot(n,v)<0.) n=-n;
+  vec3 col=vC.rgb*vC.rgb; float em=vC.a*(0.7+0.3*sin(uT*1.3+vW.x*2.));
+  vec3 fl=flashL(vW,n)+floodL(vW,n); float rim=pow(1.-max(dot(n,v),0.),3.);
+  vec3 c=col*(fl+0.003)+col*em*0.9+vec3(0.5,0.7,0.65)*rim*length(fl)*0.25+fl*pow(max(dot(n,normalize(normalize(uFlP-vW)+v)),0.),50.)*0.35;
+  c=haze(c,vW); o=vec4(tone(c*uUG.w), clamp(em*0.4,0.,1.)); }`;
+const SILT_VS = `#version 300 es
+layout(location=0) in vec4 aP; uniform mat4 uVP; uniform float uT, uPx; uniform vec3 uCam, uFlP, uFlD; uniform vec4 uUG; out float vA;
+void main(){ vec3 b=aP.xyz+vec3(sin(uT*0.2+aP.w*20.)*0.4, sin(uT*0.13+aP.w*31.)*0.3, cos(uT*0.17+aP.w*13.)*0.4);
+  vec3 p=uCam+mod(b-uCam+8.,16.)-8.; gl_Position=uVP*vec4(p,1.); float d=length(p-uCam); gl_PointSize=clamp(9./d,1.,4.)*uPx;
+  float cs=dot(normalize(p-uFlP),uFlD); vA=(0.1+1.2*smoothstep(0.86,0.97,cs)*uUG.y)*clamp(1.-d/8.,0.,1.); }`;
+const SILT_FS = `#version 300 es
+precision highp float; in float vA; out vec4 o;
+void main(){ vec2 q=gl_PointCoord*2.-1.; float r=dot(q,q); if(r>1.) discard; float a=(1.-r)*vA; o=vec4(vec3(0.55,0.6,0.55)*a, a*0.3); }`;
 const LINE_VS = `#version 300 es
 layout(location=0) in vec3 aP; layout(location=1) in float aK; uniform mat4 uVP; out vec3 vW; out float vK;
 void main(){ vW=aP; vK=aK; gl_Position=uVP*vec4(aP,1.); }`;
@@ -1355,7 +1445,7 @@ const LINE_FS = `#version 300 es
 precision highp float; in vec3 vW; in float vK; uniform vec3 uFlP, uFlD; uniform vec4 uUG; out vec4 o;
 void main(){ vec3 L=uFlP-vW; float d=length(L), cs=dot(-L/max(d,1e-3),uFlD);
   float lit=(smoothstep(0.82,0.96,cs)*0.8+0.2*smoothstep(0.55,0.85,cs))*uUG.y/(1.+d*d*0.008);
-  vec3 col=vK>0.5? vec3(1.0,0.5,0.12) : vec3(0.72,1.0,0.38);
+  vec3 col=vK>1.5? vec3(0.55,0.75,0.8)*0.55 : vK>0.5? vec3(1.0,0.5,0.12) : vec3(0.72,1.0,0.38);
   float I=0.16+2.6*lit; o=vec4(col*I, clamp(I*0.5,0.,1.)); }`;
 function prog(vs, fs) {
   const p = gl.createProgram();
@@ -1365,7 +1455,7 @@ function prog(vs, fs) {
   for (let i = 0; i < n; i++) { const nm = gl.getActiveUniform(p, i).name; u[nm] = gl.getUniformLocation(p, nm); }
   return { p, u };
 }
-const pTerr = prog(TERR_VS, TERR_FS), pProp = prog(PROP_VS, PROP_FS), pSky = prog(SKY_VS, SKY_FS), pWater = prog(WATER_VS, WATER_FS), pDepth = prog(DEPTH_VS, DEPTH_FS), pFlame = prog(FLAME_VS, FLAME_FS), pGen = prog(SKY_VS, GEN_FS), pPlant = prog(PLANT_VS, PROP_FS), pGlow = prog(GLOW_VS, GLOW_FS), pPost = prog(SKY_VS, POST_FS), pCave = prog(CAVE_VS, CAVE_FS), pLine = prog(LINE_VS, LINE_FS), pCrys = prog(KIT_VS, CRYS_FS), pLife = prog(KIT_VS, LIFE_FS), pPool = prog(POOL_VS, POOL_FS), pSpore = prog(SPORE_VS, SPORE_FS), pDrip = prog(KIT_VS, DRIP_FS), pRim = prog(POOL_VS, RIM_FS), pWorm = prog(WORM_VS, WORM_FS);
+const pTerr = prog(TERR_VS, TERR_FS), pProp = prog(PROP_VS, PROP_FS), pSky = prog(SKY_VS, SKY_FS), pWater = prog(WATER_VS, WATER_FS), pDepth = prog(DEPTH_VS, DEPTH_FS), pFlame = prog(FLAME_VS, FLAME_FS), pGen = prog(SKY_VS, GEN_FS), pPlant = prog(PLANT_VS, PROP_FS), pGlow = prog(GLOW_VS, GLOW_FS), pPost = prog(SKY_VS, POST_FS), pCave = prog(CAVE_VS, CAVE_FS), pLine = prog(LINE_VS, LINE_FS), pCrys = prog(KIT_VS, CRYS_FS), pLife = prog(KIT_VS, LIFE_FS), pPool = prog(POOL_VS, POOL_FS), pSpore = prog(SPORE_VS, SPORE_FS), pDrip = prog(KIT_VS, DRIP_FS), pRim = prog(POOL_VS, RIM_FS), pWorm = prog(WORM_VS, WORM_FS), pLake = prog(POOL_VS, LAKE_FS), pFish = prog(FISH_VS, FISH_FS), pSilt = prog(SILT_VS, SILT_FS);
 const SUN = norm([0.56, 0.5, 0.66]), FOG = [0.74, 0.80, 0.87];
 
 /* ---------- per-frame counters: every draw call goes through these ---------- */
@@ -1713,7 +1803,10 @@ const inRes = (x, z) => x < XD && Math.hypot(x - DAM.cx, z - DAM.cz) > DAM.R;
 const keys = {};
 addEventListener('keydown', e => {
   if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault();
-  if (e.repeat) return; keys[e.code] = true;
+  if (e.repeat) return;
+  if (typeof LAKER !== 'undefined' && LAKER.read >= 0) { if (e.code === 'Escape' || e.code === 'KeyE') logShow(-1); else if (e.code === 'ArrowRight' || e.code === 'KeyD') logShow(Math.min(LOG.length - 1, LAKER.read + 1)); else if (e.code === 'ArrowLeft' || e.code === 'KeyA') logShow(Math.max(0, LAKER.read - 1)); return; }
+  if (e.code === 'KeyE' && !$('logBtn').hidden) { logShow(0); return; }
+  keys[e.code] = true;
   if (e.code === 'Escape' || e.code === 'KeyP') { if (game.inMode) showMenu($('menu').hidden); return; }
   if (game.paused) return;
   if (e.code === 'KeyR') resetView(); else if (e.code === 'KeyT') cycleOverlay(); else if (e.code === 'KeyI') toggleDetails(); else if (e.code === 'KeyN') { game.muted = !game.muted; toast(game.muted ? 'Sound off' : 'Sound on', 2); }
@@ -1772,6 +1865,7 @@ const OVER = ['off', 'tiles', 'wireframe'];
 function cycleOverlay() { state.overlay = (state.overlay + 1) % 3; $('bOverlay').firstChild.textContent = 'Overlay: ' + OVER[state.overlay] + ' '; $('legend').hidden = state.overlay === 0; }
 function toggleDetails() { state.details = !state.details; $('details').hidden = !state.details; }
 function setMode(m) { state.mode = m; $('mExplore').classList.toggle('on', m === 0); $('m10').classList.toggle('on', m === 1); }
+$('logBtn').onclick = () => logShow(0); $('logPrev').onclick = () => logShow(Math.max(0, LAKER.read - 1)); $('logNext').onclick = () => logShow(Math.min(LOG.length - 1, LAKER.read + 1)); $('logClose').onclick = () => logShow(-1);
 $('mPlay').onclick = () => startPlay(false, false); $('mFree').onclick = () => startPlay(false, true); $('mNew').onclick = () => startPlay(true, false); $('mBench').onclick = () => { game.inMode = 'bench'; startBench(); }; $('mContinue').onclick = () => showMenu(false); $('gMenu').onclick = () => showMenu(true); $('bMenu').onclick = () => showMenu(true);
 $('mExplore').onclick = () => setMode(0); $('m10').onclick = () => setMode(1); $('bReset').onclick = resetView; $('bOverlay').onclick = cycleOverlay; $('bInfo').onclick = toggleDetails; $('bCheck').onclick = () => { $('checkOut').textContent = selfCheck().lines.join('\n'); };
 for (const b of document.querySelectorAll('button')) { b.addEventListener('keydown', e => { if (e.code === 'Space' || e.code === 'Enter') e.preventDefault(); }); b.addEventListener('keyup', e => { if (e.code === 'Space') e.preventDefault(); }); b.addEventListener('click', () => b.blur()); }
@@ -9841,6 +9935,797 @@ const ASSET_DEFS = {
       { name: 'glowworm_threads', budget: 300, build: glowworms, colliders: [] }
     ]
   };
+}) },
+  "deepfish": { fn: (function (K) {
+  // Deep-lake fish for the flooded cavern.
+  // Local frame: length along +x (head at +x, tail at -x), y = back (dorsal), z = sideways; origin at the body's middle; metres.
+  // The game bends the mesh sideways (z) with a head-to-tail wave, so every part (body, fins, eyes, teeth) is built on
+  // evenly spaced rings along x. Fin tips may be swept back in x, but each fin stays part of the lofted body surface.
+  // Colour: rgb = colour, a = glow (body 0, faint side-line photophores 0.3-0.6, eye discs 0.9).
+  // attach: [eyeL, eyeR] = eye centres, 1 cm proud of the domed disc. Fish's left is -z (head +x, back +y).
+  const { MB, rnd, norm, sub, add, scale, cross, dot } = K;
+  const PI = Math.PI, D = PI / 180;
+  const cl = v => Math.max(0, Math.min(1, v));
+  const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+  const G = (c, a) => [cl(c[0]), cl(c[1]), cl(c[2]), a];
+  const sstep = (a, b, x) => { const t = cl((x - a) / (b - a)); return t * t * (3 - 2 * t); };
+  const bump = (a, m, b, x) => x <= a || x >= b ? 0 : (x < m ? sstep(a, m, x) : 1 - sstep(m, b, x));
+
+  // ---------- palette (pale, sickly, faintly blue deep-cave flesh) ----------
+  const BELLY = [0.86, 0.85, 0.86], SIDE = [0.74, 0.78, 0.83], BACK = [0.36, 0.40, 0.47], BLOT = [0.52, 0.55, 0.60];
+  const FIN = [0.64, 0.74, 0.84], FINEDGE = [0.80, 0.90, 0.98], GILL = [0.62, 0.52, 0.56], LIP = [0.20, 0.17, 0.20];
+  const SPOT = [0.55, 0.95, 1.00], TOOTH = [0.93, 0.91, 0.82], EYE = [0.86, 1.00, 0.94], EYERIM = [0.48, 0.92, 0.86];
+
+  // ---------- the cross-section ----------
+  // prof(t) returns { x, cy, h (top half-height), hb (bottom half-height), w (half-width), p (squareness exponent),
+  //   dH, dSw (dorsal fin tip height / sweep back), vH, vSw (ventral), pS, pSw, pDr (pectoral span / sweep / droop), fb (fin root half-thickness) }
+  // A ring is described by a list of slots: 'T' dorsal tip, 'B' ventral tip, 'P' pectoral tip, or a body angle in degrees (90 top .. -90 bottom).
+  function bodyPt(P, deg, s) {
+    const ph = deg * D, c = Math.cos(ph), sn = Math.sin(ph);
+    let z = s * P.w * Math.pow(Math.abs(c), P.p), y = P.cy + (sn >= 0 ? P.h : P.hb) * Math.sign(sn) * Math.pow(Math.abs(sn), P.p);
+    if (Math.abs(deg) >= 89.9) z = s * P.fb;                                 // fin root
+    if (P.pS > 0 && Math.abs(deg) < 12) z = s * Math.max(Math.abs(z), P.w * 0.97);  // pectoral root stays on the widest line
+    return [P.x, y, z];
+  }
+  function slotPt(P, slot, s) {
+    if (slot === 'T') return [P.x - P.dSw, P.cy + P.h + P.dH, 0];
+    if (slot === 'B') return [P.x - P.vSw, P.cy - P.hb - P.vH, 0];
+    if (slot === 'P') return [P.x - P.pSw, P.cy - P.pDr, s * (P.w + P.pS)];
+    return bodyPt(P, slot, s);
+  }
+  // the full ring: dorsal tip, right side top->bottom, ventral tip, left side bottom->top
+  function ringSlots(side) {
+    const out = [{ slot: 'T', s: 0 }];
+    for (const a of side) out.push({ slot: a, s: 1 });
+    out.push({ slot: 'B', s: 0 });
+    for (let i = side.length - 1; i >= 0; i--) out.push({ slot: side[i], s: -1 });
+    return out;
+  }
+
+  // loft rings (tail -> head) into one surface with smooth normals, closed at the head by a pole
+  function loft(b, rings, cols, centres, pole, poleCol) {
+    const R = rings.length, M = rings[0].length, ids = [];
+    for (let i = 0; i < R; i++) {
+      const row = [];
+      for (let k = 0; k < M; k++) {
+        const p = rings[i][k], a = sub(rings[i][(k + 1) % M], rings[i][(k + M - 1) % M]);
+        const nxt = i + 1 < R ? rings[i + 1][k] : pole, prv = rings[Math.max(i - 1, 0)][k];
+        let n = cross(a, sub(nxt, prv)); if (Math.hypot(n[0], n[1], n[2]) < 1e-12) n = [0, 1, 0];
+        const out = sub(p, centres[i]); if (dot(n, out) < 0) n = scale(n, -1);
+        row.push(b.v(p[0], p[1], p[2], n[0], n[1], n[2], cols[i][k]));
+      }
+      ids.push(row);
+    }
+    for (let i = 0; i < R - 1; i++) for (let k = 0; k < M; k++) { const k1 = (k + 1) % M; b.quad(ids[i][k], ids[i + 1][k], ids[i + 1][k1], ids[i][k1]); }
+    const pc = b.v(pole[0], pole[1], pole[2], 1, 0, 0, poleCol), L = ids[R - 1];
+    for (let k = 0; k < M; k++) b.tri(L[k], pc, L[(k + 1) % M]);
+  }
+
+  // analytic surface point + outward normal on the smooth body (used for eyes and teeth so both details agree)
+  function surfFrame(prof, t, deg, s) {
+    const P = prof(t), p = bodyPt(P, deg, s), e = 0.002;
+    const pa = bodyPt(prof(t), deg + 1, s), pb = bodyPt(prof(t), deg - 1, s), pf = bodyPt(prof(t + e), deg, s), pk = bodyPt(prof(t - e), deg, s);
+    let n = norm(cross(sub(pa, pb), sub(pf, pk))); if (dot(n, sub(p, [p[0], P.cy, 0])) < 0) n = scale(n, -1);
+    return { p, n };
+  }
+  // domed glowing eye disc on the surface; returns the attach point (centre, 1 cm proud)
+  function eye(b, prof, t, deg, s, r, fwd, segs, hi) {
+    const f = surfFrame(prof, t, deg, s), n = norm(add(f.n, [fwd, 0, 0]));
+    const u = norm(cross(n, Math.abs(n[1]) > 0.9 ? [1, 0, 0] : [0, 1, 0])), v = cross(n, u);
+    const dome = r * 0.32, sink = r * 0.22, at = (rr, a, lift) => add(add(f.p, scale(n, lift)), add(scale(u, Math.cos(a) * rr), scale(v, Math.sin(a) * rr)));
+    const top = add(f.p, scale(n, dome)), cTop = G(EYE, 0.9), cMid = G(mix(EYE, EYERIM, 0.4), 0.9), cRim = G(EYERIM, 0.9);
+    const ci = b.v(top[0], top[1], top[2], n[0], n[1], n[2], cTop), outer = [], inner = [];
+    for (let k = 0; k < segs; k++) {
+      const a = k / segs * PI * 2, rn = norm(add(scale(n, 0.6), add(scale(u, Math.cos(a)), scale(v, Math.sin(a)))));
+      const po = at(r, a, -sink); outer.push(b.v(po[0], po[1], po[2], rn[0], rn[1], rn[2], cRim));
+      if (hi) { const pi = at(r * 0.62, a, dome * 0.72), ni = norm(add(n, scale(sub(pi, top), 1.5))); inner.push(b.v(pi[0], pi[1], pi[2], ni[0], ni[1], ni[2], cMid)); }
+    }
+    for (let k = 0; k < segs; k++) {
+      const k1 = (k + 1) % segs;
+      if (hi) { b.tri(ci, inner[k], inner[k1]); b.quad(inner[k], outer[k], outer[k1], inner[k1]); }
+      else b.tri(ci, outer[k], outer[k1]);
+    }
+    return add(top, scale(n, 0.01)).map(q => +q.toFixed(3));
+  }
+  // needle tooth: one thin triangle standing off the lip line; dir = +1 points down (upper jaw), -1 points up
+  function tooth(b, prof, t, deg, s, len, dir) {
+    const f = surfFrame(prof, t, deg, s), w = 0.0055, c = G(TOOTH, 0);
+    const base = add(f.p, scale(f.n, 0.004)), tip = add(add(base, [0.006, -dir * len, 0]), scale(f.n, len * 0.35));
+    const a = add(base, [w, 0, 0]), c2 = add(base, [-w, 0, 0]), n = f.n;
+    b.tri(b.v(a[0], a[1], a[2], n[0], n[1], n[2], c), b.v(tip[0], tip[1], tip[2], n[0], n[1], n[2], c), b.v(c2[0], c2[1], c2[2], n[0], n[1], n[2], c));
+  }
+  // smooth deterministic mottling, 0..1
+  function mottler(seed) {
+    const r = rnd(seed), ph = [], fr = [];
+    for (let i = 0; i < 4; i++) { ph.push(r() * PI * 2); fr.push([3 + r() * 9, 1.5 + r() * 3]); }
+    return (x, ang, s) => { let v = 0; for (let i = 0; i < 4; i++) v += Math.sin(fr[i][0] * x + fr[i][1] * ang * (i % 2 ? s : 1) + ph[i] + s * 1.7) / (i + 1.4); return cl(0.5 + 0.45 * v); };
+  }
+  // body skin colour from angle (deg), position along t, mottle
+  function skin(deg, mot, t) {
+    const up = Math.sin(deg * D);
+    let c = up >= 0 ? mix(SIDE, BACK, Math.pow(up, 1.4) * (0.75 + 0.25 * t)) : mix(SIDE, BELLY, Math.pow(-up, 0.7));
+    c = mix(c, BLOT, sstep(0.62, 0.95, mot) * (0.35 + 0.35 * Math.max(0, up)));
+    return c;
+  }
+
+  // =====================================================================
+  // lurker: ~2.6 m eel-like ambush hunter
+  const LUR_L = 2.6, LUR_X0 = -1.30, LUR_HEAD = 0.76;
+  function lurkerProf(t) {
+    t = Math.max(0, Math.min(1, t));
+    let e;
+    if (t >= LUR_HEAD) e = Math.sqrt(Math.max(0, 1 - Math.pow((t - LUR_HEAD) / 0.265, 2)));
+    else { const s = t / LUR_HEAD; e = 0.04 + 0.96 * Math.pow(s * s * (3 - 2 * s), 0.85); }
+    const head = sstep(0.62, 0.95, t), tail = 1 - sstep(0.05, 0.55, t);
+    const R = 0.185;
+    const w = R * e * (0.92 + 0.36 * head - 0.38 * tail), h = R * e * (1.0 - 0.24 * head), hb = R * e * (1.05 + 0.08 * bump(0.45, 0.68, 0.9, t) - 0.25 * head);
+    // continuous ribbon fins: dorsal from behind the head, ventral from the vent, both run into a pointed leaf tail
+    const frill = 1 + 0.10 * Math.sin(t * 46);
+    const dH = (0.072 * sstep(0.80, 0.60, t) + 0.035 * (1 - sstep(0.0, 0.25, t))) * frill;
+    const vH = (0.062 * sstep(0.62, 0.48, t) + 0.035 * (1 - sstep(0.0, 0.25, t))) * frill;
+    return { x: LUR_X0 + LUR_L * t, cy: -0.01 * head, h, hb, w, p: 0.9 - 0.1 * head, dH, dSw: dH * 0.45 + 0.03 * (1 - t), vH, vSw: vH * 0.45 + 0.03 * (1 - t), pS: 0, pSw: 0, pDr: 0, fb: Math.min(0.011, 0.35 * w + 0.002) };
+  }
+  function buildLurker(detail) {
+    const b = new MB(), hi = detail > 0, mot = mottler(77);
+    const NR = hi ? 29 : 10;
+    const side = hi ? [90, 70, 48, 27, 8, -12, -32, -54, -74, -90] : [72, 22, -22, -70];
+    const MOUTH = hi ? -12 : -22, LAT = hi ? 8 : 22;
+    const slots = ringSlots(side), rings = [], cols = [], cent = [];
+    for (let i = 0; i < NR; i++) {
+      const t = i / (NR - 1), P = lurkerProf(t), ring = [], col = [];
+      for (const sl of slots) {
+        const p = slotPt(P, sl.slot, sl.s || 1); ring.push(p);
+        let c;
+        if (sl.slot === 'T' || sl.slot === 'B') {
+          const fH = sl.slot === 'T' ? P.dH : P.vH;
+          c = fH > 0.008 ? G(mix(FIN, FINEDGE, 0.5 + 0.5 * Math.sin(t * 46)), 0.1) : G(skin(sl.slot === 'T' ? 90 : -90, mot(P.x, 0, 1), t), 0);
+        } else {
+          const deg = sl.slot; c = skin(deg, mot(P.x, deg * D, sl.s), t);
+          // gill slit shading behind the head, darker mouth line on the head
+          if (t > 0.74 && t < 0.80 && deg > -40 && deg < 30) c = mix(c, GILL, 0.35);
+          let a = 0;
+          if (deg === MOUTH && t > 0.86) c = LIP;
+          // side-line photophores: a row of faint cyan dots, plus a lower row toward the tail
+          const dot3 = hi ? (i % 3) === 1 : (i % 2) === 1;
+          if (hi && deg === LAT && dot3 && t > 0.08 && t < 0.80) { c = mix(c, SPOT, 0.45); a = 0.3 + 0.12 * sstep(0.1, 0.7, t); }
+          c = G(c, a);
+        }
+        col.push(c);
+      }
+      rings.push(ring); cols.push(col); cent.push([P.x, P.cy, 0]);
+    }
+    const Ph = lurkerProf(1); loft(b, rings, cols, cent, [Ph.x + 0.035, Ph.cy - 0.012, 0], G(mix(SIDE, BACK, 0.25), 0));
+    // big forward-set eyes high on the broad head
+    const eL = eye(b, lurkerProf, 0.93, 40, -1, 0.056, 0.6, hi ? 9 : 6, hi), eR = eye(b, lurkerProf, 0.93, 40, 1, 0.056, 0.6, hi ? 9 : 6, hi);
+    // a hint of needle teeth along the wide mouth line
+    if (hi) for (const s of [-1, 1]) {
+      const T = [0.995, 0.982, 0.968, 0.952, 0.935, 0.915, 0.895];
+      T.forEach((t, k) => tooth(b, lurkerProf, t, MOUTH + (k % 2 ? -3 : 3), s, (k % 2 ? 0.022 : 0.032) * (1 - 0.35 * k / 6), k % 2 ? -1 : 1));
+    }
+    b.attach = [eL, eR];
+    return b;
+  }
+
+  // =====================================================================
+  // darter: ~1.6 m torpedo-shaped fast hunter
+  const DAR_X0 = -0.62, DAR_L = 1.42;
+  function darterProf(t) {
+    t = Math.max(0, Math.min(1, t));
+    let e;
+    if (t >= 0.58) e = Math.pow(Math.cos((t - 0.58) / 0.44 * PI / 2), 0.75);
+    else { const s = t / 0.58; e = 0.15 + 0.85 * Math.pow(sstep(0.08, 1, s), 0.75); }
+    const w = 0.095 * e, h = 0.135 * e, hb = 0.125 * e;
+    // tall swept dorsal sail, small anal fin, and the two lobes of the forked tail (tips swept back past the last ring)
+    const sail = 0.17 * bump(0.40, 0.60, 0.67, t), anal = 0.06 * bump(0.22, 0.32, 0.40, t), caud = 0.31 * Math.pow(1 - sstep(0.0, 0.17, t), 1.3);
+    const keel = 0.012 * bump(0.12, 0.25, 0.40, t);
+    const dH = sail + caud + keel, vH = anal + caud + keel;
+    const dSw = sail * 0.85 + caud * 0.72, vSw = anal * 0.8 + caud * 0.72;
+    // long swept pectorals: tip runs out and back from the shoulder, drooping a little
+    const pS = 0.39 * bump(0.47, 0.63, 0.75, t);
+    return { x: DAR_X0 + DAR_L * t, cy: 0, h, hb, w, p: 1, dH, dSw, vH, vSw, pS, pSw: pS * 0.9, pDr: pS * 0.28, fb: Math.min(0.009, 0.3 * w + 0.002) };
+  }
+  function buildDarter(detail) {
+    const b = new MB(), hi = detail > 0, mot = mottler(91);
+    const NR = hi ? 20 : 9;
+    const side = hi ? [90, 58, 28, 6, 'P', -6, -30, -60, -90] : [42, 'P', -42];
+    const LAT = hi ? 28 : 42, MOUTH = hi ? -30 : -42;
+    const slots = ringSlots(side), rings = [], cols = [], cent = [];
+    for (let i = 0; i < NR; i++) {
+      const t = i / (NR - 1), P = darterProf(t), ring = [], col = [];
+      for (const sl of slots) {
+        const p = slotPt(P, sl.slot, sl.s || 1); ring.push(p);
+        let c;
+        if (sl.slot === 'T' || sl.slot === 'B' || sl.slot === 'P') {
+          const fH = sl.slot === 'T' ? P.dH : sl.slot === 'B' ? P.vH : P.pS;
+          c = fH > 0.015 ? G(mix(FIN, FINEDGE, sl.slot === 'P' ? 0.7 : 0.4), 0.1) : G(skin(sl.slot === 'T' ? 90 : sl.slot === 'B' ? -90 : 0, mot(P.x, 0, 1), t), 0);
+        } else {
+          const deg = sl.slot; c = skin(deg, mot(P.x * 1.4, deg * D, sl.s), t);
+          if (t > 0.70 && t < 0.78 && deg > -50 && deg < 40) c = mix(c, GILL, 0.3);
+          let a = 0;
+          if (deg === MOUTH && t > 0.90) c = LIP;
+          if (deg === LAT && (i % 2) === 0 && t > 0.15 && t < 0.72) { c = mix(c, SPOT, 0.45); a = 0.35; }
+          c = G(c, a);
+        }
+        col.push(c);
+      }
+      rings.push(ring); cols.push(col); cent.push([P.x, P.cy, 0]);
+    }
+    const Ph = darterProf(1); loft(b, rings, cols, cent, [Ph.x + 0.03, -0.004, 0], G(mix(SIDE, BACK, 0.3), 0));
+    // very large eyes set well forward on the narrowing head
+    const eL = eye(b, darterProf, 0.86, 16, -1, 0.05, 0.35, hi ? 10 : 6, hi), eR = eye(b, darterProf, 0.86, 16, 1, 0.05, 0.35, hi ? 10 : 6, hi);
+    if (hi) for (const s of [-1, 1]) [0.975, 0.955, 0.935].forEach((t, k) => tooth(b, darterProf, t, MOUTH + 4, s, 0.016 - 0.003 * k, 1));
+    b.attach = [eL, eR];
+    return b;
+  }
+
+  // attach points are the same at both details (eyes sit on the analytic body surface)
+  const LUR_ATTACH = buildLurker(1).attach, DAR_ATTACH = buildDarter(1).attach;
+  return {
+    name: 'deepfish',
+    items: [
+      { name: 'lurker', budget: 1400, build: buildLurker, colliders: [], attach: LUR_ATTACH },
+      { name: 'darter', budget: 900, build: buildDarter, colliders: [], attach: DAR_ATTACH },
+    ],
+  };
+}) },
+  "divesite": { fn: (function (K) {
+  // The research team's dive station on the shore of the flooded cavern (a black underground lake). SV-2, unit KR-07
+  // dived it many times from a floating pontoon. Something in the lake frightened them; one diver did not come back,
+  // and they chained off the ladder and left in a hurry. Same gear family, palette, helpers and stencil font as
+  // worklight.js / survey.js. Everything is worn, wet and cold, with algae near the waterline.
+  'use strict';
+  const { MB, tr, sc, rotX, rotY, rotZ, mulAll, rnd, cross, dot, norm, sub, add, scale, lerp, along } = K;
+  const PI = Math.PI, TAU = PI * 2;
+  const cl01 = x => Math.max(0, Math.min(1, x));
+  const sh = (c, k) => [cl01(c[0] * k), cl01(c[1] * k), cl01(c[2] * k), c[3] || 0];
+  const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t, a[3] || 0];
+
+  // ---- palette (matches the reskinned surface gear) ---------------------------------------------------------
+  const BONE = [0.80, 0.77, 0.68, 0.12], BONE_D = [0.66, 0.63, 0.56, 0.1], SAND = [0.64, 0.56, 0.43, 0.05], HAB = [0.72, 0.70, 0.63, 0.04];
+  const ORANGE = [0.94, 0.46, 0.10, 0.1], ORANGE_D = [0.72, 0.34, 0.09, 0.08];
+  const GUN = [0.27, 0.28, 0.29, 0.3], GUN_D = [0.17, 0.18, 0.19, 0.22], STEEL = [0.54, 0.55, 0.56, 0.32], ALU = [0.70, 0.71, 0.71, 0.28];
+  const OLIVE = [0.40, 0.42, 0.30, 0.05], OLIVE_D = [0.30, 0.32, 0.23, 0.05];
+  const BLACK = [0.06, 0.06, 0.06, 0.05], RUBBER = [0.10, 0.10, 0.10, 0.02];
+  const GLASS = [0.12, 0.17, 0.21, 0.5], GLASS_L = [0.56, 0.68, 0.70, 0.48];
+  const HAZ_Y = [0.92, 0.74, 0.16, 0.05], ST_W = [0.92, 0.90, 0.84, 0.05], ST_K = [0.12, 0.12, 0.11, 0.02];
+  const CABLE_O = [0.90, 0.48, 0.14, 0.08], CABLE_K = [0.16, 0.16, 0.17, 0.08], CABLE_L = [0.64, 0.62, 0.54, 0.08];
+  const CRYS = [0.42, 0.94, 0.88, 0.45], CRYS_V = [0.68, 0.54, 0.96, 0.45];
+  const SCR = [0.36, 0.88, 0.74, 0.3], SCR_D = [0.10, 0.22, 0.21, 0.3], LED_G = [0.40, 1.0, 0.50], LED_R = [1.0, 0.22, 0.10], LENS_L = [0.95, 0.92, 0.80, 0.4];
+  const DUST = [0.50, 0.49, 0.50, 0.0], ROCK = [0.47, 0.45, 0.44, 0.03];
+
+  // ---- small helpers ------------------------------------------------------------------------------------------
+  function pz(b, cx, cy, z, w, h, col) { b.plate([cx - w / 2, cy - h / 2, z], [cx + w / 2, cy - h / 2, z], [cx + w / 2, cy + h / 2, z], [cx - w / 2, cy + h / 2, z], col); }
+  function py(b, cx, y, cz, w, d, col) { b.plate([cx - w / 2, y, cz - d / 2], [cx - w / 2, y, cz + d / 2], [cx + w / 2, y, cz + d / 2], [cx + w / 2, y, cz - d / 2], col); }
+  // box with only some faces: mask letters x X y Y z Z = +x -x +y -y +z -z
+  function boxM(b, cx, cy, cz, sx, sy, sz, col, mask) {
+    const x0 = cx - sx / 2, x1 = cx + sx / 2, y0 = cy - sy / 2, y1 = cy + sy / 2, z0 = cz - sz / 2, z1 = cz + sz / 2;
+    if (mask.includes('x')) b.plate([x1, y0, z1], [x1, y0, z0], [x1, y1, z0], [x1, y1, z1], col);
+    if (mask.includes('X')) b.plate([x0, y0, z0], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0], col);
+    if (mask.includes('y')) b.plate([x0, y1, z0], [x0, y1, z1], [x1, y1, z1], [x1, y1, z0], col);
+    if (mask.includes('Y')) b.plate([x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1], col);
+    if (mask.includes('z')) b.plate([x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1], col);
+    if (mask.includes('Z')) b.plate([x1, y0, z0], [x0, y0, z0], [x0, y1, z0], [x1, y1, z0], col);
+  }
+  function rope(b, a, c, sag, r, col, n, segs) { n = n || 10; const pts = []; for (let i = 0; i <= n; i++) { const t = i / n, p = lerp(a, c, t); p[1] -= sag * 4 * t * (1 - t); pts.push(p); } b.tube(pts, r, segs || 4, col); }
+  function ring(b, c, axis, R, r, col, n, segs) {
+    const pts = []; n = n || 10;
+    for (let i = 0; i <= n; i++) { const a = i / n * TAU, p = Math.cos(a) * R, q = Math.sin(a) * R; pts.push(axis === 'y' ? [c[0] + p, c[1], c[2] + q] : axis === 'x' ? [c[0], c[1] + p, c[2] + q] : [c[0] + p, c[1] + q, c[2]]); }
+    b.tube(pts, r, segs || 4, col);
+  }
+  // smooth path through control points (Catmull-Rom), per = samples per span
+  function smooth(ctrl, per) {
+    const out = [], n = ctrl.length;
+    for (let i = 0; i < n - 1; i++) {
+      const p0 = ctrl[Math.max(i - 1, 0)], p1 = ctrl[i], p2 = ctrl[i + 1], p3 = ctrl[Math.min(i + 2, n - 1)];
+      for (let k = 0; k < per; k++) { const t = k / per, t2 = t * t, t3 = t2 * t; out.push([0, 1, 2].map(j => 0.5 * (2 * p1[j] + (-p0[j] + p2[j]) * t + (2 * p0[j] - 5 * p1[j] + 4 * p2[j] - p3[j]) * t2 + (-p0[j] + 3 * p1[j] - 3 * p2[j] + p3[j]) * t3))); }
+    }
+    out.push(ctrl[n - 1].slice()); return out;
+  }
+  function cable(b, ctrl, r, col, per, segs) { b.tube(smooth(ctrl, per || 4), r, segs || 5, col); }
+  // flat polygon with its normal turned toward 'out'
+  function facet(b, pts, col, out) {
+    let n = norm(cross(sub(pts[1], pts[0]), sub(pts[2], pts[0]))); if (dot(n, out) < 0) { n = scale(n, -1); pts = [pts[0]].concat(pts.slice(1).reverse()); }
+    const ids = pts.map(p => b.v(p[0], p[1], p[2], n[0], n[1], n[2], col)); for (let i = 1; i < ids.length - 1; i++) b.tri(ids[0], ids[i], ids[i + 1]);
+  }
+  // faceted crystal shard from base along dir (crisp flat facets)
+  function crystal(b, base, dir, len, r, col, seed, sides) {
+    sides = sides || 6; const rr = rnd(seed), d = norm(dir), tip = add(base, scale(d, len));
+    b.push(mulAll(along(base, tip), tr(0, -len / 2, 0)));
+    const s0 = len * (0.6 + 0.15 * rr()), ph = rr() * TAU, R0 = [], R1 = [];
+    for (let k = 0; k < sides; k++) { const a = ph + k * TAU / sides, w = r * (0.85 + 0.3 * rr()); R0.push([Math.cos(a) * w * 0.85, 0, Math.sin(a) * w * 0.85]); R1.push([Math.cos(a) * w, s0, Math.sin(a) * w]); }
+    const ap = [r * 0.2 * (rr() - 0.5), len, r * 0.2 * (rr() - 0.5)];
+    for (let k = 0; k < sides; k++) { const k2 = (k + 1) % sides; b.plate(R0[k2], R0[k], R1[k], R1[k2], col); facet(b, [R1[k2], R1[k], ap], sh(col, 1.1), [R1[k][0] + R1[k2][0], r, R1[k][2] + R1[k2][2]]); }
+    b.pop();
+  }
+  // copy a sub-builder onto the ground (its lowest point at y = 0)
+  function dropTo(b, s, x, z, ay) { const bb = s.bounds(); b.push(mulAll(tr(x, -bb.min[1], z), rotY(ay || 0))); b.merge(s); b.pop(); }
+
+  // ---- stencil font (3 x 5 blocks): real readable unit codes -------------------------------------------------
+  const FONT = {
+    A: ['010', '101', '111', '101', '101'], B: ['110', '101', '110', '101', '110'], C: ['011', '100', '100', '100', '011'], D: ['110', '101', '101', '101', '110'],
+    E: ['111', '100', '110', '100', '111'], F: ['111', '100', '110', '100', '100'], G: ['011', '100', '101', '101', '011'], H: ['101', '101', '111', '101', '101'],
+    I: ['111', '010', '010', '010', '111'], J: ['001', '001', '001', '101', '010'], K: ['101', '101', '110', '101', '101'], L: ['100', '100', '100', '100', '111'],
+    M: ['101', '111', '111', '101', '101'], N: ['110', '101', '101', '101', '101'], O: ['010', '101', '101', '101', '010'], P: ['110', '101', '110', '100', '100'],
+    Q: ['010', '101', '101', '110', '011'], R: ['110', '101', '110', '101', '101'], S: ['011', '100', '010', '001', '110'], T: ['111', '010', '010', '010', '010'],
+    U: ['101', '101', '101', '101', '111'], V: ['101', '101', '101', '101', '010'], W: ['101', '101', '111', '111', '101'], X: ['101', '101', '010', '101', '101'],
+    Y: ['101', '101', '010', '010', '010'], Z: ['111', '001', '010', '100', '111'],
+    0: ['111', '101', '101', '101', '111'], 1: ['010', '110', '010', '010', '111'], 2: ['110', '001', '010', '100', '111'], 3: ['110', '001', '010', '001', '110'],
+    4: ['101', '101', '111', '001', '001'], 5: ['111', '100', '110', '001', '110'], 6: ['011', '100', '111', '101', '111'], 7: ['111', '001', '010', '010', '010'],
+    8: ['111', '101', '111', '101', '111'], 9: ['111', '101', '111', '001', '110'],
+    '-': ['000', '000', '111', '000', '000'], '.': ['000', '000', '000', '000', '010'], '/': ['001', '001', '010', '100', '100'], ' ': ['000', '000', '000', '000', '000'], '!': ['010', '010', '010', '000', '010']
+  };
+  const textW = (s, h) => (s.length * 4 - 1) * h / 5;
+  // text facing +Z at depth z, reading toward +X; (x, y) = left edge (or centre when centre is true) and vertical middle
+  function text(b, s, x, y, z, h, col, centre) {
+    const p = h / 5; if (centre) x -= textW(s, h) / 2;
+    for (let i = 0; i < s.length; i++) {
+      const g = FONT[s[i]] || FONT[' '], cx = x + i * 4 * p;
+      for (let r = 0; r < 5; r++) { const row = g[r]; let k = 0; while (k < 3) { if (row[k] === '1') { let e = k; while (e + 1 < 3 && row[e + 1] === '1') e++; pz(b, cx + (k + e + 1) / 2 * p, y + h / 2 - (r + 0.5) * p, z, (e - k + 1) * p, p * 0.84, col); k = e + 1; } else k++; } }
+    }
+  }
+  function hazard(b, x0, x1, y, z, h, n, cA, cB) { const w = (x1 - x0) / n; for (let i = 0; i < n; i++) pz(b, x0 + (i + 0.5) * w, y, z, w, h, i % 2 ? (cB || BLACK) : (cA || HAZ_Y)); }
+  // diagonal hazard chevrons (parallelograms) facing +Z
+  function chevrons(b, x0, x1, y, z, h, n, cA, cB) {
+    const w = (x1 - x0) / n, k = h * 0.6;
+    for (let i = 0; i < n; i++) { const a = x0 + i * w; b.plate([a, y - h / 2, z], [a + w, y - h / 2, z], [a + w + k, y + h / 2, z], [a + k, y + h / 2, z], i % 2 ? (cB || BLACK) : (cA || HAZ_Y)); }
+  }
+  function sign(b, cx, cy, z, w, h, bg, s, fg, th) { pz(b, cx, cy, z, w, h, bg); text(b, s, cx, cy, z + 0.002, th, fg, true); }
+
+  // apply a matrix to a point (for attach points)
+  const xf = (m, p) => [m[0] * p[0] + m[4] * p[1] + m[8] * p[2] + m[12], m[1] * p[0] + m[5] * p[1] + m[9] * p[2] + m[13], m[2] * p[0] + m[6] * p[1] + m[10] * p[2] + m[14]];
+  const MUD = [0.30, 0.27, 0.24, 0.06], DAMP = [0.22, 0.22, 0.22, 0.35];
+  const LENS = [0.95, 0.93, 0.85, 0.3], CELL = [0.6, 0.95, 1.0, 0.4];
+  // flat strap lying along a path near the ground (a ribbon facing up)
+  function strap(b, pts, w, col) {
+    let prev = null;
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[Math.max(i - 1, 0)], c = pts[Math.min(i + 1, pts.length - 1)], d = norm([c[0] - a[0], 0, c[2] - a[2]]), s = [-d[2] * w / 2, 0, d[0] * w / 2], p = pts[i];
+      const l = b.v(p[0] - s[0], p[1], p[2] - s[2], 0, 1, 0, col), r = b.v(p[0] + s[0], p[1], p[2] + s[2], 0, 1, 0, col);
+      if (prev) b.quad(prev[0], l, r, prev[1]); prev = [l, r];
+    }
+  }
+  // soft rounded box (bags, pockets): superellipse surface, centre cx,cy,cz, full sizes sx,sy,sz
+  function softBox(b, cx, cy, cz, sx, sy, sz, col, nu, nv, e) {
+    e = e || 0.35; const sp = (v, k) => Math.sign(v) * Math.pow(Math.abs(v), k);
+    b.push(tr(cx, cy, cz));
+    b.surf(nu || 12, nv || 8, (u, v) => { const t = u * TAU, p = PI * v - PI / 2, cp = Math.cos(p); return [sx / 2 * sp(cp, e) * sp(Math.cos(t), e), sy / 2 * sp(Math.sin(p), e), sz / 2 * sp(cp, e) * sp(Math.sin(t), e)]; }, col, true);
+    b.pop();
+  }
+
+
+  // ---- extra palette for the wet lake shore --------------------------------------------------------------
+  const ALGAE = [0.25, 0.35, 0.16, 0.03], ALGAE_D = [0.13, 0.20, 0.12, 0.05], SLIME = [0.20, 0.25, 0.19, 0.12];
+  const FLOAT = [0.70, 0.67, 0.58, 0.06], FLOAT_W = [0.34, 0.38, 0.32, 0.08];        // pontoon floats above / below the water
+  const RUST = [0.42, 0.25, 0.14, 0.04], ROPE = [0.66, 0.60, 0.46, 0.02], LINE = [0.96, 0.90, 0.58, 0.05];
+  const SCREEN = [0.75, 0.95, 0.9, 0.3];                                               // the game makes this glow
+  const r3 = p => p.map(v => +v.toFixed(3));
+  // short cleat: base block plus a horn along local x
+  function cleat(b, x, y, z, ay) {
+    b.push(mulAll(tr(x, y, z), rotY(ay || 0)));
+    b.box(0, 0.025, 0, 0.1, 0.05, 0.05, GUN_D);
+    b.cyl([-0.11, 0.065, 0], [0.11, 0.065, 0], 0.018, 0.018, 6, STEEL);
+    b.pop();
+  }
+  // rope coil lying flat: n loops shrinking a little, with a loose tail
+  function coil(b, cx, y, cz, R, r, n, col, seed, segs) {
+    const rr = rnd(seed);
+    for (let k = 0; k < n; k++) ring(b, [cx + (rr() - 0.5) * 0.03, y + r + (k === n - 1 ? r * 1.6 : 0), cz + (rr() - 0.5) * 0.03], 'y', R - k * r * 1.1, r, col, 14, segs || 4);
+  }
+
+  // =========================================================================================================
+  // 1. DIVE PLATFORM: modular pontoon 6 m (x) x 3 m (z). y = 0 is the water surface; deck top at 0.4.
+  //    Ladder down into the lake at +x, davit with a winch line still hanging in the water, gangway up to the shore at -x.
+  // =========================================================================================================
+  const DY = 0.4, HX = 3.0, HZ = 1.5, RZ = 1.38;
+  const GW_X1 = -5.3, GW_Y1 = 1.22, GW_TH = Math.atan2(GW_Y1 - DY, -HX - GW_X1), GW_L = Math.hypot(GW_Y1 - DY, -HX - GW_X1);
+  const gwP = u => [-HX - u * Math.cos(GW_TH), DY + u * Math.sin(GW_TH)];       // gangway walking surface at distance u from the hinge
+  const LADX = 3.14, LADZ = 0.27, DAV = [2.4, -1.1];
+
+  function buildPlatform(detail) {
+    const b = new MB();
+    if (!detail) {
+      for (const z of [-1, 0, 1]) { b.box(0, -0.15, z, 5.9, 0.7, 0.94, FLOAT_W); boxM(b, 0, 0.13, z, 5.92, 0.14, 0.96, FLOAT, 'xXzZy'); }
+      b.box(0, 0.3, 0, 6.0, 0.2, 3.0, GUN);
+      for (const s of [-1, 1]) {
+        b.cyl([-2.75, 1.42, s * RZ], [2.75, 1.42, s * RZ], 0.03, 0.03, 4, ORANGE, false);
+        for (const x of [-2.5, 0, 2.5]) b.beam([x, DY, s * RZ], [x, 1.42, s * RZ], 0.05, ORANGE);
+      }
+      for (const s of [-1, 1]) b.beam([LADX, 1.35, s * LADZ], [LADX, -2.5, s * LADZ], 0.05, STEEL);
+      for (const y of [-1.7, -0.8, 0.1]) b.beam([LADX, y, -LADZ], [LADX, y, LADZ], 0.04, STEEL);
+      b.beam([DAV[0], DY, DAV[1]], [DAV[0], 1.95, DAV[1]], 0.1, ORANGE); b.beam([DAV[0], 1.92, DAV[1]], [3.58, 1.95, DAV[1]], 0.08, ORANGE_D);
+      b.beam([3.6, 1.9, DAV[1]], [3.6, -1.4, DAV[1]], 0.02, CABLE_K);
+      b.push(mulAll(tr(-HX, DY, 0), rotZ(-GW_TH))); b.box(-GW_L / 2, -0.06, 0, GW_L, 0.12, 0.95, ORANGE_D); b.pop();
+      for (const s of [-1, 1]) { const a = gwP(0.2), c = gwP(GW_L - 0.1); b.beam([a[0], a[1] + 0.95, s * 0.47], [c[0], c[1] + 0.95, s * 0.47], 0.04, ORANGE); for (const p of [a, c]) b.beam([p[0], p[1], s * 0.47], [p[0], p[1] + 0.95, s * 0.47], 0.035, ORANGE_D); }
+      b.box(-1.6, DY + 0.25, -0.95, 1.0, 0.5, 0.5, BONE);
+      coil(b, -2.2, DY, 0.75, 0.22, 0.03, 2, ROPE, 9, 3);
+      return b;
+    }
+    const r = rnd(9157);
+    // --- floats: 6 x 3 modular blocks, wet and dark under the water, a band of algae at the waterline
+    for (let i = 0; i < 6; i++) for (let j = 0; j < 3; j++) {
+      const x = -2.5 + i, z = -1 + j, dy = (r() - 0.5) * 0.03, w = 0.93 + r() * 0.02, fc = sh(FLOAT, 0.92 + r() * 0.12);
+      b.box(x, -0.29 + dy, z, w - 0.06, 0.42, w - 0.06, FLOAT_W);
+      boxM(b, x, -0.05 + dy, z, w - 0.04, 0.12, w - 0.04, ALGAE, 'xXzZ');
+      b.box(x, 0.075 + dy, z, w, 0.15, w, fc);
+      boxM(b, x, 0.014 + dy, z, w + 0.004, 0.03, w + 0.004, ALGAE_D, 'xXzZ');
+    }
+    // --- steel frame: perimeter channel, cross members, connecting pins between floats
+    for (const s of [-1, 1]) {
+      b.box(0, 0.29, s * (HZ - 0.04), 2 * HX, 0.22, 0.08, GUN_D);
+      b.box(s * (HX - 0.04), 0.29, 0, 0.08, 0.22, 2 * HZ - 0.16, GUN_D);
+    }
+    for (const x of [-2, -1, 0, 1, 2]) b.box(x, 0.24, 0, 0.07, 0.12, 2 * HZ - 0.16, GUN);
+    // --- deck: three grating panels with tread strips, wet stains near the ladder
+    for (const px of [-2, 0, 2]) {
+      b.box(px, DY - 0.03, 0, 1.97, 0.06, 2 * HZ - 0.1, GUN);
+      for (let k = 0; k < 9; k++) py(b, px - 0.88 + k * 0.22, DY + 0.0015, 0, 0.05, 2 * HZ - 0.24, GUN_D);
+    }
+    for (const [x, z, w, d] of [[2.55, 0.1, 0.8, 0.9], [2.1, -0.3, 0.5, 0.4], [2.75, 0.75, 0.35, 0.3]]) py(b, x, DY + 0.003, z, w, d, DAMP);
+    // --- fascia: hazard edge and stencilled unit codes on both long sides, wet grime along the bottom
+    for (const s of [-1, 1]) {
+      b.push(s > 0 ? tr(0, 0, HZ + 0.001) : mulAll(rotY(PI), tr(0, 0, HZ + 0.001)));
+      chevrons(b, -2.9, 2.9, DY - 0.03, 0, 0.05, 28);
+      pz(b, 0, 0.215, 0, 2 * HX - 0.02, 0.05, DAMP);
+      text(b, 'DV-1', -2.6, 0.29, 0.001, 0.09, ST_W); text(b, 'KR-07', 1.0, 0.29, 0.001, 0.07, ST_W); text(b, 'NO STEP', 2.05, 0.29, 0.001, 0.05, HAZ_Y);
+      b.pop();
+      // rubber fender along the side, bumpers at the corners
+      b.cyl([-HX + 0.1, 0.25, s * (HZ + 0.04)], [HX - 0.1, 0.25, s * (HZ + 0.04)], 0.045, 0.045, 6, RUBBER, false);
+      for (const e of [-1, 1]) b.box(e * (HX - 0.02), 0.24, s * (HZ - 0.02), 0.12, 0.3, 0.12, RUBBER);
+    }
+    // --- railings along both long sides (ends drop to the deck), mid rail, base plates
+    for (const s of [-1, 1]) {
+      const z = s * RZ;
+      cable(b, [[-2.75, DY, z], [-2.75, 1.25, z], [-2.66, 1.4, z], [-2.5, 1.42, z], [2.5, 1.42, z], [2.66, 1.4, z], [2.75, 1.25, z], [2.75, DY, z]], 0.025, ORANGE, 3, 6);
+      b.cyl([-2.75, 0.92, z], [2.75, 0.92, z], 0.02, 0.02, 6, ORANGE_D, false);
+      for (const x of [-1.5, -0.5, 0.5, 1.5]) b.cyl([x, DY, z], [x, 1.42, z], 0.022, 0.022, 6, ORANGE_D, false);
+      for (const x of [-2.75, -1.5, -0.5, 0.5, 1.5, 2.75]) b.box(x, DY + 0.01, z, 0.1, 0.02, 0.1, GUN_D);
+    }
+    // --- dive ladder at +x: grab hoops over the deck edge, stiles down to y -2.5, flat rungs, slimy below the water
+    for (const s of [-1, 1]) {
+      const z = s * LADZ;
+      cable(b, [[2.72, DY, z], [2.72, 1.12, z], [2.8, 1.32, z], [2.97, 1.38, z], [3.1, 1.27, z], [LADX, 1.0, z], [LADX, 0.0, z]], 0.026, STEEL, 3, 6);
+      b.box(2.72, DY + 0.012, z, 0.12, 0.024, 0.1, GUN_D);
+      b.cyl([LADX, 0.0, z], [LADX, -2.5, z], 0.026, 0.026, 6, SLIME);
+      b.cyl([LADX, -0.05, z], [LADX, 0.08, z], 0.028, 0.028, 6, ALGAE_D, false);
+      for (const y of [0.25, -0.35]) b.beam([HX - 0.03, y, z], [LADX - 0.02, y, z], 0.04, y > 0 ? GUN_D : ALGAE_D);
+    }
+    for (let k = 0; k < 9; k++) { const y = 0.1 - k * 0.3; b.box(LADX, y, 0, 0.065, 0.032, 2 * LADZ, y > 0 ? STEEL : SLIME); }
+    // chain across the hoops with a hazard sign: the way down was closed when they left
+    const CH = [[2.97, 1.37, -LADZ], [2.97, 1.37, LADZ]];
+    rope(b, CH[0], CH[1], 0.14, 0.01, sh(STEEL, 0.8), 10, 4);
+    b.push(mulAll(tr(2.97, 1.1, 0), rotY(PI / 2)));
+    pz(b, 0, 0, 0.006, 0.36, 0.17, HAZ_Y); text(b, 'NO DIVE', 0, 0.02, 0.008, 0.055, ST_K, true); chevrons(b, -0.17, 0.17, -0.06, 0.008, 0.025, 8, BLACK, HAZ_Y);
+    b.box(0, 0, 0, 0.38, 0.19, 0.01, GUN_D);
+    for (const e of [-1, 1]) b.beam([e * 0.14, 0.09, 0], [e * 0.1, 0.17, 0], 0.008, STEEL);
+    b.pop();
+    // --- davit with a hand winch; its cable still runs down into the black water to a shot weight
+    const [DX, DZ] = DAV, TOP = 1.95, TIP = 3.6;
+    b.box(DX, DY + 0.015, DZ, 0.32, 0.03, 0.32, GUN_D);
+    for (const [ox, oz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) b.cyl([DX + ox * 0.12, DY + 0.03, DZ + oz * 0.12], [DX + ox * 0.12, DY + 0.06, DZ + oz * 0.12], 0.015, 0.015, 6, STEEL);
+    b.cyl([DX, DY, DZ], [DX, TOP, DZ], 0.055, 0.05, 10, ORANGE);
+    for (let k = 0; k < 4; k++) b.cyl([DX, 0.5 + k * 0.08, DZ], [DX, 0.54 + k * 0.08, DZ], 0.057, 0.057, 10, k % 2 ? BLACK : HAZ_Y, false);
+    b.cyl([DX, TOP - 0.06, DZ], [DX, TOP + 0.04, DZ], 0.07, 0.07, 10, GUN_D);
+    b.beam([DX, TOP, DZ], [TIP, TOP + 0.04, DZ], 0.075, ORANGE, 0.06);
+    b.beam([DX + 0.04, 1.5, DZ], [3.0, TOP - 0.03, DZ], 0.04, ORANGE_D);
+    b.box(TIP - 0.02, TOP - 0.05, DZ, 0.1, 0.12, 0.1, GUN_D);
+    b.cyl([TIP, TOP - 0.06, DZ - 0.025], [TIP, TOP - 0.06, DZ + 0.025], 0.06, 0.06, 10, STEEL);
+    b.cyl([TIP + 0.06, TOP - 0.06, DZ], [TIP + 0.06, 0.0, DZ], 0.007, 0.007, 4, CABLE_K, false);
+    b.cyl([TIP + 0.06, 0.0, DZ], [TIP + 0.06, -1.25, DZ], 0.007, 0.007, 4, ALGAE_D, false);
+    b.lathe([[0, -1.48], [0.07, -1.45], [0.08, -1.36], [0.04, -1.27], [0.012, -1.25], [0, -1.24]], 8, SLIME);
+    // winch on the post: drum, flanges, crank
+    const WY = 0.95, WX = DX + 0.13;
+    b.box(DX + 0.06, WY, DZ, 0.1, 0.2, 0.2, GUN_D);
+    b.cyl([WX, WY, DZ - 0.09], [WX, WY, DZ + 0.09], 0.05, 0.05, 10, CABLE_K);
+    for (const e of [-1, 1]) b.cyl([WX, WY, DZ + e * 0.09], [WX, WY, DZ + e * 0.105], 0.085, 0.085, 10, ORANGE_D);
+    b.cyl([WX, WY, DZ + 0.105], [WX, WY, DZ + 0.15], 0.012, 0.012, 6, STEEL);
+    b.beam([WX, WY, DZ + 0.15], [WX + 0.04, WY - 0.16, DZ + 0.15], 0.025, GUN_D);
+    b.cyl([WX + 0.04, WY - 0.16, DZ + 0.15], [WX + 0.04, WY - 0.16, DZ + 0.24], 0.016, 0.016, 6, RUBBER);
+    b.tube([[WX + 0.05, WY + 0.02, DZ], [DX + 0.08, 1.4, DZ], [DX + 0.07, TOP + 0.05, DZ], [TIP - 0.05, TOP + 0.05, DZ]], 0.006, 4, CABLE_K);
+    text(b, 'W-2', DX - 0.035, 1.25, DZ + 0.056, 0.05, ST_K);
+    // --- cleats, coiled rope, a line over the side into the water
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) cleat(b, sx * 2.88, DY, sz * 1.3, 0);
+    coil(b, -2.2, DY, 0.75, 0.24, 0.018, 3, ROPE, 31, 5);
+    cable(b, [[-2.9, DY + 0.065, 1.3], [-2.75, DY + 0.03, 1.05], [-2.45, DY + 0.02, 0.98], [-2.25, DY + 0.04, 0.95]], 0.016, ROPE, 3, 5);
+    cable(b, [[2.95, DY + 0.065, 1.3], [3.05, DY + 0.02, 1.42], [3.12, 0.2, 1.52], [3.18, -0.1, 1.55], [3.25, -0.7, 1.45]], 0.016, ROPE, 3, 5);
+    // --- deck locker with dive kit, and one fin left on the deck
+    const LX0 = -1.6, LZ0 = -0.92;
+    b.box(LX0, DY + 0.22, LZ0, 1.0, 0.44, 0.5, BONE);
+    b.box(LX0, DY + 0.46, LZ0, 1.04, 0.05, 0.54, ORANGE);
+    b.box(LX0, DY + 0.04, LZ0, 1.02, 0.08, 0.52, DAMP);
+    for (const e of [-1, 1]) { b.box(LX0 + e * 0.3, DY + 0.4, LZ0 + 0.26, 0.06, 0.08, 0.02, GUN_D); b.box(LX0 + e * 0.52, DY + 0.25, LZ0, 0.02, 0.05, 0.2, GUN_D); }
+    text(b, 'DIVE KIT', LX0 - 0.42, DY + 0.28, LZ0 + 0.251, 0.06, ST_K); hazard(b, LX0 - 0.48, LX0 + 0.48, DY + 0.12, LZ0 + 0.251, 0.04, 12);
+    b.push(mulAll(tr(1.95, DY + 0.006, 0.55), rotY(0.7)));
+    b.plate([0, 0, -0.1], [0, 0, 0.1], [0.42, 0, 0.15], [0.42, 0, -0.15], BLACK);
+    b.box(-0.06, 0.03, 0, 0.2, 0.06, 0.15, RUBBER); b.box(0.2, 0.004, 0, 0.36, 0.004, 0.03, GUN_D);
+    b.pop();
+    // --- gangway at -x: hinge on the deck edge, sloping up to the shore at y ~1.2, roller at the shore end
+    b.push(mulAll(tr(-HX, DY, 0), rotZ(-GW_TH)));
+    b.box(-GW_L / 2, -0.025, 0, GW_L, 0.05, 0.9, GUN);
+    for (const e of [-1, 1]) { b.box(-GW_L / 2, -0.06, e * 0.47, GW_L, 0.15, 0.05, ORANGE_D); b.box(-GW_L / 2, -0.06, e * 0.497, GW_L - 0.1, 0.02, 0.003, HAZ_Y); }
+    for (let k = 0; k < 9; k++) b.box(-0.18 - k * 0.25, 0.012, 0, 0.035, 0.025, 0.86, GUN_D);
+    b.cyl([0.02, -0.05, -0.5], [0.02, -0.05, 0.5], 0.035, 0.035, 8, STEEL);
+    for (const e of [-0.4, 0, 0.4]) b.box(0.05, -0.06, e, 0.1, 0.08, 0.08, GUN_D);
+    b.cyl([-GW_L + 0.06, -0.1, -0.44], [-GW_L + 0.06, -0.1, 0.44], 0.06, 0.06, 8, RUBBER);
+    b.pop();
+    for (const e of [-1, 1]) {
+      const z = e * 0.47, us = [0.25, 1.25, GW_L - 0.15];
+      for (const u of us) { const p = gwP(u); b.cyl([p[0], p[1] - 0.02, z], [p[0], p[1] + 0.95, z], 0.02, 0.02, 6, ORANGE_D, false); }
+      const a = gwP(us[0]), c = gwP(us[2]);
+      cable(b, [[a[0] + 0.1, a[1] + 0.6, z], [a[0], a[1] + 0.93, z], [c[0], c[1] + 0.95, z], [c[0] - 0.08, c[1] + 0.95, z]], 0.022, ORANGE, 2, 6);
+    }
+    return b;
+  }
+
+  // =========================================================================================================
+  // 2. TANK RACK: six-slot cylinder rack (one slot empty, one tank fallen out), regulators, fill whips, compressor
+  // =========================================================================================================
+  const TR = 0.088, TZ = -0.12, SX = i => -0.7 + i * 0.2;
+  function tank(b, detail, reg, lying) {               // upright, bottom at origin, valve toward the top, outlet toward +z
+    if (!detail) { b.cyl([0, 0, 0], [0, 0.98, 0], TR, TR * 0.5, 5, BONE_D); b.box(0, 1.04, 0, 0.05, 0.08, 0.05, STEEL); return; }
+    b.lathe((lying ? [[0, 0, RUBBER]] : []).concat([[TR + 0.006, 0, RUBBER], [TR + 0.006, 0.12, RUBBER], [TR, 0.12, BONE_D], [TR, 0.8, ORANGE], [TR * 0.8, 0.92, ORANGE], [TR * 0.35, 0.985, ORANGE], [0.024, 0.99]]), 8, BONE_D, PI / 8, PI / 8 + TAU);
+    b.cyl([0, 0.98, 0], [0, 1.04, 0], 0.02, 0.02, 6, STEEL, false);
+    b.box(0, 1.06, 0, 0.05, 0.05, 0.045, STEEL);
+    b.box(0.035, 1.06, 0, 0.02, 0.055, 0.055, RUBBER);
+    b.box(0, 1.06, 0.035, 0.026, 0.026, 0.03, STEEL);
+    if (reg) {                                 // first stage, two hoses: demand valve and pressure gauge hanging in front
+      b.cyl([0, 1.06, 0.05], [0, 1.06, 0.11], 0.027, 0.027, 6, GUN_D);
+      cable(b, [[0.02, 1.07, 0.1], [0.09, 1.02, 0.15], [0.11, 0.8, 0.14], [0.07, 0.62, 0.12]], 0.008, BLACK, 2, 4);
+      b.push(mulAll(tr(0.07, 0.58, 0.12), rotX(0.2))); b.cyl([0, 0, -0.025], [0, 0, 0.025], 0.04, 0.04, 6, GUN_D); b.box(0, -0.04, 0.03, 0.03, 0.03, 0.04, BLACK); b.pop();
+      cable(b, [[-0.02, 1.05, 0.1], [-0.08, 0.98, 0.13], [-0.1, 0.8, 0.12], [-0.08, 0.7, 0.11]], 0.008, BLACK, 2, 4);
+      b.push(mulAll(tr(-0.08, 0.68, 0.11), rotX(PI / 2 - 0.2))); b.cyl([0, -0.015, 0], [0, 0.015, 0], 0.032, 0.032, 6, GUN_D); b.pop();
+      b.push(mulAll(tr(-0.08, 0.68, 0.11), rotX(-0.2))); pz(b, 0, 0, 0.0155, 0.04, 0.04, LENS_L); b.pop();
+    }
+  }
+  function buildTanks(detail) {
+    const b = new MB();
+    const X0 = -0.85, X1 = 0.43, ZF = 0.0, ZB = -0.25, XC = (X0 + X1) / 2, W = X1 - X0;
+    if (!detail) {
+      b.box(XC, 0.025, TZ, W, 0.05, 0.34, GUN_D);
+      for (const x of [X0, X1]) for (const z of [ZF, ZB]) b.beam([x, 0.05, z], [x, 1.45, z], 0.04, GUN);
+      for (const y of [0.4, 0.92]) b.box(XC, y, ZF, W, 0.04, 0.03, ORANGE_D);
+      b.box(XC, 1.45, TZ, W, 0.05, 0.3, ORANGE);
+      for (const i of [0, 1, 3, 5]) { b.push(tr(SX(i), 0.05, TZ)); tank(b, 0); b.pop(); }
+      b.push(mulAll(tr(-0.55, TR + 0.006, 0.24), rotY(0.1), rotZ(-PI / 2))); tank(b, 0); b.pop();
+      b.box(0.62, 0.2, -0.12, 0.32, 0.4, 0.42, BONE); b.cyl([0.62, 0.48, -0.3], [0.62, 0.48, 0.06], 0.08, 0.08, 6, GUN_D);
+      return b;
+    }
+    // --- base: skid with tank cups, front kick plate with hazard and stencil
+    b.box(XC, 0.03, TZ, W + 0.04, 0.06, 0.36, GUN_D);
+    for (const z of [ZF, ZB]) b.box(XC, 0.015, z, W + 0.1, 0.03, 0.05, GUN);
+    for (let i = 0; i < 6; i++) b.cyl([SX(i), 0.06, TZ], [SX(i), 0.09, TZ], TR + 0.016, TR + 0.016, 6, GUN, false);
+    b.push(tr(0, 0, 0.046)); chevrons(b, X0 + 0.02, X0 + 0.42, 0.03, 0.0, 0.04, 6); text(b, 'AIR', X0 + 0.5, 0.03, 0.0, 0.04, ST_W); b.pop();
+    b.box(XC, 0.065, TZ, W, 0.01, 0.34, DAMP);
+    // --- frame: corner posts, front and back hoop bars, top frame, side panel with stencil
+    for (const x of [X0, X1]) for (const z of [ZF, ZB]) b.box(x, 0.75, z, 0.045, 1.4, 0.045, GUN);
+    for (const y of [0.42, 0.95]) { b.box(XC, y, ZF, W, 0.04, 0.03, GUN_D); b.box(XC, y, ZB, W, 0.04, 0.03, GUN_D); }
+    for (const z of [ZF, ZB]) b.box(XC, 1.45, z, W + 0.045, 0.05, 0.05, ORANGE);
+    for (const x of [X0, X1]) b.box(x, 1.45, TZ - 0.005, 0.05, 0.05, ZF - ZB, ORANGE);
+    for (let i = 0; i < 5; i++) b.box((SX(i) + SX(i + 1)) / 2, 0.95, TZ, 0.02, 0.04, ZF - ZB, GUN_D);   // slot dividers
+    b.box(X0, 0.75, TZ, 0.01, 0.5, 0.22, BONE_D);
+    b.push(mulAll(tr(X0 - 0.006, 0.75, TZ), rotY(-PI / 2))); text(b, 'DV-1', 0, 0.12, 0, 0.05, ST_K, true); text(b, 'KR-07', 0, 0.02, 0, 0.035, ST_K, true); hazard(b, -0.1, 0.1, -0.16, 0, 0.04, 6); b.pop();
+    // --- fill manifold on the top back rail with fill whips
+    b.cyl([X0 + 0.05, 1.37, ZB + 0.03], [X1 - 0.02, 1.37, ZB + 0.03], 0.018, 0.018, 8, STEEL);
+    for (let i = 0; i < 6; i++) { b.box(SX(i), 1.37, ZB + 0.05, 0.04, 0.05, 0.04, ORANGE_D); b.box(SX(i), 1.405, ZB + 0.05, 0.012, 0.03, 0.05, GUN_D); }
+    // --- standing tanks (slots 0, 1, 3, 5), straps closed; slot 2 empty, slot 4 fell out
+    const occ = { 0: 1, 1: 0, 3: 1, 5: 0 };
+    for (const i of [0, 1, 3, 5]) {
+      b.push(tr(SX(i), 0.09, TZ)); tank(b, 1, occ[i]); b.pop();
+      b.box(SX(i), 0.95, TZ + TR + 0.012, 0.19, 0.05, 0.012, ORANGE_D);
+      pz(b, SX(i), 0.69, TZ + TR * 0.924 + 0.002, 0.062, 0.1, ST_W); pz(b, SX(i), 0.69, TZ + TR * 0.924 + 0.003, 0.05, 0.012, ORANGE_D);
+      b.box(SX(i) + 0.05, 0.95, TZ + TR + 0.02, 0.03, 0.035, 0.012, STEEL);
+    }
+    // whip connected to tank 5, two loose whips hanging, one dangling over the empty slot
+    cable(b, [[SX(5), 1.4, ZB + 0.07], [SX(5) + 0.02, 1.3, TZ], [SX(5), 1.2, TZ + 0.06], [SX(5), 1.15, TZ + 0.06]], 0.008, CABLE_K, 2, 4);
+    for (const i of [2, 4]) {
+      cable(b, [[SX(i), 1.4, ZB + 0.07], [SX(i) + 0.03, 1.3, TZ + 0.05], [SX(i) + 0.02, 1.0, TZ + 0.12], [SX(i) - 0.02, 0.86, TZ + 0.1]], 0.008, CABLE_K, 2, 4);
+      b.cyl([SX(i) - 0.02, 0.88, TZ + 0.1], [SX(i) - 0.025, 0.82, TZ + 0.1], 0.014, 0.014, 6, STEEL);
+      // open strap hanging down from the front bar
+      cable(b, [[SX(i) - 0.09, 0.95, ZF + 0.02], [SX(i) - 0.08, 0.8, ZF + 0.03], [SX(i) - 0.07, 0.68, ZF + 0.02]], 0.012, ORANGE_D, 2, 4);
+    }
+    // the fallen tank lying in front, its regulator hose trailing on the ground
+    b.push(mulAll(tr(-0.62, TR + 0.006, 0.24), rotY(0.1), rotZ(-PI / 2))); tank(b, 1, 0, 1); b.pop();
+    cable(b, [[0.47, 0.095, 0.2], [0.55, 0.03, 0.26], [0.42, 0.008, 0.33], [0.25, 0.008, 0.31]], 0.008, BLACK, 2, 4);
+    // --- compressor box on the ground at +x: roll frame, motor, finned head, intake filter, gauge, hoses
+    const CX = 0.62, CZ = -0.12, CW = 0.32, CH = 0.4, CD = 0.42;
+    b.box(CX, CH / 2 + 0.02, CZ, CW, CH, CD, BONE);
+    b.box(CX, 0.01, CZ, CW + 0.04, 0.02, CD + 0.04, GUN_D);
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) b.box(CX + sx * CW / 2, CH / 2 + 0.03, CZ + sz * CD / 2, 0.03, CH + 0.02, 0.03, ORANGE_D);
+    b.box(CX, CH + 0.03, CZ, CW + 0.03, 0.02, CD + 0.03, ORANGE);
+    b.cyl([CX, CH + 0.12, CZ - 0.2], [CX, CH + 0.12, CZ + 0.08], 0.075, 0.075, 8, GUN_D);
+    for (let k = 0; k < 2; k++) b.cyl([CX, CH + 0.12, CZ + 0.1 + k * 0.03], [CX, CH + 0.12, CZ + 0.112 + k * 0.03], 0.09, 0.09, 8, GUN);
+    b.cyl([CX + 0.08, CH + 0.04, CZ + 0.12], [CX + 0.08, CH + 0.2, CZ + 0.12], 0.04, 0.04, 8, OLIVE_D);
+    b.cyl([CX + 0.08, CH + 0.2, CZ + 0.12], [CX + 0.08, CH + 0.22, CZ + 0.12], 0.046, 0.046, 8, GUN_D);
+    for (let k = 0; k < 6; k++) b.box(CX + CW / 2 + 0.003, 0.12 + k * 0.035, CZ, 0.006, 0.014, CD - 0.12, GUN_D);
+    b.push(tr(0, 0, CZ + CD / 2 + 0.002));
+    pz(b, CX, 0.3, 0, CW - 0.06, 0.13, GUN_D); pz(b, CX - 0.06, 0.3, 0.002, 0.07, 0.07, LENS_L); pz(b, CX - 0.06, 0.3, 0.003, 0.006, 0.03, BLACK);
+    pz(b, CX + 0.04, 0.32, 0.002, 0.02, 0.02, [0.3, 0.12, 0.08]); b.box(CX + 0.08, 0.28, 0.01, 0.02, 0.04, 0.02, ORANGE);
+    text(b, 'AIR-2', CX, 0.16, 0.001, 0.045, ST_K, true); hazard(b, CX - CW / 2 + 0.03, CX + CW / 2 - 0.03, 0.07, 0.001, 0.035, 8);
+    b.pop();
+    cable(b, [[CX - 0.08, CH + 0.04, CZ - 0.12], [CX - 0.12, 0.8, ZB - 0.02], [X1 - 0.05, 1.25, ZB - 0.01], [X1 - 0.03, 1.37, ZB + 0.03]], 0.012, CABLE_K, 2, 5);
+    cable(b, [[CX, 0.12, CZ - CD / 2], [CX + 0.02, 0.025, CZ - CD / 2 - 0.08], [CX - 0.1, 0.018, CZ - CD / 2 - 0.1], [CX - 0.3, 0.018, -0.36]], 0.016, CABLE_O, 2, 5);
+    return b;
+  }
+
+  // =========================================================================================================
+  // 3. LOG TERMINAL: rugged terminal on a folding stand, hooded screen facing +z, keypad tray, cable to a battery case
+  // =========================================================================================================
+  const TW = 0.5, THh = 0.36, TD = 0.12, TY = 1.07, TZ0 = -0.03, TTILT = -0.18, SCR_Y = 0.03;
+  const termM = mulAll(tr(0, TY, TZ0), rotX(TTILT));
+  const TERM_ATTACH = [r3(xf(termM, [0, SCR_Y, TD / 2 + 0.004 + 0.01]))];
+  function buildTerminal(detail) {
+    const b = new MB();
+    const legs = s => [[[s * 0.21, 0.88, -0.04], [s * 0.27, 0.024, 0.24]], [[s * 0.21, 0.88, -0.04], [s * 0.27, 0.024, -0.32]]];
+    if (!detail) {
+      for (const s of [-1, 1]) for (const [a, c] of legs(s)) b.beam(a, c, 0.035, GUN_D);
+      b.box(0, 0.9, 0, 0.46, 0.04, 0.3, GUN_D); b.box(0, 0.95, 0.15, 0.36, 0.04, 0.14, BONE_D);
+      b.push(termM); b.box(0, 0, 0, TW, THh, TD, BONE_D); pz(b, 0, SCR_Y, TD / 2 + 0.004, 0.38, 0.24, SCREEN);
+      b.plate([-TW / 2 - 0.02, THh / 2 + 0.01, TD / 2 - 0.02], [TW / 2 + 0.02, THh / 2 + 0.01, TD / 2 - 0.02], [TW / 2 + 0.03, THh / 2 - 0.01, TD / 2 + 0.12], [-TW / 2 - 0.03, THh / 2 - 0.01, TD / 2 + 0.12], ORANGE); b.pop();
+      b.box(0.3, 0.1, -0.36, 0.34, 0.2, 0.22, GUN_D);
+      b.tube([[0.12, 0.95, -0.1], [0.2, 0.3, -0.2], [0.2, 0.02, -0.3], [0.2, 0.08, -0.36]], 0.012, 3, CABLE_K);
+      return b;
+    }
+    // --- folding stand: two A-frame leg pairs, hinge hubs, spreader bars, feet, mounting tray
+    for (const s of [-1, 1]) {
+      for (const [a, c] of legs(s)) { b.beam(a, c, 0.032, GUN_D, 0.022); b.box(c[0], 0.012, c[2], 0.07, 0.024, 0.07, RUBBER); }
+      b.cyl([s * 0.18, 0.88, -0.04], [s * 0.245, 0.88, -0.04], 0.03, 0.03, 8, ORANGE_D);
+      b.beam([s * 0.25, 0.32, 0.15], [s * 0.25, 0.32, -0.22], 0.018, STEEL);
+    }
+    b.beam([-0.255, 0.32, -0.21], [0.255, 0.32, -0.21], 0.022, ORANGE);
+    b.box(0, 0.32, -0.198, 0.4, 0.035, 0.003, HAZ_Y);
+    b.box(0, 0.9, -0.02, 0.44, 0.035, 0.3, GUN_D);
+    for (const s of [-1, 1]) b.box(s * 0.205, 0.93, -0.02, 0.02, 0.04, 0.3, ORANGE_D);
+    // --- keypad tray tipped toward the reader
+    b.push(mulAll(tr(0, 0.94, 0.17), rotX(0.32)));
+    b.box(0, 0, 0, 0.38, 0.035, 0.15, BONE_D);
+    py(b, 0, 0.0176, 0, 0.34, 0.12, GUN_D);
+    for (let i = 0; i < 6; i++) for (let j = 0; j < 3; j++) boxM(b, -0.135 + i * 0.054, 0.024, -0.035 + j * 0.035, 0.038, 0.012, 0.026, j === 2 && i > 3 ? ORANGE : (j === 2 && i === 0 ? LED_R : BONE), 'yz');
+    b.pop();
+    // --- terminal case, rubber corner bumpers, bezel, screen, hood
+    b.push(termM);
+    b.box(0, 0, 0, TW, THh, TD, BONE_D);
+    for (const sx of [-1, 1]) for (const sy of [-1, 1]) b.box(sx * (TW / 2 - 0.01), sy * (THh / 2 - 0.01), 0, 0.05, 0.05, TD + 0.016, RUBBER);
+    const fz = TD / 2;
+    pz(b, 0, SCR_Y, fz + 0.001, 0.42, 0.28, GUN_D);
+    pz(b, 0, SCR_Y, fz + 0.004, 0.38, 0.24, SCREEN);
+    b.box(0, SCR_Y - 0.13, fz + 0.004, 0.42, 0.012, 0.008, GUN);
+    text(b, 'DIVE LOG', -0.21, 0.165, fz + 0.002, 0.022, ST_K); text(b, 'DV-1', 0.13, 0.165, fz + 0.002, 0.022, ORANGE_D);
+    chevrons(b, -0.21, 0.02, -0.145, fz + 0.002, 0.03, 6);
+    for (let k = 0; k < 3; k++) pz(b, 0.08 + k * 0.035, -0.145, fz + 0.002, 0.016, 0.016, k === 0 ? LED_G : [0.3, 0.12, 0.08]);
+    b.box(0.19, -0.145, fz + 0.01, 0.025, 0.025, 0.02, ORANGE);
+    // hood: top plate and two side flaps, hazard edge on the lip
+    const HL = 0.14, y0 = THh / 2;
+    b.plate([-TW / 2 - 0.015, y0 + 0.012, fz - 0.03], [TW / 2 + 0.015, y0 + 0.012, fz - 0.03], [TW / 2 + 0.03, y0 - 0.012, fz + HL], [-TW / 2 - 0.03, y0 - 0.012, fz + HL], ORANGE);
+    b.plate([-TW / 2 - 0.03, y0 - 0.018, fz + HL], [TW / 2 + 0.03, y0 - 0.018, fz + HL], [TW / 2 + 0.015, y0 + 0.006, fz - 0.03], [-TW / 2 - 0.015, y0 + 0.006, fz - 0.03], ORANGE_D);
+    b.push(tr(0, y0 - 0.02, fz + HL + 0.001)); for (let k = 0; k < 10; k++) { const w = (TW + 0.06) / 10, x0 = -(TW + 0.06) / 2 + k * w; b.plate([x0, -0.008, 0], [x0 + w, -0.008, 0], [x0 + w + 0.01, 0.008, 0], [x0 + 0.01, 0.008, 0], k % 2 ? BLACK : HAZ_Y); } b.pop();
+    for (const sx of [-1, 1]) {
+      const x = sx * (TW / 2 + 0.02), P = [[x, y0 + 0.01, fz - 0.03], [x, -0.05, fz - 0.03], [x + sx * 0.012, 0.0, fz + HL * 0.7], [x + sx * 0.012, y0 - 0.012, fz + HL]];
+      facet(b, P, GUN, [sx, 0, 0]); facet(b, P.map(q => [q[0] - sx * 0.004, q[1], q[2]]), GUN_D, [-sx, 0, 0]);
+      // side carry handles
+      b.tube([[sx * TW / 2, 0.1, -0.03], [sx * (TW / 2 + 0.05), 0.09, -0.03], [sx * (TW / 2 + 0.05), -0.09, -0.03], [sx * TW / 2, -0.1, -0.03]], 0.012, 5, GUN_D);
+    }
+    // back: vent fins, stub antenna, cable gland
+    for (let k = 0; k < 5; k++) b.box(-0.12 + k * 0.06, 0, -fz - 0.01, 0.015, THh - 0.1, 0.02, GUN);
+    b.cyl([0.18, y0, -0.02], [0.19, y0 + 0.1, -0.02], 0.008, 0.005, 5, BLACK); b.cyl([0.18, y0, -0.02], [0.18, y0 + 0.03, -0.02], 0.018, 0.018, 6, GUN_D);
+    b.cyl([0.12, -0.12, -fz], [0.12, -0.12, -fz - 0.05], 0.022, 0.018, 8, GUN_D);
+    b.pop();
+    // --- cable down the back leg to the battery case on the ground
+    const g = xf(termM, [0.12, -0.12, -TD / 2 - 0.05]);
+    cable(b, [g, [0.17, 0.78, -0.12], [0.24, 0.45, -0.24], [0.27, 0.1, -0.3], [0.25, 0.022, -0.24], [0.15, 0.022, -0.3], [0.13, 0.08, -0.36]], 0.012, CABLE_K, 3, 5);
+    const BX = 0.3, BZ = -0.37;
+    b.box(BX, 0.1, BZ, 0.32, 0.18, 0.22, GUN_D);
+    for (const e of [-1, 1]) b.box(BX + e * 0.17, 0.1, BZ, 0.03, 0.2, 0.24, ORANGE_D);
+    b.box(BX, 0.195, BZ, 0.33, 0.012, 0.23, GUN);
+    for (const e of [-1, 1]) b.box(BX + e * 0.08, 0.22, BZ, 0.02, 0.04, 0.02, GUN_D);
+    b.cyl([BX - 0.09, 0.24, BZ], [BX + 0.09, 0.24, BZ], 0.012, 0.012, 6, RUBBER);
+    b.cyl([BX - 0.17, 0.08, BZ], [BX - 0.2, 0.08, BZ], 0.02, 0.02, 6, GUN_D);
+    b.push(tr(0, 0, BZ + 0.111)); chevrons(b, BX - 0.14, BX + 0.14, 0.04, 0, 0.035, 7); text(b, 'BAT-2', BX, 0.12, 0, 0.04, ST_W, true); pz(b, BX + 0.12, 0.155, 0.001, 0.015, 0.015, LED_G); b.pop();
+    b.box(BX, 0.005, BZ, 0.36, 0.01, 0.26, MUD);
+    return b;
+  }
+
+  // =========================================================================================================
+  // 4. LINE SPOOL: guideline reel on a stake hammered into the rock; the line tied off on a rock knob, then off to +x
+  // =========================================================================================================
+  const AXY = 0.42, SPR = 0.15, CORE_R = 0.105, LINE_END = [0.95, 0.006, 0.03];
+  const SPOOL_ATTACH = [LINE_END.slice()];
+  function buildSpool(detail) {
+    const b = new MB();
+    const KN = [0.4, 0.0, 0.02];
+    if (!detail) {
+      b.cyl([0, -0.05, 0], [0, 0.34, 0], 0.016, 0.016, 4, STEEL, false);
+      b.cyl([0, AXY, -0.06], [0, AXY, 0.06], SPR, SPR, 6, ORANGE);
+      b.beam([0, AXY, 0.065], [0.09, AXY - 0.06, 0.065], 0.02, GUN_D);
+      b.push(tr(KN[0], 0, KN[2])); b.lathe([[0.07, 0], [0.04, 0.07], [0, 0.09]], 4, ROCK); b.pop();
+      b.tube([[0.05, AXY - 0.09, 0], [0.3, 0.06, 0.0], [0.6, 0.006, 0.05], LINE_END], 0.005, 3, LINE);
+      return b;
+    }
+    const r = rnd(6113);
+    // stake: pointed steel driven into the rock, mushroomed strike head, rock chips around it
+    b.lathe([[0, -0.12, STEEL], [0.016, -0.04, STEEL], [0.016, 0.28, STEEL], [0.026, 0.29, sh(STEEL, 0.8)], [0.026, 0.305], [0, 0.31]], 6, STEEL);
+    for (let k = 0; k < 3; k++) { const a = k * TAU / 3 + r(); b.push(mulAll(tr(Math.cos(a) * 0.06, 0.008, Math.sin(a) * 0.06), rotY(r() * TAU), rotZ((r() - 0.5) * 0.4))); b.box(0, 0, 0, 0.03 + r() * 0.03, 0.016, 0.025 + r() * 0.02, ROCK); b.pop(); }
+    b.cyl([0, 0.0, 0], [0, 0.004, 0], 0.07, 0.07, 8, DUST, false);
+    // clamp block and fork holding the reel axle (along z)
+    b.box(0, 0.31, 0, 0.06, 0.05, 0.06, GUN_D);
+    b.box(0.03, 0.3, 0, 0.012, 0.03, 0.03, ORANGE);
+    for (const e of [-1, 1]) b.beam([0, 0.33, e * 0.03], [0, AXY + 0.01, e * 0.075], 0.02, GUN_D, 0.012);
+    b.cyl([0, AXY, -0.088], [0, AXY, 0.088], 0.012, 0.012, 6, STEEL);
+    b.cyl([0, AXY, 0.064], [0, AXY, 0.076], 0.03, 0.03, 6, GUN_D);
+    // reel: two orange flanges with lightening holes, wound line on the core
+    for (const e of [-1, 1]) {
+      b.cyl([0, AXY, e * 0.052], [0, AXY, e * 0.064], SPR, SPR, 10, ORANGE);
+      for (let k = 0; k < 4; k++) {
+        const a = k * PI / 2 + 0.4, hx = Math.cos(a) * 0.09, hy = AXY + Math.sin(a) * 0.09;
+        b.push(mulAll(tr(hx, hy, e * 0.0645), e < 0 ? rotY(PI) : tr(0, 0, 0))); pz(b, 0, 0, 0, 0.04, 0.04, ORANGE_D); b.pop();
+      }
+    }
+    b.cyl([0, AXY, -0.052], [0, AXY, 0.052], CORE_R, CORE_R, 12, LINE, false);
+    b.cyl([0, AXY, -0.012], [0, AXY, 0.012], CORE_R + 0.002, CORE_R + 0.002, 12, sh(LINE, 0.85), false);
+    // crank: arm on the +z flange with a rubber knob
+    b.beam([0, AXY, 0.08], [0.0, AXY + 0.11, 0.08], 0.022, GUN_D, 0.01);
+    b.cyl([0, AXY + 0.11, 0.08], [0, AXY + 0.11, 0.15], 0.014, 0.012, 6, RUBBER);
+    // line guide / lock lever and a bolt snap on the top
+    b.beam([0.0, 0.34, 0.03], [0.1, AXY - 0.09, 0.0], 0.014, GUN_D);
+    b.box(0.1, AXY - 0.095, 0, 0.03, 0.02, 0.02, STEEL);
+    for (const e of [-1, 1]) b.beam([0, AXY, e * 0.07], [0, AXY + 0.17, e * 0.01], 0.012, GUN_D, 0.008);
+    b.cyl([0, AXY + 0.17, -0.03], [0, AXY + 0.17, 0.03], 0.012, 0.012, 6, RUBBER);
+    // rock knob the line is tied off around
+    b.push(tr(KN[0], 0, KN[2])); b.lathe([[0.085, -0.01], [0.075, 0.03], [0.05, 0.075], [0.025, 0.1], [0, 0.105]], 6, ROCK); b.pop();
+    // line: off the reel, through the guide, down to the knob, two wraps, then along the ground
+    const L1 = smooth([[CORE_R * 0.5, AXY - CORE_R * 0.87, 0.0], [0.1, AXY - 0.1, 0.0], [0.22, 0.17, 0.0], [KN[0] - 0.08, 0.07, KN[2] - 0.02], [KN[0] - 0.05, 0.06, KN[2] + 0.04]], 2);
+    const wrap = []; for (let k = 0; k <= 10; k++) { const a = PI + k / 10 * TAU * 1.25, y = 0.06 - k * 0.002; wrap.push([KN[0] + Math.cos(a) * 0.072, y, KN[2] - Math.sin(a) * 0.072]); }
+    const L2 = smooth([wrap[wrap.length - 1], [KN[0] + 0.14, 0.012, KN[2] + 0.03], [0.65, 0.006, 0.07], [0.82, 0.006, 0.01], LINE_END], 2);
+    b.tube(L1.concat(wrap, L2.slice(1)), 0.0045, 3, LINE);
+    // line arrow clipped on the ground run, pointing back toward the spool (the way out)
+    b.push(mulAll(tr(0.73, 0.008, 0.05), rotY(0.2)));
+    facet(b, [[-0.05, 0.002, 0], [0.04, 0.002, -0.025], [0.04, 0.002, 0.025]], ORANGE, [0, 1, 0]);
+    b.box(0.045, 0.004, 0, 0.012, 0.006, 0.05, BLACK);
+    b.pop();
+    b.box(LINE_END[0], 0.004, LINE_END[2], 0.016, 0.008, 0.016, GUN_D);
+    return b;
+  }
+
+  // =========================================================================================================
+  // 5. DROPPED DIVE LIGHT: battery canister and lamp head on a cord, lying on the rock; lens pale
+  // =========================================================================================================
+  const DL_M = mulAll(tr(0.02, 0.043, 0.0), rotY(0.35), rotZ(-PI / 2));   // lamp head: local +y -> lens direction (about +x)
+  const DL_LEN = 0.165, DL_ATTACH = [r3(xf(DL_M, [0, DL_LEN, 0]))];
+  function buildDiveLight(detail) {
+    const b = new MB();
+    if (!detail) {
+      b.cyl([-0.17, 0.045, -0.13], [-0.17, 0.045, 0.13], 0.045, 0.045, 5, ORANGE_D);
+      b.push(DL_M); b.cyl([0, 0, 0], [0, DL_LEN - 0.001, 0], 0.03, 0.043, 5, GUN_D); b.push(mulAll(tr(0, DL_LEN, 0), rotX(-PI / 2))); pz(b, 0, 0, 0, 0.06, 0.06, LENS_L); b.pop(); b.pop();
+      b.beam([-0.17, 0.02, 0.13], [0.0, 0.02, 0.0], 0.012, BLACK);
+      return b;
+    }
+    // canister lying along z
+    b.push(mulAll(tr(-0.17, 0.046, 0.0), rotX(PI / 2)));
+    b.lathe([[0, -0.135, GUN_D], [0.04, -0.135, GUN_D], [0.046, -0.12, ORANGE_D], [0.046, -0.03, RUBBER], [0.047, 0.0, ORANGE_D], [0.046, 0.12, GUN_D], [0.04, 0.135, GUN_D], [0, 0.136]], 8, ORANGE_D);
+    b.pop();
+    b.box(-0.17, 0.095, 0.02, 0.05, 0.012, 0.14, GUN_D);                                     // mounting clip plate
+    b.box(-0.17, 0.046, -0.142, 0.022, 0.022, 0.016, ORANGE);                                // switch on the end cap
+    // coiled cord from the canister's +z end to the back of the lamp head
+    const tail = xf(DL_M, [0, -0.01, 0]);
+    cable(b, [[-0.17, 0.046, 0.14], [-0.14, 0.012, 0.22], [-0.04, 0.01, 0.25], [0.04, 0.012, 0.19], [-0.03, 0.012, 0.1], [-0.06, 0.02, 0.03], tail], 0.006, BLACK, 2, 4);
+    // lamp head: handle grip, flared head, bezel ring, pale lens
+    b.push(DL_M);
+    b.lathe([[0.012, -0.012, BLACK], [0.03, 0.0, GUN_D], [0.03, 0.07, RUBBER], [0.032, 0.09, GUN_D], [0.043, 0.13, GUN_D], [0.043, 0.155, GUN], [0.038, DL_LEN, LENS_L], [0, DL_LEN]], 8, GUN_D);
+    b.pop();
+    // goodman strap handle over the top of the head
+    const h0 = xf(DL_M, [0, 0.04, 0]), h1 = xf(DL_M, [0, 0.12, 0]);
+    b.tube([[h0[0], h0[1] + 0.03, h0[2]], [(h0[0] + h1[0]) / 2, h0[1] + 0.05, (h0[2] + h1[2]) / 2], [h1[0], h1[1] + 0.04, h1[2]]], 0.008, 3, BLACK);
+    return b;
+  }
+
+  return {
+    name: 'divesite',
+    items: [
+      { name: 'dive_platform', budget: 6000, build: buildPlatform, colliders: [] },
+      { name: 'tank_rack', budget: 3000, build: buildTanks, colliders: [] },
+      { name: 'log_terminal', budget: 1500, build: buildTerminal, colliders: [], attach: TERM_ATTACH },
+      { name: 'line_spool', budget: 800, build: buildSpool, colliders: [], attach: SPOOL_ATTACH },
+      { name: 'dropped_dive_light', budget: 400, build: buildDiveLight, colliders: [], attach: DL_ATTACH }
+    ]
+  };
 }) }
 };
 /* ---------- placed assets: modelled by sub-agents with the AssetKit, placed here ---------- */
@@ -10074,7 +10959,7 @@ function gameHud() {
   $('gstat').textContent = game.trial ? courses[game.trial.c].name + '  ' + fmtTime(game.t - game.trial.t0) : 'Dishes ' + game.online + '/7' + (game.carrying ? '  ·  carrying ' + game.carrying : '');
   const ob = objective(), mk = $('marker');
   const us = $('ustat'); us.hidden = !cave.under;
-  if (cave.under) us.textContent = (cave.dead ? 'Light dead' : 'Light ' + Math.ceil(cave.batt) + '%') + (cave.spares ? ' +' + cave.spares : '') + (line.reel ? ' · Line ' + Math.round(line.left) + ' m' : '') + (CAVR.humid > 80 ? ' · Humidity ' + Math.round(CAVR.humid) + '%' : '');
+  if (cave.under) us.textContent = (cave.dead ? 'Light dead' : 'Light ' + Math.ceil(cave.batt) + '%') + (cave.spares ? ' +' + cave.spares : '') + (line.reel ? ' · Line ' + Math.round(line.left) + ' m' : '') + (CAVR.humid > 80 ? ' · Humidity ' + Math.round(CAVR.humid) + '%' : '') + (LAKER.air < 99.5 || inWater(state.px, state.py + 1.6, state.pz) ? ' · Air ' + Math.round(LAKER.air) + '%' : '');
   if (!ob || cave.under) { mk.hidden = true; return; }
   const m = cam.vp, x = ob.p[0], y = ob.p[1], z = ob.p[2]; let cx = m[0] * x + m[4] * y + m[8] * z + m[12], cy = m[1] * x + m[5] * y + m[9] * z + m[13]; const cw = m[3] * x + m[7] * y + m[11] * z + m[15];
   let nx = cx / Math.abs(cw), ny = cy / Math.abs(cw); if (cw < 0) { nx = -nx; ny = -ny; const k = 0.9 / Math.max(Math.abs(nx), Math.abs(ny), 1e-6); nx *= k; ny *= k; }
@@ -10184,9 +11069,9 @@ const PARTS = [                              // the power couplings (campaign): 
   { door: 'D-9', at: CV.floorNear(170, -300, -60), packYaw: 2.1 },
 ];
 const STATION_PROPS = [], FLOODS = [], STAKES = [];
-const ROUTES = {"D-8":[[1453,-180.13,1504],[1461,-180.13,1502],[1469,-179.88,1502],[1475,-179.25,1502],[1477,-172.75,1502],[1485,-171.13,1500],[1493,-170.88,1496],[1501,-171.13,1494],[1507,-171.13,1490],[1509,-173.13,1488],[1511,-176.63,1486],[1515,-180,1480],[1519,-180.75,1474]],"D-9":[[1567,-311.5,1467],[1573,-315.25,1463],[1581,-318.5,1459],[1589,-321.25,1459],[1597,-324.5,1459],[1605,-327.13,1459],[1613,-329,1459],[1621,-330.5,1459],[1629,-331.63,1459],[1637,-332,1459],[1645,-331.63,1459],[1653,-331.63,1459],[1661,-330.13,1457],[1669,-328.88,1459],[1675,-327.13,1459],[1683,-324.38,1459],[1691,-320,1461],[1699,-314.63,1465]]};   // the research team's route stakes, landing -> exit door (src/node/routes.js)
+const ROUTES = {"D-8":[[1453,-180.13,1504],[1461,-180.13,1502],[1469,-179.88,1502],[1475,-179.25,1502],[1477,-172.75,1502],[1485,-171.13,1500],[1493,-170.88,1496],[1501,-171.13,1494],[1507,-171.13,1490],[1509,-173.13,1488],[1511,-176.63,1486],[1515,-180,1480],[1519,-180.75,1474]],"D-9":[[1567,-311.5,1467],[1573,-315.25,1463],[1581,-318.5,1459],[1589,-321.25,1459],[1597,-324.5,1459],[1605,-327.13,1459],[1613,-329,1459],[1621,-330.5,1459],[1629,-331.63,1459],[1637,-332,1459],[1645,-331.63,1459],[1653,-331.63,1459],[1661,-330.13,1457],[1669,-328.88,1459],[1675,-327.13,1459],[1683,-324.38,1459],[1691,-320,1461],[1699,-314.63,1465]],"D-10":[[1740,-425.88,1469],[1748,-431,1469],[1756,-434.13,1469],[1764,-439.25,1469],[1772,-444.88,1469],[1780,-448.75,1469],[1788,-451.88,1469],[1796,-454.63,1469],[1804,-454.25,1471],[1822,-452,1471],[1832,-452,1471]]};   // the research team's route stakes, landing -> exit door (src/node/routes.js)
 const nearRoute = p => { for (const k in ROUTES) for (const q of ROUTES[k]) if (Math.abs(q[1] - p[1]) < 3.5 && Math.hypot(q[0] - p[0], q[2] - p[2]) < 1.5) return true; return false; };
-function doorReady(D) { return D.name !== 'D-9'; }      // D-9: the flooded level beyond comes in the next build
+function doorReady(D) { return D.name !== 'D-10'; }     // D-10: the giant crystal cavern beyond it comes in the next build
 function doorUnlocked(D) {
   if (!doorReady(D)) return false; if (game.free) return true; if (D.i === 0) return game.online >= 7;
   const k = PARTS.findIndex(p => p.door === D.name); return k >= 0 && !!(cave.parts && cave.parts[k]);
@@ -10206,7 +11091,7 @@ function doorUpdate(dt) {
     if (!un && near && d < 4.5 && state.time - D.told > 25) {
       D.told = state.time; tone([196, 185], 0.6, 'sine', 0.1, 0.3);
       toast(D.i === 0 ? 'A sealed door. Its panel is dead. A cable runs from it back up the shaft, toward the surface.'
-        : !doorReady(D) ? D.name + ' won\'t budge. Cold water seeps out from under it. (The flooded level comes in the next build.)'
+        : !doorReady(D) ? D.name + ' is sealed tight. Beyond it the bore runs on, down into the dark. (The giant crystal cavern comes in the next build.)'
         : D.name + ' won\'t open: its power coupling has been pulled. The research team must have left it somewhere in this cavern.', 7);
     }
   }
@@ -10432,13 +11317,249 @@ function drawDripFx() {
   }
   gl.bindVertexArray(null);
 }
+/* ---------- the flooded cavern: the lake, swimming, suit air, the fish, the dive station and its log ---------- */
+const LAKE = CV.LAKE, LWL = LAKE.water;
+const LAKER = { kits: [], ranges: [], inst: null, count: 0, worms: null, nWorms: 0, surf: null, silt: null, nSilt: 0, oldLine: null, fish: [], props: [], term: null,
+  air: 100, warned: 0, out: false, seen: false, dartT: 20, peekT: 14, read: -1, camUnder: false, ms: 0 };
+const LOG = [   // the research team's dive log (draft text: Christopher may rewrite it)
+  ['DIVE LOG / D-9 SUMP SURVEY / DAY 1', 'Lake is 31 m at its deepest. Water 4 °C. Visibility 8 m, the silt hangs like smoke. No inflow, no outflow, no current. A sealed lake.\n\nDives 1 and 2: clean.'],
+  ['DAY 3', 'Dive 4. Something big passed under me at the 20 m line.\n\nKel says it was my own bubbles in the lamp.\n\nBubbles don\'t swim against you.'],
+  ['DAY 6', 'Found a bore at the bottom. Perfectly round, 5.6 m across. The walls are smooth like poured glass, with a ring cut every half metre.\n\nNot water-cut. Not ours.\n\nThe core samples came back older than the survey says this rock is.'],
+  ['DAY 9', 'Eyes at the edge of the light. They follow the line back to the platform.\n\nTurn your lamp on them and they are gone.\n\nAll of us have seen them now.'],
+  ['DAY 11', 'Kel went into the bore alone.\n\nHis line runs forty metres in and stops. Cut clean. Not frayed.\n\nCut.'],
+  ['DAY 12', 'We are sealing D-10 in the bore, and D-9 behind us. Couplings pulled.\n\nIf you are reading this, the array is listening again, and something has heard it.\n\nDo not dive alone. Do not follow the lights.'],
+];
+function inWater(x, y, z) {                  // below the lake's surface: in the lake, or in the flooded bore
+  if (y >= LWL) return false;
+  if (CV.lakeK(x, y, z) < 1.08) return true;
+  const B = LAKE.bore; return x > B[0][0] - 3 && x < B[B.length - 1][0] + 3 && Math.abs(z - B[0][2]) < LAKE.boreR + 1;
+}
+function lakeHits() {
+  const C = LAKE, out = [], r = cavRnd(6131);
+  const origins = [[0, 5, 0], [-40, 0, 0], [40, 0, 0], [0, 0, -35], [0, 0, 35], [-25, -25, -20], [25, -25, 20], [0, -32, 0], [-50, -8, 10]];
+  for (const o of origins) {
+    const ox = C.x + o[0], oy = C.y + o[1], oz = C.z + o[2]; if (CV.sdf(ox, oy, oz) > -2) continue;
+    const N = 1100;
+    for (let i = 0; i < N; i++) {
+      const yv = 1 - 2 * (i + 0.5) / N, rr = Math.sqrt(1 - yv * yv), ph = i * 2.39996 + r() * 0.3, dx = Math.cos(ph) * rr, dy = yv, dz = Math.sin(ph) * rr;
+      let t = 0, hit = null;
+      for (let it = 0; it < 220 && t < 220; it++) { const x = ox + dx * t, y = oy + dy * t, z = oz + dz * t, d = CV.sdf(x, y, z); if (d > -0.04) { hit = [x, y, z]; break; } t += Math.max(-d * 0.8, 0.12); }
+      if (!hit || CV.lakeK(hit[0], hit[1], hit[2]) > 1.25) continue;
+      if (Math.hypot(hit[0] - C.drop[0], hit[2] - C.drop[1]) < 7.5 && hit[1] > LWL - 2) continue;   // keep the drop clear
+      const e = 0.35, g = [CV.sdf(hit[0] + e, hit[1], hit[2]) - CV.sdf(hit[0] - e, hit[1], hit[2]), CV.sdf(hit[0], hit[1] + e, hit[2]) - CV.sdf(hit[0], hit[1] - e, hit[2]), CV.sdf(hit[0], hit[1], hit[2] + e) - CV.sdf(hit[0], hit[1], hit[2] - e)];
+      out.push({ p: hit, n: norm([-g[0], -g[1], -g[2]]) });
+    }
+  }
+  return out;
+}
+const STATION_AT = [LAKE.drop[0] - 3, LAKE.drop[1] - 9];      // the dive station, on the beach just north of where the drop lands
+function nearStation(p) { return Math.hypot(p[0] - STATION_AT[0] - 3, p[2] - STATION_AT[1]) < 9 && p[1] > LWL - 3; }
+function lakeScatter(hits) {
+  const r = cavRnd(8803), bag = {}, life = {}, worms = [], push = (b, k, v) => (b[k] = b[k] || []).push(v);
+  const down = () => norm([(r() - 0.5) * 0.1, -1, (r() - 0.5) * 0.1]), up = () => norm([(r() - 0.5) * 0.2, 1, (r() - 0.5) * 0.2]);
+  const tangent = n => { const a = norm(cross(n, Math.abs(n[1]) > 0.9 ? [1, 0, 0] : [0, 1, 0])); return [a, cross(n, a)]; };
+  for (const h of hits) {
+    const p = h.p, n = h.n, floor = n[1] > 0.55, ceil = n[1] < -0.5, wet = p[1] < LWL - 0.4, tint = 0.15 + r() * 0.3;
+    if (nearRoute(p) || nearStation(p)) continue;
+    if (ceil) {
+      if (r() < 0.45) { const L = 0.3 * Math.exp(r() * 2.1), ax = down(), it = r() < 0.3 ? 'soda_straws' : r() < 0.25 ? 'stalactite_cluster' : 'stalactite'; push(bag, it, [p[0], p[1] + 0.12 * L, p[2], L, ax[0], ax[1], ax[2], 0.8 + r() * 0.4, tint, 1, r() * 6.283, 0]); }
+      if (r() < 0.1) push(life, 'glowworm_threads', [p[0] - n[0] * 0.03, p[1] - n[1] * 0.03, p[2] - n[2] * 0.03, 0.6 + r() * 0.6, n[0], n[1], n[2], 1, 0.5, 0.7, r() * 6.283, 0]);
+      const [ta, tb] = tangent(n);
+      for (let k = 0; k < 3; k++) { const u = (r() - 0.5) * 3, v = (r() - 0.5) * 3, q = [p[0] + ta[0] * u + tb[0] * v, p[1] + ta[1] * u + tb[1] * v, p[2] + ta[2] * u + tb[2] * v], d = CV.sdf(q[0], q[1], q[2]); if (d > -1.2 && d < 0.6) worms.push(q[0] + n[0] * (d + 0.08), q[1] + n[1] * (d + 0.08), q[2] + n[2] * (d + 0.08), r()); }
+    } else if (floor) {
+      if (p[1] < LWL - 0.4 && p[1] > LWL - 2.5) continue;   // keep the shallows plain
+      if (wet) {                             // a drowned forest: stalagmites that grew when this hall was dry
+        if (r() < 0.24) { const L = 0.4 * Math.exp(r() * 2), ax = up(); push(bag, r() < 0.3 ? 'stalagmite_cluster' : 'stalagmite', [p[0], p[1] - 0.06 * L, p[2], L, ax[0], ax[1], ax[2], 0.85 + r() * 0.5, 0.9, 1, r() * 6.283, 0]); }
+        else if (r() < 0.08) { const s = 0.8 + r() * 1.2; push(bag, 'flowstone', [p[0], p[1] - 0.1 * s, p[2], s, n[0], n[1], n[2], 1, 0.85, 1, r() * 6.283, 0]); }
+      } else if (r() < 0.1) { const L = 0.25 * Math.exp(r() * 1.6), ax = up(); push(bag, 'stalagmite', [p[0], p[1] - 0.06 * L, p[2], L, ax[0], ax[1], ax[2], 0.8 + r() * 0.4, tint, 1, r() * 6.283, 0]); }
+    } else if (!wet) {
+      const g = r(), nx = Math.hypot(n[0], n[2]) || 1;
+      if (g < 0.12 && n[1] < 0.35) push(bag, 'drapery', [p[0] - n[0] * 0.12, p[1] + 0.25, p[2] - n[2] * 0.12, 0.8 + r() * 2.8, 0, -1, 0, 0.9 + r() * 0.4, tint, 1, Math.atan2(n[2] / nx, -n[0] / nx), 0]);
+      else if (g < 0.18) push(bag, 'helictites', [p[0], p[1], p[2], 0.7 + r() * 0.7, n[0], n[1], n[2], 1, tint, 1, r() * 6.283, 0]);
+    }
+  }
+  return { bag, life, worms };
+}
+function lakeInit() {
+  const t0 = performance.now(), hits = lakeHits(), sc = lakeScatter(hits), all = [], CELL = 48;
+  for (const name in Object.assign({}, sc.bag, sc.life)) {
+    const bag = sc.bag[name] ? sc.bag : sc.life, a = assetItem('dripstone', name); if (!a) continue;
+    const kit = { name, hi: a.hi, lo: a.lo, prog: bag === sc.life ? 'life' : 'drip' }; LAKER.kits.push(kit);
+    const cells = new Map();
+    for (const v of bag[name]) { const key = Math.floor(v[0] / CELL) + ',' + Math.floor(v[1] / CELL) + ',' + Math.floor(v[2] / CELL); if (!cells.has(key)) cells.set(key, []); cells.get(key).push(v); }
+    for (const [key, list] of cells) {
+      let mn = [1e9, 1e9, 1e9], mx = [-1e9, -1e9, -1e9];
+      for (const v of list) for (let q = 0; q < 3; q++) { mn[q] = Math.min(mn[q], v[q] - v[3]); mx[q] = Math.max(mx[q], v[q] + v[3]); }
+      LAKER.ranges.push({ kit, first: all.length / 12, count: list.length, mn, mx }); for (const v of list) all.push(...v);
+    }
+  }
+  LAKER.count = all.length / 12; LAKER.hits = hits.length;
+  if (all.length) { LAKER.inst = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, LAKER.inst); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(all), gl.STATIC_DRAW); }
+  for (const k of LAKER.kits) for (const m of [k.hi, k.lo]) {
+    if (m.instReady) continue; m.instReady = true; gl.bindVertexArray(m.vao); gl.bindBuffer(gl.ARRAY_BUFFER, LAKER.inst);
+    for (let q = 3; q <= 5; q++) { gl.enableVertexAttribArray(q); gl.vertexAttribDivisor(q, 1); gl.vertexAttribPointer(q, 4, gl.FLOAT, false, 48, (q - 3) * 16); }
+  }
+  gl.bindVertexArray(null);
+  const pts = (arr, n) => { const vao = gl.createVertexArray(); gl.bindVertexArray(vao); const vb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vb); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(arr), gl.STATIC_DRAW); gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, n, gl.FLOAT, false, n * 4, 0); gl.bindVertexArray(null); return vao; };
+  if (sc.worms.length) { LAKER.worms = pts(sc.worms, 4); LAKER.nWorms = sc.worms.length / 4; }
+  // the lake's surface: one disc at the water level (the beach and walls hide it wherever rock is higher)
+  { const N = 160, R = Math.sqrt(1 - Math.pow((LWL - LAKE.y) / LAKE.ry, 2)) + 0.03, V = [LAKE.x, LWL, LAKE.z], I = [];
+    for (let i = 0; i <= N; i++) { const a = i / N * Math.PI * 2; V.push(LAKE.x + Math.cos(a) * LAKE.rx * R, LWL, LAKE.z + Math.sin(a) * LAKE.rz * R); if (i) I.push(0, i, i + 1); }
+    const vao = gl.createVertexArray(); gl.bindVertexArray(vao); const vb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vb); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(V), gl.STATIC_DRAW); gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 12, 0);
+    const ib = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint32Array(I), gl.STATIC_DRAW); gl.bindVertexArray(null); LAKER.surf = { vao, count: I.length }; }
+  // silt hanging in the water (drawn around the camera when it is under water)
+  { const r = cavRnd(77), P = []; for (let i = 0; i < 2600; i++) P.push(r() * 16, r() * 16, r() * 16, r()); LAKER.silt = pts(P, 4); LAKER.nSilt = 2600; }
+  // the dive station
+  const place = (mod, name, x, z, yaw, y) => { const a = assetItem(mod, name); if (!a) return null; const yy = y !== undefined ? y : CV.floorAt(x, LWL + 6, z); if (!(yy > -1e8 && yy < 1e8)) return null;
+    const p = { mesh: a, it: a.it, p: [x, yy, z], yaw, m: new Float32Array(mulAll(tr(x, yy, z), rotY(yaw))) }; LAKER.props.push(p); return p; };
+  const S = STATION_AT, wpt = (p, a) => { const c = Math.cos(p.yaw), s = Math.sin(p.yaw); return [p.p[0] + c * a[0] + s * a[2], p.p[1] + a[1], p.p[2] - s * a[0] + c * a[2]]; };
+  place('divesite', 'dive_platform', S[0] + 6.5, S[1], 0, LWL);
+  place('divesite', 'tank_rack', S[0] - 4, S[1] - 3, 0.4);
+  const term = place('divesite', 'log_terminal', S[0] - 1.5, S[1] + 5.5, 0);
+  const spool = place('divesite', 'line_spool', S[0] + 1.5, S[1] - 2.5, 0);
+  place('divesite', 'dropped_dive_light', S[0] - 0.5, S[1] + 1.5, 1.1);
+  if (term) LAKER.term = { at: term.it.attach && term.it.attach[0] ? wpt(term, term.it.attach[0]) : [term.p[0], term.p[1] + 1.1, term.p[2] + 0.2], p: term.p };
+  // the station's own work light, aimed out over the water
+  const fm = assetItem('worklight', 'flood_mast');
+  { const x = S[0] - 6, z = S[1] + 9, y = CV.floorAt(x, LWL + 6, z);
+    if (y > -1e8 && y < 1e8) { const tg = [LAKE.x - 25, LWL, LAKE.z - 5], yaw = Math.atan2(tg[0] - x, tg[2] - z), c = Math.cos(yaw), s = Math.sin(yaw);
+      const A = fm && fm.it.attach && fm.it.attach.length ? fm.it.attach : [[-0.34, 3.23, 0.36], [0.34, 3.23, 0.36]], lamps = A.map(a => [x + c * a[0] + s * a[2], y + a[1], z - s * a[0] + c * a[2]]);
+      const lp = [0, 1, 2].map(k => lamps.reduce((t, q) => t + q[k], 0) / lamps.length), dir = norm([tg[0] - lp[0], tg[1] - lp[1], tg[2] - lp[2]]);
+      FLOODS.push({ door: DOORS.find(d => d.name === 'D-10'), x, y, z, yaw, lamps, lp, dir, mesh: fm, m: new Float32Array(mulAll(tr(x, y, z), rotY(yaw))) }); } }
+  // the research team's old guideline: from their spool, down the lake floor, into the bore, and cut off at D-10
+  { const R = ROUTES['D-10'] || [], P = [];
+    if (spool) P.push(spool.it.attach && spool.it.attach[0] ? wpt(spool, spool.it.attach[0]) : [spool.p[0] + 0.5, spool.p[1] + 0.1, spool.p[2]]);
+    for (const q of R) P.push([q[0] + 0.8, q[1] + 0.25, q[2] + 0.6]);
+    const D = DOORS.find(d => d.name === 'D-10'); if (D) { const f = doorWorld(D, 0.4, -0.9); P.push([f[0], D.y + 0.2, f[1]]); }
+    const V = [], I = [], r = 0.035;
+    for (let i = 1; i < P.length; i++) {
+      const a = P[i - 1], b = P[i], f = norm([b[0] - a[0], b[1] - a[1], b[2] - a[2]]), s = norm(cross(f, Math.abs(f[1]) > 0.9 ? [1, 0, 0] : [0, 1, 0])), u = cross(s, f), base = V.length / 4;
+      for (const e of [a, b]) for (const [cs, cu] of [[1, 0], [0, 1], [-1, 0], [0, -1]]) V.push(e[0] + (s[0] * cs + u[0] * cu) * r, e[1] + (s[1] * cs + u[1] * cu) * r, e[2] + (s[2] * cs + u[2] * cu) * r, 2);
+      for (let q = 0; q < 4; q++) { const q2 = (q + 1) % 4; I.push(base + q, base + q2, base + 4 + q2, base + q, base + 4 + q2, base + 4 + q); }
+    }
+    if (I.length) { const vao = gl.createVertexArray(); gl.bindVertexArray(vao); const vb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vb); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(V), gl.STATIC_DRAW);
+      gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 16, 0); gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 1, gl.FLOAT, false, 16, 12);
+      const ib = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint32Array(I), gl.STATIC_DRAW); gl.bindVertexArray(null); LAKER.oldLine = { vao, count: I.length }; }
+  }
+  // the fish: four long lurkers and three darters
+  const r = cavRnd(424242);
+  for (let i = 0; i < 7; i++) {
+    const kind = i < 4 ? 'lurker' : 'darter', a = assetItem('deepfish', kind); let p = null;
+    for (let k = 0; k < 60 && !p; k++) { const x = LAKE.x + (r() - 0.5) * 100, z = LAKE.z + (r() - 0.5) * 90, y = LWL - 4 - r() * 20; if (inWater(x, y, z) && CV.sdf(x, y, z) < -3) p = [x, y, z]; }
+    if (!p) continue;
+    const L = a ? a.bd.max[0] - a.bd.min[0] : (kind === 'lurker' ? 2.6 : 1.6);
+    LAKER.fish.push({ i, kind, mesh: a, L, p, v: [0, 0, 0], yaw: r() * 6.28, pitch: 0, ph: r() * 6.28, mode: 'wander', t: 0, goal: p.slice(), sp: 1.5, side: r() < 0.5 ? -1 : 1, ang: r() * 6.28, eyes: a && a.it.attach ? a.it.attach : [[L * 0.42, 0.06, 0.08], [L * 0.42, 0.06, -0.08]] });
+  }
+  LAKER.ms = Math.round(performance.now() - t0);
+}
+/* the fish keep their distance: they circle you out at the edge of the murk, flee when your light finds them, and now and then one darts past */
+function fishUpdate(dt) {
+  const E = cam.eye, F = [Math.cos(state.pitch) * -Math.sin(state.yaw), -Math.sin(state.pitch), Math.cos(state.pitch) * -Math.cos(state.yaw)];
+  const P = [state.px, state.py + 1.4, state.pz], playerIn = inWater(P[0], P[1], P[2]), t = state.time, r = Math.random;
+  const nearLake = !playerIn && cave.under && CV.lakeK(P[0], P[1], P[2]) < 1.05 && P[1] < LWL + 6;
+  if (playerIn && t > LAKER.dartT) {        // a dart: one fish crosses right in front of you, fast
+    LAKER.dartT = t + 14 + r() * 18; const c = LAKER.fish.filter(f => f.mode !== 'dart' && Math.hypot(f.p[0] - P[0], f.p[1] - P[1], f.p[2] - P[2]) > 9);
+    if (c.length) { const f = c[(r() * c.length) | 0], side = [-F[2], 0, F[0]], k = f.side; f.mode = 'dart'; f.t = 0;
+      const mid = [E[0] + F[0] * 4 + side[0] * k * 1.2, E[1] + F[1] * 4 - 0.4, E[2] + F[2] * 4 + side[2] * k * 1.2];
+      f.goal = mid; f.exit = [mid[0] + (mid[0] - f.p[0]) * 1.5, mid[1], mid[2] + (mid[2] - f.p[2]) * 1.5]; }
+  }
+  if (nearLake && t > LAKER.peekT) {        // from the shore: a pair of eyes rises just under the surface, watching, then sinks away
+    LAKER.peekT = t + 16 + r() * 16; const f = LAKER.fish[(r() * Math.min(4, LAKER.fish.length)) | 0];
+    if (f && f.mode !== 'dart') { const a = Math.atan2(LAKE.z - P[2], LAKE.x - P[0]) + (r() - 0.5) * 1.2, d = 7 + r() * 5, g = [P[0] + Math.cos(a) * d, LWL - 1.6, P[2] + Math.sin(a) * d]; if (inWater(g[0], g[1], g[2]) && CV.sdf(g[0], g[1], g[2]) < -1) { f.mode = 'peek'; f.t = 0; f.goal = g; } }
+  }
+  for (const f of LAKER.fish) {
+    f.t += dt; const toE = [f.p[0] - E[0], f.p[1] - E[1], f.p[2] - E[2]], dE = Math.hypot(toE[0], toE[1], toE[2]) || 1;
+    const looked = cave.flash > 0 && (toE[0] * F[0] + toE[1] * F[1] + toE[2] * F[2]) / dE > 0.95 && dE < 13;
+    let goal = f.goal, sp = 1.6;
+    if (f.mode === 'dart') { sp = 11; if (f.t > 0.4 && Math.hypot(f.p[0] - f.goal[0], f.p[1] - f.goal[1], f.p[2] - f.goal[2]) < 2.5) f.goal = f.exit; if (f.t > 5) f.mode = 'wander'; goal = f.goal; }
+    else if (f.mode === 'flee') { sp = 8; goal = [f.p[0] + toE[0] / dE * 15, f.p[1] + toE[1] / dE * 4, f.p[2] + toE[2] / dE * 15]; if (f.t > 2.2) f.mode = 'wander'; }
+    else if (looked || (playerIn && dE < 6)) { f.mode = 'flee'; f.t = 0; }
+    else if (f.mode === 'peek') { sp = f.t < 3 ? 2.2 : 3; if (f.t > 6.5 || looked) { f.mode = 'flee'; f.t = 0; } }
+    else if (playerIn) { f.ang += dt * 0.12 * f.side; const rad = 11 + 4 * Math.sin(t * 0.1 + f.i * 1.7); goal = [P[0] + Math.cos(f.ang) * rad, P[1] + Math.sin(t * 0.07 + f.i) * 3, P[2] + Math.sin(f.ang) * rad]; sp = 2.6; }
+    else { if (f.t > 9 || Math.hypot(f.p[0] - f.goal[0], f.p[1] - f.goal[1], f.p[2] - f.goal[2]) < 3) { f.t = 0; for (let k = 0; k < 12; k++) { const g = [LAKE.x + (r() - 0.5) * 110, LWL - 3 - r() * 24, LAKE.z + (r() - 0.5) * 100]; if (inWater(g[0], g[1], g[2]) && CV.sdf(g[0], g[1], g[2]) < -2) { f.goal = g; break; } } } goal = f.goal; }
+    let d = [goal[0] - f.p[0], goal[1] - f.p[1], goal[2] - f.p[2]]; const dl = Math.hypot(d[0], d[1], d[2]) || 1; d = d.map(v => v / dl * sp);
+    if (CV.sdf(f.p[0] + f.v[0] * 0.6, f.p[1] + f.v[1] * 0.6, f.p[2] + f.v[2] * 0.6) > -1.4 || f.p[1] > LWL - 1.2) { const c = [LAKE.x - f.p[0], LWL - 14 - f.p[1], LAKE.z - f.p[2]], cl = Math.hypot(c[0], c[1], c[2]) || 1; d = c.map(v => v / cl * Math.max(sp, 3)); }   // stay in open water
+    const k = Math.min(1, dt * (f.mode === 'dart' ? 4 : 2.2)); for (let q = 0; q < 3; q++) f.v[q] += (d[q] - f.v[q]) * k;
+    for (let q = 0; q < 3; q++) f.p[q] += f.v[q] * dt; f.p[1] = Math.min(f.p[1], LWL - 0.9);
+    const h = Math.hypot(f.v[0], f.v[2]), s2 = Math.hypot(h, f.v[1]); if (h > 0.05) { let dy = Math.atan2(-f.v[2], f.v[0]) - f.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); f.yaw += dy * Math.min(1, dt * 5); }
+    f.pitch += (Math.atan2(f.v[1], Math.max(h, 0.1)) * 0.7 - f.pitch) * Math.min(1, dt * 3); f.ph += dt * (2.2 + s2 * 1.6); f.amp = 0.7 + Math.min(1, s2 / 8) * 0.8;
+    f.m = mulAll(tr(f.p[0], f.p[1], f.p[2]), rotY(f.yaw), rotZ(f.pitch));
+  }
+}
+function lakeUpdate(dt) {
+  const px = state.px, py = state.py, pz = state.pz, head = inWater(px, py + 1.6, pz);
+  if (cave.under && CV.lakeK(px, py + 1, pz) < 1.0 && !LAKER.seen) { LAKER.seen = true; toast('Humidity 100%. Water temperature 4 °C. Something moved, out on the water.', 7); tone([196, 185, 147], 2.6, 'sine', 0.09, 0.6); }
+  if (head) LAKER.air = Math.max(0, LAKER.air - dt * 100 / 75); else LAKER.air = Math.min(100, LAKER.air + dt * 40);
+  if (head && LAKER.air < 30 && !LAKER.warned) { LAKER.warned = 1; toast('Suit air 30%. Head for the surface.', 4); tone([440, 330], 0.4, 'square', 0.08, 0.2); }
+  if (LAKER.air > 60) LAKER.warned = 0;
+  if (head && LAKER.air <= 0 && !LAKER.out && state.play) {
+    LAKER.out = true; $('fade').classList.add('on'); tone([220, 165, 110], 1.6, 'sine', 0.12, 0.4);
+    setTimeout(() => { caveTeleport('lake'); LAKER.air = 100; LAKER.out = false; $('fade').classList.remove('on'); toast('Your air ran out. You come to on the shore, coughing, with no memory of swimming back.', 8); saveGame(); }, 2600);
+  }
+  // the dive log terminal: walk up to it to read
+  const T = LAKER.term, nearT = T && cave.under && Math.hypot(T.p[0] - px, T.p[2] - pz) < 3 && Math.abs(T.p[1] - py) < 2.5;
+  const b = $('logBtn'); if (b) b.hidden = !nearT || LAKER.read >= 0;
+  if (!nearT && LAKER.read >= 0) logShow(-1);
+  if (LAKER.fish.length) fishUpdate(dt);
+  LAKER.camUnder = inWater(cam.eye[0], cam.eye[1], cam.eye[2]);
+}
+function logShow(i) {
+  LAKER.read = i; const c = $('logCard'); if (!c) return; if (i >= 0) $('logBtn').hidden = true; c.hidden = i < 0; game.paused = i >= 0 ? true : !$('menu').hidden;
+  if (i >= 0) { $('logTitle').textContent = LOG[i][0]; $('logText').textContent = LOG[i][1]; $('logPage').textContent = (i + 1) + ' / ' + LOG.length; $('logPrev').disabled = i === 0; $('logNext').disabled = i === LOG.length - 1; tone([660], 0.08, 'square', 0.05); }
+}
+function drawLake() {
+  const E = cam.eye; if (CV.lakeK(E[0], E[1], E[2]) > 1.8 && !LAKER.camUnder) return;
+  const P = cam.planes;
+  if (LAKER.inst) for (const [prog, tag] of [[pDrip, 'drip'], [pLife, 'life']]) {
+    setCommon(prog);
+    for (const g of LAKER.ranges) {
+      if (g.kit.prog !== tag || !classify(P, g.mn[0], g.mn[1], g.mn[2], g.mx[0], g.mx[1], g.mx[2], 0)) continue;
+      const cx = Math.max(g.mn[0], Math.min(E[0], g.mx[0])), cy = Math.max(g.mn[1], Math.min(E[1], g.mx[1])), cz = Math.max(g.mn[2], Math.min(E[2], g.mx[2])), d = Math.hypot(cx - E[0], cy - E[1], cz - E[2]);
+      const m = d < (tag === 'drip' ? 40 : 25) ? g.kit.hi : g.kit.lo; gl.bindVertexArray(m.vao); gl.bindBuffer(gl.ARRAY_BUFFER, LAKER.inst);
+      for (let q = 3; q <= 5; q++) gl.vertexAttribPointer(q, 4, gl.FLOAT, false, 48, g.first * 48 + (q - 3) * 16);
+      gl.drawElementsInstanced(gl.TRIANGLES, m.count, gl.UNSIGNED_INT, 0, g.count); stats.cave += m.tris * g.count; stats.calls++; stats.submitted += m.tris * g.count;
+    }
+  }
+  // the dive station
+  setCommon(pProp); gl.uniform4f(pProp.u.uUG, 1, cave.flash, cave.pday, cave.expo); gl.uniform1f(pProp.u.uChar, 0);
+  for (const p of LAKER.props) { const d = Math.hypot(p.p[0] - E[0], p.p[1] - E[1], p.p[2] - E[2]); if (d > 150) continue; gl.uniformMatrix4fv(pProp.u.uM, false, p.m); const g = d < 45 ? p.mesh.hi : p.mesh.lo; gl.bindVertexArray(g.vao); stats.cave += drawElems(g.count, gl.UNSIGNED_INT, 0); }
+  gl.uniform4f(pProp.u.uUG, 0, cave.flash, cave.pday, cave.expo);
+  // the fish
+  if (LAKER.fish.length) { setCommon(pFish);
+    for (const f of LAKER.fish) { if (!f.mesh || !f.m) continue; const d = Math.hypot(f.p[0] - E[0], f.p[1] - E[1], f.p[2] - E[2]); if (d > 60) continue;
+      gl.uniformMatrix4fv(pFish.u.uM, false, new Float32Array(f.m)); gl.uniform4f(pFish.u.uSw, f.ph, f.amp || 1, f.L, 2 * Math.PI / f.L * 0.85);
+      const g = d < 20 ? f.mesh.hi : f.mesh.lo; gl.bindVertexArray(g.vao); stats.cave += drawElems(g.count, gl.UNSIGNED_INT, 0); } }
+  gl.bindVertexArray(null);
+}
+function drawLakeFx() {
+  const E = cam.eye; if (CV.lakeK(E[0], E[1], E[2]) > 1.8 && !LAKER.camUnder) return;
+  if (LAKER.surf) { gl.enable(gl.BLEND); gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ZERO, gl.ONE); gl.depthMask(false); setCommon(pLake); gl.bindVertexArray(LAKER.surf.vao); stats.cave += drawElems(LAKER.surf.count, gl.UNSIGNED_INT, 0); gl.depthMask(true); gl.disable(gl.BLEND); }
+  gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE); gl.depthMask(false);
+  if (LAKER.worms) { gl.useProgram(pWorm.p); gl.uniformMatrix4fv(pWorm.u.uVP, false, cam.vp32); gl.uniform1f(pWorm.u.uT, state.time); gl.uniform3fv(pWorm.u.uCam, cam.eye); gl.uniform1f(pWorm.u.uPx, canvas.height / 900); gl.bindVertexArray(LAKER.worms); gl.drawArrays(gl.POINTS, 0, LAKER.nWorms); stats.calls++; }
+  if (LAKER.camUnder && LAKER.silt) { gl.useProgram(pSilt.p); gl.uniformMatrix4fv(pSilt.u.uVP, false, cam.vp32); gl.uniform1f(pSilt.u.uT, state.time); gl.uniform3fv(pSilt.u.uCam, cam.eye); gl.uniform1f(pSilt.u.uPx, canvas.height / 900); gl.uniform3fv(pSilt.u.uFlP, cave.flP); gl.uniform3fv(pSilt.u.uFlD, cave.flD); gl.uniform4f(pSilt.u.uUG, 1, cave.flash, 0, 0); gl.bindVertexArray(LAKER.silt); gl.drawArrays(gl.POINTS, 0, LAKER.nSilt); stats.calls++; }
+  if (LAKER.oldLine) { gl.useProgram(pLine.p); gl.uniformMatrix4fv(pLine.u.uVP, false, cam.vp32); gl.uniform3fv(pLine.u.uFlP, cave.flP); gl.uniform3fv(pLine.u.uFlD, cave.flD); gl.uniform4f(pLine.u.uUG, 0, cave.flash, 0, 0); gl.bindVertexArray(LAKER.oldLine.vao); stats.fx += drawElems(LAKER.oldLine.count, gl.UNSIGNED_INT, 0); }
+  gl.depthMask(true); gl.disable(gl.BLEND); gl.bindVertexArray(null);
+}
+function drawLakeGlow() {                    // with the glow program bound: eyeshine, the terminal's screen
+  const E = cam.eye, fl = cave.flash;
+  for (const f of LAKER.fish) {
+    if (!f.m) continue; const d = Math.hypot(f.p[0] - E[0], f.p[1] - E[1], f.p[2] - E[2]); if (d > 45) continue;
+    const toF = [f.p[0] - cave.flP[0], f.p[1] - cave.flP[1], f.p[2] - cave.flP[2]], tl = Math.hypot(toF[0], toF[1], toF[2]) || 1;
+    const lit = fl * Math.max(0, Math.min(1, ((toF[0] * cave.flD[0] + toF[1] * cave.flD[1] + toF[2] * cave.flD[2]) / tl - 0.8) / 0.15));   // eyeshine flares in your lamp
+    let k = (0.32 + 2.4 * lit) * Math.exp(-d * (LAKER.camUnder ? 0.05 : 0.02)); if (!LAKER.camUnder) k *= Math.exp(-(LWL - f.p[1]) * 0.35);
+    if (k < 0.02) continue; const sz = (f.kind === 'lurker' ? 0.05 : 0.04) * Math.max(1, d / 12);
+    for (const a of f.eyes) { const w = [f.m[0] * a[0] + f.m[4] * a[1] + f.m[8] * a[2] + f.m[12], f.m[1] * a[0] + f.m[5] * a[1] + f.m[9] * a[2] + f.m[13], f.m[2] * a[0] + f.m[6] * a[1] + f.m[10] * a[2] + f.m[14]];
+      glowDraw(crystal, mulAll(tr(w[0], w[1], w[2]), sc(sz, sz, sz)), 0.82, 1.0, 0.55, k, 0); }
+  }
+  const T = LAKER.term; if (T && Math.hypot(T.at[0] - E[0], T.at[1] - E[1], T.at[2] - E[2]) < 80) glowDraw(crystal, mulAll(tr(T.at[0], T.at[1], T.at[2]), sc(0.16, 0.1, 0.04)), 0.55, 1.0, 0.9, 0.7 + 0.15 * Math.sin(state.time * 9) * Math.sin(state.time * 2.3), 0);
+}
 function caveStep(nx, nz, f) {
   if (cave.under && doorBlocks(nx, nz, state.py) && !doorBlocks(state.px, state.pz, state.py)) return 1e9;   // a closed door: but never trap someone already behind it
   if (f > 1e8 && cave.under && CV.sdf(nx, state.py + 1.25, nz) < CV.sdf(state.px, state.py + 1.25, state.pz) - 0.002) return CV.floorAt(nx, state.py, nz, true);
   return f;
 }
 // is a body at (x, py, z) below the ground, i.e. in the shaft or the caves?
-const CAVE_AREA = [CV.SX - 200, CV.SZ - 220, CV.SX + 450, CV.SZ + 320];   // the caves lie wholly under this patch of the map
+const CAVE_AREA = [CV.SX - 200, CV.SZ - 220, CV.SX + 560, CV.SZ + 320];   // the caves lie wholly under this patch of the map
 function caveUnder(x, z, py) {
   if (x < CAVE_AREA[0] || z < CAVE_AREA[1] || x > CAVE_AREA[2] || z > CAVE_AREA[3]) return false;
   return CV.inShaft(x, z) ? py < CV.TOP + 1.6 : py < T.height(x, z) - 6;   // exact terrain, never the drawn mesh
@@ -10622,7 +11743,7 @@ function lineRebuild() {
 /* ---------- per frame: battery, pickups, the line, passing out in the dark ---------- */
 function caveUpdate(dt) {
   const px = state.px, py = state.py, pz = state.pz;
-  doorUpdate(dt);
+  doorUpdate(dt); lakeUpdate(dt);
   PICKS.forEach((pk, i) => {
     if (cave.picked[i] || !cave.under) return; const a = pk.at;
     if (Math.hypot(a[0] - px, a[2] - pz) > 2.0 || Math.abs(a[1] - py) > 2.4) return;
@@ -10685,7 +11806,8 @@ function caveCamera(tgt, eye) {
 function caveTeleport(where) {
   if (where === 'top') { state.px = CV.SX + 3.3; state.pz = CV.SZ - 0.4; state.py = groundAt(state.px, state.pz); state.yaw = Math.atan2(3.3, -0.4); state.heading = Math.atan2(-3.3, 0.4); state.pitch = 0.5; }
   else if (where === 'door' || where === 'crystal') { state.px = DOOR.x + 0.6; state.pz = DOOR.z - 4.2; state.py = CV.floorAt(state.px, -55, state.pz); state.yaw = Math.PI; state.heading = 0; state.pitch = 0.18; }
-  else if (where === 'd8' || where === 'd9') { const D = DOORS.find(d => d.name === (where === 'd8' ? 'D-8' : 'D-9')), f = doorWorld(D, 0.6, -4.5); state.px = f[0]; state.pz = f[1]; state.py = CV.floorAt(f[0], D.y + 2, f[1]); state.yaw = D.yaw + Math.PI; state.heading = D.yaw; state.pitch = 0.18; }
+  else if (where === 'lake') { const C = CV.LAKE; state.px = C.drop[0] - 1.5; state.pz = C.drop[1] + 1; state.py = CV.floorAt(state.px, C.y + 20, state.pz); state.yaw = -Math.PI / 2; state.heading = Math.PI / 2; state.pitch = 0.2; }
+  else if (where === 'd8' || where === 'd9' || where === 'd10') { const D = DOORS.find(d => d.name === (where === 'd8' ? 'D-8' : where === 'd9' ? 'D-9' : 'D-10')), f = doorWorld(D, 0.6, -4.5); state.px = f[0]; state.pz = f[1]; state.py = CV.floorAt(f[0], D.y + 2, f[1]); state.yaw = D.yaw + Math.PI; state.heading = D.yaw; state.pitch = 0.18; }
   else if (where === 'drip') { const C = CV.DRIP; state.px = C.drop[0] + 1.5; state.pz = C.drop[1] + 2; state.py = CV.floorAt(state.px, C.y + 10, state.pz); state.yaw = -Math.PI / 2; state.heading = Math.PI / 2; state.pitch = 0.2; }
   else if (where === 'cavern') { state.px = CV.CAV.drop[0] - 2; state.pz = CV.CAV.drop[1] - 10; state.py = CV.floorAt(state.px, CV.CAV.y + 22, state.pz); state.yaw = 0.07; state.heading = Math.atan2(-0.07, -1); state.pitch = 0.22; }
   else { state.px = CV.SX + 2.5; state.pz = CV.SZ - 1.5; state.py = CV.floorAt(state.px, -55, state.pz); state.yaw = -Math.PI / 2; state.heading = Math.PI / 2; state.pitch = 0.15; }
@@ -10698,10 +11820,10 @@ function drawCave() {
   setCommon(pCave); gl.disable(gl.CULL_FACE);
   const P = cam.planes, E = cam.eye, D7 = CV.CAV.drop, D8 = CV.DRIP.drop;
   const nearCol = (c, D) => Math.hypot(c.x0 + 12 - D[0], c.z0 + 12 - D[1]) < 30, inCol = D => Math.hypot(E[0] - D[0], E[2] - D[1]) < 14;
-  const zone = E[1] > -118 && !inCol(D7) ? 0 : E[1] > -225 ? 1 : 2;   // 0: Level 1, 1: crystal cavern, 2: stalactite cavern
+  const D9 = CV.LAKE.drop, zone = E[1] > -118 && !inCol(D7) ? 0 : E[1] > -225 ? 1 : E[1] > -345 ? 2 : 3;   // 0: Level 1, 1: crystal cavern, 2: stalactite cavern, 3: flooded cavern
   for (const c of cave.ch) {
     const top = c.y0 + CAVE_CH;
-    if (zone === 0 ? top < -136 : zone === 1 ? (c.y0 > -110 && !nearCol(c, D7)) || (top < -235 && !nearCol(c, D8)) : c.y0 > -230 && !nearCol(c, D8)) continue;
+    if (zone === 0 ? top < -136 : zone === 1 ? (c.y0 > -110 && !nearCol(c, D7)) || (top < -235 && !nearCol(c, D8)) : zone === 2 ? (c.y0 > -230 && !nearCol(c, D8)) || (top < -355 && !nearCol(c, D9)) : c.y0 > -350 && !nearCol(c, D9)) continue;
     if (CAVR.off.rock || c.d > 330 || !classify(P, c.x0, c.y0, c.z0, c.x0 + CAVE_CH, c.y0 + CAVE_CH, c.z0 + CAVE_CH, 0)) continue;
     const m = (c.d < LOD0_R && c.m[0]) || c.m[1] || c.m[0]; if (!m || !m.count) continue;
     gl.bindVertexArray(m.vao); stats.cave += drawElems(m.count, gl.UNSIGNED_INT, 0);
@@ -10710,11 +11832,13 @@ function drawCave() {
   drawDoor();
   drawCavern();
   drawDrip();
+  drawLake();
 }
 function drawCaveFx() {
   if (!cave.visible) return;
   drawCavernFx();
   drawDripFx();
+  drawLakeFx();
   if (cave.lineDirty && state.time - cave.lineT > 0.2) { cave.lineT = state.time; lineRebuild(); }
   gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE); gl.depthMask(false);
   const m = cave.lineMesh;
@@ -10724,7 +11848,7 @@ function drawCaveFx() {
   }
   gl.useProgram(pGlow.p); gl.uniformMatrix4fv(pGlow.u.uVP, false, cam.vp32);
   const t = state.time;
-  drawDoorLamp();
+  drawDoorLamp(); drawLakeGlow();
   PICKS.forEach((pk, i) => {
     if (cave.picked[i]) return; const p = pk.at, bob = 0.5 + 0.08 * Math.sin(t * 2 + i);
     if (pk.kind === 'reel') glowDraw(ring, mulAll(tr(p[0], p[1] + bob, p[2]), rotY(t), rotX(1.2), sc(0.045, 0.045, 0.045)), 1.0, 0.85, 0.3, 1.3, 0);
@@ -10914,12 +12038,14 @@ function update(dt) {
   const sy = Math.sin(state.yaw), cy = Math.cos(state.yaw), play = state.play;
   if (!game.paused) {
     cave.under = caveUnder(state.px, state.pz, state.py);
+    const swim = cave.under && inWater(state.px, state.py + 1.1, state.pz);
     const fw = Math.max(-1, Math.min(1, (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0) - touch.y)), rt = Math.max(-1, Math.min(1, (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0) + touch.x));
     let mx = -sy * fw + cy * rt, mz = -cy * fw - sy * rt; const ml = Math.hypot(mx, mz); if (ml > 1) { mx /= ml; mz /= ml; }   // keys always give full speed; the touch stick can also give part speed
-    const fast = !!(keys.ShiftLeft || keys.ShiftRight), hasFuel = !play || game.fuel > 0.3, jet = !!keys.Space && hasFuel, drop = !!(keys.KeyC || keys.ControlLeft), boost = fast && (state.grounded || hasFuel);
+    const fast = !!(keys.ShiftLeft || keys.ShiftRight), hasFuel = !play || game.fuel > 0.3, jet = !!keys.Space && hasFuel && !swim, drop = !!(keys.KeyC || keys.ControlLeft), boost = fast && (state.grounded || hasFuel);
     const prev = [state.px, state.py + 1, state.pz];
     // momentum: quick to respond on foot, weighty in the air
-    if (state.grounded) { const sp = fast ? 14 : 7, k = Math.min(1, dt * 12); state.vx += ((ml > 0 ? mx * sp : 0) - state.vx) * k; state.vz += ((ml > 0 ? mz * sp : 0) - state.vz) * k; }
+    if (swim) { const sp = fast ? 5.5 : 3.4, k = 1 - Math.exp(-2.4 * dt); state.vx += ((ml > 0 ? mx * sp : 0) - state.vx) * k; state.vz += ((ml > 0 ? mz * sp : 0) - state.vz) * k; state.hover = false; state.grounded = false; }   // in water you float: nothing holds you to the bottom
+    else if (state.grounded) { const sp = fast ? 14 : 7, k = Math.min(1, dt * 12); state.vx += ((ml > 0 ? mx * sp : 0) - state.vx) * k; state.vz += ((ml > 0 ? mz * sp : 0) - state.vz) * k; }
     else {   // in the air: steer toward where the stick points, and let go to slow to a stop instead of sliding on
       const ug = cave.under, vmax = boost ? (ug ? 17 : play ? game.vmaxBoost : 130) : (ug ? 11 : 48);
       const rate = ml > 0 ? (ug ? 3.2 : boost ? 1.4 : 1.8) : (ug ? 3.0 : 1.6), k = 1 - Math.exp(-rate * dt);
@@ -10945,18 +12071,20 @@ function update(dt) {
     if (jet) { state.vy = Math.min(state.vy + 60 * dt, boost ? (cave.under ? 15 : 45) : (cave.under ? 9 : 28)); state.grounded = false; state.hover = true; if (play) game.fuel = Math.max(0, game.fuel - (boost ? 14 : 9) * dt); }
     if (state.grounded) { if (state.py - floorY > 0.9) state.grounded = false; else { state.py = floorY; state.vy = 0; if (play) game.fuel = Math.min(game.tank, game.fuel + 45 * dt); } }
     if (!state.grounded) {
-      if (!jet) {
+      if (swim) { const vt = keys.Space ? 2.6 : drop ? -2.8 : 0; state.vy += (vt - state.vy) * Math.min(1, dt * 2.5); }
+      else if (!jet) {
         if (state.hover && !drop && hasFuel) { state.vy += (0 - state.vy) * Math.min(1, dt * 4); if (play) game.fuel = Math.max(0, game.fuel - 2.2 * dt); }   // hovering
         else { const capV = drop ? (cave.under ? -16 : -75) : play ? game.fallCap : -12; state.vy = state.vy < capV ? Math.min(capV, state.vy + 90 * dt) : Math.max(capV, state.vy - 26 * dt); }
       }
       state.py = Math.min(1800, state.py + state.vy * dt);
+      if (swim && state.py > LWL - 1.25 && !(floorY > LWL - 1.4)) { state.py = LWL - 1.25; if (state.vy > 0) state.vy = 0; }   // float with your head out
       if (cave.under) { const c = CV.ceilAt(state.px, state.py, state.pz); if (c < 1e8 && c > state.py + 1.0 && state.py + 1.85 > c) { state.py = c - 1.85; if (state.vy > 0) state.vy = 0; } }
       if (state.py <= floorY) { if (state.vy < -20) thud(0.5, 180); else if (state.vy < -3) thud(0.2, 240); state.py = floorY; state.vy = 0; state.grounded = true; state.hover = false; }
     }
     const ease = (cur, to, rate) => cur + (to - cur) * Math.min(1, dt * rate);
     state.moving = state.grounded ? hs > 0.4 : ml > 0;
     state.airK = ease(state.airK, state.grounded ? 0 : 1, 7); state.gait = ease(state.gait, state.grounded ? Math.min(1, hs / 6) : 0, 9); if (state.grounded && hs > 0.3) state.walk += dt * (3 + hs * 0.85);
-    state.thrust = ease(state.thrust, jet ? 1 : state.grounded ? 0 : (keys.Space && !hasFuel) ? 0.12 : drop ? 0.08 : state.hover && hasFuel ? 0.55 : 0.38, 10); state.hspeed = ease(state.hspeed, hs, 6);
+    state.thrust = ease(state.thrust, swim ? 0 : jet ? 1 : state.grounded ? 0 : (keys.Space && !hasFuel) ? 0.12 : drop ? 0.08 : state.hover && hasFuel ? 0.55 : 0.38, 10); state.hspeed = ease(state.hspeed, hs, 6);
     if (cave.under) cave.ceil = CV.ceilAt(state.px, state.py, state.pz);
     caveUpdate(dt);
     if (play) gameUpdate(dt, prev);
@@ -10997,6 +12125,7 @@ function setCommon(p) {
   if (p.u.uUG) gl.uniform4f(p.u.uUG, 0, cave.flash, cave.pday, cave.expo); if (p.u.uFlP) gl.uniform3fv(p.u.uFlP, cave.flP); if (p.u.uFlD) gl.uniform3fv(p.u.uFlD, cave.flD);
   if (p.u.uLd) gl.uniform4f(p.u.uLd, CV.LIGHT[0], CV.LIGHT[1], CV.LIGHT[2], CV.dayK(CV.SHB) * 3.5); if (p.u.uHole) gl.uniform4f(p.u.uHole, CV.SX, CV.SZ, HOLE, 0);
   if (p.u.uCav) gl.uniform4f(p.u.uCav, CV.CAV.x, CV.CAV.y, CV.CAV.z, 1); if (p.u.uCavR) gl.uniform3f(p.u.uCavR, CV.CAV.rx, CV.CAV.ry, CV.CAV.rz);
+  if (p.u.uLke) gl.uniform4f(p.u.uLke, CV.LAKE.x, CV.LAKE.y, CV.LAKE.z, 1); if (p.u.uLkeR) gl.uniform3f(p.u.uLkeR, CV.LAKE.rx, CV.LAKE.ry, CV.LAKE.rz); if (p.u.uUW) gl.uniform4f(p.u.uUW, LAKER.camUnder ? 1 : 0, CV.LAKE.water, 1, 0.115);
   if (p.u.uDrp) gl.uniform4f(p.u.uDrp, CV.DRIP.x, CV.DRIP.y, CV.DRIP.z, 1); if (p.u.uDrpR) gl.uniform3f(p.u.uDrpR, CV.DRIP.rx, CV.DRIP.ry, CV.DRIP.rz);
   if (p.u.uFdP) { const F = cave.flood; if (F && cave.visible) { gl.uniform4f(p.u.uFdP, F.lp[0], F.lp[1], F.lp[2], 1.35); gl.uniform4f(p.u.uFdD, F.dir[0], F.dir[1], F.dir[2], 0.78); } else gl.uniform4f(p.u.uFdP, 0, 0, 0, 0); }
 }
@@ -11299,7 +12428,7 @@ function start() {
     $('loadBar').style.width = (row / GRID * 100) + '%';
     if (row < GRID) { setTimeout(chunk, 0); return; }
     setLight(bakeLight(hg, W, H, CX * LODS[BASE], CZ * LODS[BASE], SUN, WORLD, false), W, H, CX * LODS[BASE], CZ * LODS[BASE], 'coarse');
-    buildBlocks(baseData); buildProps(); buildCharacter(); buildGame(); placeAssets(); caveInit(); cavernInit(); doorInit(); dripInit(); buildPlants(); if (!params.has('coarselight')) startFineLight();
+    buildBlocks(baseData); buildProps(); buildCharacter(); buildGame(); placeAssets(); caveInit(); cavernInit(); doorInit(); dripInit(); lakeInit(); buildPlants(); if (!params.has('coarselight')) startFineLight();
     world = worldTotals();
     $('cWorld').textContent = fmt(world.total);
     $('cWorld').title = fmt(world.terrain) + ' terrain + ' + fmt(world.land) + ' landmarks + ' + fmt(world.wat + world.chr) + ' water & character';
@@ -11308,13 +12437,13 @@ function start() {
     setMode(0); resetView();
     $('loading').hidden = true; window.__loadMs = Math.round(performance.now());
     if (params.has('play')) { const pv = params.get('play'); game.free = pv === 'free' || pv === 'freenew'; startPlay(pv === 'new' || pv === 'freenew', game.free); } else if (params.has('bench') || params.has('mode')) { game.inMode = 'bench'; startBench(); if (params.get('mode') === 'explore') setMode(0); } else showMenu(true);
-    { const at = params.get('at'); if (at === 'mine') caveTeleport('top'); else if (at === 'cave') caveTeleport('station'); else if (['crystal', 'door', 'cavern', 'd8', 'd9', 'drip'].includes(at)) caveTeleport(at); }
+    { const at = params.get('at'); if (at === 'mine') caveTeleport('top'); else if (at === 'cave') caveTeleport('station'); else if (['crystal', 'door', 'cavern', 'd8', 'd9', 'drip', 'lake', 'd10'].includes(at)) caveTeleport(at); }
     setTimeout(() => $('hint').classList.add('fade'), 9000);
     last = performance.now(); requestAnimationFrame(loop);
   })();
 }
 canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); $('banner').hidden = false; $('banner').textContent = 'The graphics context was lost (the GPU ran out of memory or was reset). Reload the page to restart.'; });
-window.__bench = { DOOR, DOORS, PARTS, FLOODS, STAKES, DRIPR, state, stats, cam, sel, selfCheck, setMode, resetView, cycleOverlay, toggleDetails, shared, cache, pending, T, get perf() { return hudPerf; }, get gpu() { return gpuName; }, get gpuMs() { return gpuMs; }, get world() { return world; }, get evictions() { return evictions; }, placedLog, props, place, K, game, cells, dishes, courses, colliders, floorAt, startPlay, startBench, showMenu, get plantTotal() { return plantTotal; }, cave, line, CV, caveTeleport, update, CAVR, cavePrebuild, get workerMode() { return workerMode; }, get light() { return lightInfo; }, pose, get charTris() { return [charFullTris, charLowTris]; }, groundAt, MAX_FULL, N_FULL, TRIM_LOD, N_SEL, keys };
+window.__bench = { DOOR, DOORS, PARTS, FLOODS, STAKES, DRIPR, LAKER, inWater, logShow, state, stats, cam, sel, selfCheck, setMode, resetView, cycleOverlay, toggleDetails, shared, cache, pending, T, get perf() { return hudPerf; }, get gpu() { return gpuName; }, get gpuMs() { return gpuMs; }, get world() { return world; }, get evictions() { return evictions; }, placedLog, props, place, K, game, cells, dishes, courses, colliders, floorAt, startPlay, startBench, showMenu, get plantTotal() { return plantTotal; }, cave, line, CV, caveTeleport, update, CAVR, cavePrebuild, get workerMode() { return workerMode; }, get light() { return lightInfo; }, pose, get charTris() { return [charFullTris, charLowTris]; }, groundAt, MAX_FULL, N_FULL, TRIM_LOD, N_SEL, keys };
 start();
 })();
 

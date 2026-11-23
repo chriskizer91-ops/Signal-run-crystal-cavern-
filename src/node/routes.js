@@ -58,8 +58,12 @@ function route(name, cav, kFn, landing, door, water) {
 }
 const front = (d, v) => [d.x + d.dir[0] * v, d.floor, d.z + d.dir[1] * v];
 const d8 = doors.find(d => d.name === 'D-8'), d9 = doors.find(d => d.name === 'D-9');
+const LK = b.LAKE, d10 = doors.find(d => d.name === 'D-10');
 const out = {
   'D-8': route('crystal cavern -> D-8', C, b.cavK, [C.drop[0], b.floorAt(C.drop[0], C.y + 22, C.drop[1]), C.drop[1]], front(d8, -4), C.pool),
   'D-9': route('stalactite cavern -> D-9', D, b.dripK, [D.drop[0], b.floorAt(D.drop[0], D.y + 10, D.drop[1]), D.drop[1]], front(d9, -4), null),
+  // the lake: down the beach, along the lake floor (under water) to the bore's mouth, then into the bore to D-10
+  'D-10': route('flooded cavern -> D-10', LK, b.lakeK, [LK.drop[0], b.floorAt(LK.drop[0], LK.y + 20, LK.drop[1]), LK.drop[1]], [LK.bore[0][0] + 8, -453.5, LK.bore[0][2]], null)
+    .concat([[LK.bore[0][0] + 20, -452, LK.bore[0][2]], [LK.bore[0][0] + 30, -452, LK.bore[0][2]]]),
 };
 fs.writeFileSync(__dirname + '/routes.json', JSON.stringify(out));

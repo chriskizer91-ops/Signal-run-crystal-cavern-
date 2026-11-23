@@ -40,10 +40,10 @@ The same three docs also live in the claude.ai Project "Build" as `claude/*.md`.
   - set `__bench.game.paused = true` (physics stops, rendering continues)
   - call `__bench.cavePrebuild(330)`
   - wait 15–30 s
-- `__bench` exposes `state, stats, cam, game, cave, line, CV, CAVR, DRIPR, DOORS, PARTS, FLOODS, caveTeleport, update, cavePrebuild`.
+- `__bench` exposes `state, stats, cam, game, cave, line, CV, CAVR, DRIPR, LAKER, DOORS, PARTS, FLOODS, STAKES, inWater, logShow, caveTeleport, update, cavePrebuild`.
 - Useful URL options:
   - `?play=new | freenew | free`
-  - `&at=mine | cave | door | cavern | d8 | drip | d9`
+  - `&at=mine | cave | door | cavern | d8 | drip | d9 | lake | d10`
   - `&cavedbg=N` (rock shader debug views)
   - `__bench.CAVR.off = {crys:1, life:1, …}` hides parts to find a visual bug
 - Before delivering, always compare the surface start view against the previous version: `python3 tests/surface_compare.py <previous version file name>`. It has stayed 100% identical since v7.
@@ -54,9 +54,10 @@ The same three docs also live in the claude.ai Project "Build" as `claude/*.md`.
 - **Done:**
   - v9: crystal cavern (D-7) → stalactite cavern (D-8) → door D-9, which stays shut.
   - v10: steadier flying (no slide, cave speeds, hover) and glowing route stakes. Trails come from `src/node/routes.js`; rerun it and re-paste `ROUTES` if a cavern changes.
+  - v11: the flooded cavern (lake, swimming, suit air, fish, dive station, dive log, the bore with D-10 sealed).
   - Campaign and Free play modes.
   - Couplings for deeper doors in the campaign.
 - **Next:**
-  - The **flooded cavern** behind D-9: swimming, underwater rendering, suit air, creepy fast fish with glowing eyes that keep their distance, creepy lore text to read.
-  - Then the **giant crystal cavern** (bigger, thicker, brighter crystals).
+  - The **giant crystal cavern** behind D-10 (bigger, thicker, brighter crystals), down the bore.
+  - Give D-10 a coupling in the lake for the campaign.
   - One cavern at a time, with screenshots after each.

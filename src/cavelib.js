@@ -7,7 +7,7 @@ function CaveLib(cfg) {
   const CH = 24, YCUT = -24, SHW = 1.9, SHB = -50;               // chunk size, nothing meshed above YCUT, shaft half-width and bottom
   const STATION = { x: SX, y: -53, z: SZ, hx: 6.5, hy: 3, hz: 5.5, floor: -56 };
   const LIGHT = [SX, SHB - 1.5, SZ];
-  const AMP = [1.15, 0.3, 0.03, 1.35, 0.25, 2.3, 1.2, 0.3, 1.7, 0.6];   // 8: stalactite hall, 9: its fluted columns   // + smooth natural tube (the door drop: no ledges to snag on)   // + crystal cavern, rock columns                    // rock roughness by kind: natural tunnel, mine drift, shaft, natural room, mine room
+  const AMP = [1.15, 0.3, 0.03, 1.35, 0.25, 2.3, 1.2, 0.3, 1.7, 0.6, 0, 1.6, 0];   // 11: the flooded cavern, 12: the smooth bore (not natural)   // 8: stalactite hall, 9: its fluted columns   // + smooth natural tube (the door drop: no ledges to snag on)   // + crystal cavern, rock columns                    // rock roughness by kind: natural tunnel, mine drift, shaft, natural room, mine room
   const AMPMAX = 2.9;
   const RIM = cfg.rim || null;                                   // ground heights around the shaft opening: above them is open air
   function rimH(x, z) {
@@ -70,8 +70,13 @@ function CaveLib(cfg) {
   const DOORDEF = [
     { name: 'D-7', at: [0, -56, 5.5], dir: [0, 1], drift: [[0, -56, 3.5], [0, -56.4, 21]] },
     { name: 'D-8', at: [84, -180, -15], dir: [1, 0], drift: [[72, -180, -15], [121, -180.4, -15]] },
-    { name: 'D-9', at: [262, -313, -15], dir: [1, 0], drift: [[252, -313, -15], [284, -313.2, -15]] },
+    { name: 'D-9', at: [262, -313, -15], dir: [1, 0], drift: [[252, -313, -15], [292, -313.2, -15]] },
+    { name: 'D-10', at: [400, -452, -15], dir: [1, 0], drift: null },   // sealed inside the smooth bore at the bottom of the lake
   ];
+  // the flooded cavern: below and east of the stalactite cavern, a dome over a black lake; a smooth round bore leaves from its bottom
+  const LKE = { c: [350, -410, -15], r: [80, 50, 70], water: -421.5, beach: -420 };
+  const BORE = [[358, -449.2, -15], [432, -449.2, -15], [470, -470, -15]], BORER = 2.8;
+  NAT.push({ name: 'D-9 drop', pts: [[289, -314, -15, 3.6], [289, -340, -15, 4.4], [289, -362, -15, 5.0], [289, -386, -15, 5.6]], straight: true, smooth: true });
   NAT.push({ name: 'D-8 drop', pts: [[120, -181, -15, 3.6], [120, -205, -15, 4.4], [120, -235, -15, 5.0], [120, -268, -15, 5.6]], straight: true, smooth: true });
   const ROOMS = [  // natural rooms: centre, radii, floor
     { name: 'breakthrough hall', c: [205, -62, 50], r: [17, 9, 15], floor: -68 },
@@ -92,7 +97,7 @@ function CaveLib(cfg) {
     const pts = m.pts.map(L), id = pathId++; minePaths.push(pts);
     for (let i = 0; i < pts.length - 1; i++) S.push([1, id, pts[i][0], pts[i][1], pts[i][2], pts[i + 1][0], pts[i + 1][1], pts[i + 1][2], 0, 0, 0]);
   }
-  for (const dd of DOORDEF) { const a = L(dd.drift[0]), b = L(dd.drift[1]); S.push([1, pathId++, a[0], a[1], a[2], b[0], b[1], b[2], 0, 0, 0]); }   // door drifts: cut later, no timber
+  for (const dd of DOORDEF) { if (!dd.drift) continue; const a = L(dd.drift[0]), b = L(dd.drift[1]); S.push([1, pathId++, a[0], a[1], a[2], b[0], b[1], b[2], 0, 0, 0]); }   // door drifts: cut later, no timber
   const natPaths = [];
   function cr(p0, p1, p2, p3, t) { const t2 = t * t, t3 = t2 * t; return p1.map((_, k) => 0.5 * (2 * p1[k] + (-p0[k] + p2[k]) * t + (2 * p0[k] - 5 * p1[k] + 4 * p2[k] - p3[k]) * t2 + (-p0[k] + 3 * p1[k] - 3 * p2[k] + p3[k]) * t3)); }
   NAT.forEach((n, ni) => {
@@ -135,6 +140,18 @@ function CaveLib(cfg) {
     const q = dripH(x, z) / DSTEP, k = floor(q), f = q - k; if (f > 0.8) return -1e9;
     const lv = k * DSTEP - 0.07; return dripFloor(x, z) < lv - 0.015 ? lv : -1e9;
   }
+  // the lake hall's floor: a deep bowl, a beach just above the water on the west side where the drop lands
+  const LX = SX + LKE.c[0], LY = LKE.c[1], LZ = SZ + LKE.c[2], LRX = LKE.r[0], LRY = LKE.r[1], LRZ = LKE.r[2], WATER = LKE.water, BEACH = LKE.beach;
+  S.push([11, pathId++, LX, LY, LZ, LRX, LRY, LRZ, 0, 0, 0]);
+  { const id = pathId++; for (let i = 0; i < BORE.length - 1; i++) { const a = L(BORE[i]), b = L(BORE[i + 1]); S.push([12, id, a[0], a[1], a[2], b[0], b[1], b[2], BORER, BORER, 0]); } }
+  function lakeFloor(x, z) {
+    const u = (x - LX) / LRX, v = (z - LZ) / LRZ, t = sqrt(u * u + v * v) + vn(x * 0.03, 7.7, z * 0.03, 61) * 0.12;
+    let h = LY - LRY + 6 + 36 * Math.pow(max(0, t - 0.08), 1.4) + 20 * min(1, max(0, -u * 0.95 + 0.02)) + vn(x * 0.07, 3.3, z * 0.07, 62) * 1.6;
+    const d = h - BEACH - 0.3; if (d > 0) h = BEACH + 0.3 + (d < 6 ? d * 0.25 : 1.5 + (d - 6));    // a low beach 1.5-3 m above the water
+    else h += vn(x * 0.21, 2.9, z * 0.21, 64) * 0.9 * min(1, -d / 4);                             // boulders and silt mounds under the water
+    return h + vn(x * 0.25, 1.1, z * 0.25, 63) * 0.25;
+  }
+  function lakeK(x, y, z) { const a = (x - LX) / LRX, b = (y - LY) / LRY, c = (z - LZ) / LRZ; return sqrt(a * a + b * b + c * c); }
   function dripK(x, y, z) { const a = (x - DX) / DRX, b = (y - DY) / DRY, c = (z - DZ) / DRZ; return sqrt(a * a + b * b + c * c); }
   // the cavern floor: a bowl rising to the walls in flat ledges with steep cliffs between them
   function cavFloor(x, z) {
@@ -151,7 +168,7 @@ function CaveLib(cfg) {
   function segBox(i) {
     const o = i * 11, k = SG[o];
     if (k === 2) return [SG[o + 2] - SHW, SHB - 1, SG[o + 4] - SHW, SG[o + 2] + SHW, TOP + 50, SG[o + 4] + SHW];
-    if (k === 5 || k === 8) return [SG[o + 2] - SG[o + 5] - 6, SG[o + 3] - SG[o + 6] - 8, SG[o + 4] - SG[o + 7] - 6, SG[o + 2] + SG[o + 5] + 6, SG[o + 3] + SG[o + 6] + 6, SG[o + 4] + SG[o + 7] + 6];
+    if (k === 5 || k === 8 || k === 11) return [SG[o + 2] - SG[o + 5] - 6, SG[o + 3] - SG[o + 6] - 8, SG[o + 4] - SG[o + 7] - 6, SG[o + 2] + SG[o + 5] + 6, SG[o + 3] + SG[o + 6] + 6, SG[o + 4] + SG[o + 7] + 6];
     if (k === 3 || k === 4) return [SG[o + 2] - SG[o + 5], SG[o + 3] - SG[o + 6], SG[o + 4] - SG[o + 7], SG[o + 2] + SG[o + 5], SG[o + 3] + SG[o + 6], SG[o + 4] + SG[o + 7]];
     if (k === 1) { const e = 3.8; return [min(SG[o + 2], SG[o + 5]) - e, min(SG[o + 3], SG[o + 6]) - 0.5, min(SG[o + 4], SG[o + 7]) - e, max(SG[o + 2], SG[o + 5]) + e, max(SG[o + 3], SG[o + 6]) + 4.5, max(SG[o + 4], SG[o + 7]) + e]; }
     const r = max(SG[o + 8], SG[o + 9]); return [min(SG[o + 2], SG[o + 5]) - r, min(SG[o + 3], SG[o + 6]) - r, min(SG[o + 4], SG[o + 7]) - r, max(SG[o + 2], SG[o + 5]) + r, max(SG[o + 3], SG[o + 6]) + r, max(SG[o + 4], SG[o + 7]) + r];
@@ -192,6 +209,17 @@ function CaveLib(cfg) {
       const rx = SG[o + 5], ry = SG[o + 6], rz = SG[o + 7], qx = (x - ax) / rx, qy = (y - ay) / ry, qz = (z - az) / rz, fl = SG[o + 8];
       gFloor = fl; const d = (sqrt(qx * qx + qy * qy + qz * qz) - 1) * min(rx, ry, rz);
       return d > fl - y ? d : fl - y;
+    }
+    if (k === 11) {
+      const qx = (x - ax) / LRX, qy = (y - ay) / LRY, qz = (z - az) / LRZ, fl = lakeFloor(x, z);
+      gFloor = fl; let d = (sqrt(qx * qx + qy * qy + qz * qz) - 1) * LRY;
+      if (qy > 0) d -= 6 * qy * vn(x * 0.035, 0.7, z * 0.035, 65);
+      const df = (fl - y) * 0.3; return d > df ? d : df;
+    }
+    if (k === 12) {
+      const bx = SG[o + 5] - ax, by = SG[o + 6] - ay, bz = SG[o + 7] - az, px = x - ax, py = y - ay, pz = z - az;
+      let t = (px * bx + py * by + pz * bz) / (bx * bx + by * by + bz * bz); t = t < 0 ? 0 : t > 1 ? 1 : t;
+      const dx = px - bx * t, dy = py - by * t, dz = pz - bz * t; gFloor = ay + by * t - BORER; return sqrt(dx * dx + dy * dy + dz * dz) - BORER;
     }
     if (k === 8) {
       const qx = (x - ax) / DRX, qy = (y - ay) / DRY, qz = (z - az) / DRZ, fl = dripFloor(x, z);
@@ -247,6 +275,8 @@ function CaveLib(cfg) {
     const b = base(x, y, z); let a = AMP[gKind]; const lim = AMPMAX + 0.6;
     if (b > lim || b < -lim) return b;
     if (gKind === 5 || gKind === 6) { x -= COFF[0]; y -= COFF[1]; z -= COFF[2]; }   // the cavern keeps the rock it was designed with
+    if (gKind === 12) return b;                                                                // the bore is perfectly smooth
+    if (gKind === 11) { if (y < gFl + 2.2) a = 0.15; else return b + a * fbm(x * 0.6, y * 0.6, z * 0.6) + 0.4 * fbm(x * 1.3, y * 0.5, z * 1.3); }
     if (gKind === 8) { if (y < gFl + 2.2) a = 0.1; else return b + a * fbm(x * 0.6, y * 0.6, z * 0.6) + 0.55 * fbm(x * 0.9, y * 0.12, z * 0.9) + 0.35 * fbm(x * 1.7, y * 1.7, z * 1.7); }   // flowstone ribs run down the walls
     if (gKind === 5) { if (y < gFl - COFF[1] + 2.2) a = 0.12; else return b + a * fbm(x * 0.6, y * 0.6, z * 0.6) + 0.5 * fbm(x * 1.7, y * 1.7, z * 1.7); }
     else if (y < gFl - (gKind === 6 ? COFF[1] : 0) + 1.0) a *= 0.3;
@@ -320,7 +350,7 @@ function CaveLib(cfg) {
     let minY = 1e9, maxY = -1e9;
     for (let v = 0; v < nv; v++) {
       const x = V[v * 6], y = V[v * 6 + 1], z = V[v * 6 + 2], nx = V[v * 6 + 3], ny = V[v * 6 + 4], nz = V[v * 6 + 5];
-      base(x, y, z); const kind = gKind === 1 || gKind === 4 ? 1 : gKind === 2 ? 0.5 : 0;
+      base(x, y, z); const kind = gKind === 1 || gKind === 4 ? 1 : gKind === 2 ? 0.5 : gKind === 12 ? 4 : 0;
       buf.set([x, y, z, nx, ny, nz, dayAt(x, y, z, nx, ny, nz), kind], v * 8);
       if (y < minY) minY = y; if (y > maxY) maxY = y;
     }
@@ -357,6 +387,7 @@ function CaveLib(cfg) {
   return { CH, YCUT, SHW, SHB, TOP, SX, SZ, STATION, LIGHT, chunks, segCount: NS, minePaths, natPaths, sdf, base, meshChunk, floorAt, ceilAt, floorNear, dayAt, dayK, inShaft, kindAt,
     CAV: { x: CX, y: CY, z: CZ, rx: RX, ry: RY, rz: RZ, pool: POOL, drop: [SX, SZ + 20] }, cavFloor, cavK, COLW,
     DOORS: DOORDEF.map(d => ({ name: d.name, x: SX + d.at[0], z: SZ + d.at[2], floor: d.at[1], dir: d.dir })), DOOR: { x: SX + DOORDEF[0].at[0], z: SZ + DOORDEF[0].at[2], floor: DOORDEF[0].at[1] },
-    DRIP: { x: DX, y: DY, z: DZ, rx: DRX, ry: DRY, rz: DRZ, drop: [SX + 120, SZ - 15], step: DSTEP }, dripFloor, dripWater, dripK, DCOLW };
+    DRIP: { x: DX, y: DY, z: DZ, rx: DRX, ry: DRY, rz: DRZ, drop: [SX + 120, SZ - 15], step: DSTEP }, dripFloor, dripWater, dripK, DCOLW,
+    LAKE: { x: LX, y: LY, z: LZ, rx: LRX, ry: LRY, rz: LRZ, water: WATER, drop: [SX + 289, SZ - 15], bore: BORE.map(p => [SX + p[0], p[1], SZ + p[2]]), boreR: BORER }, lakeFloor, lakeK };
 }
 if (typeof module !== 'undefined') module.exports = CaveLib;
