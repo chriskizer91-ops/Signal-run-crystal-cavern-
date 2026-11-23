@@ -52,12 +52,11 @@ The same three docs also live in the claude.ai Project "Build" as `claude/*.md`.
 
 ## Where the project is
 - **Done:**
-  - v9: crystal cavern (D-7) → stalactite cavern (D-8) → door D-9, which stays shut.
+  - v9: crystal cavern (D-7) → stalactite cavern (D-8) → door D-9.
   - v10: steadier flying (no slide, cave speeds, hover) and glowing route stakes. Trails come from `src/node/routes.js`; rerun it and re-paste `ROUTES` if a cavern changes.
-  - v11: the flooded cavern (lake, swimming, suit air, fish, dive station, dive log, the bore with D-10 sealed).
-  - Campaign and Free play modes.
-  - Couplings for deeper doors in the campaign.
-- **Next:**
-  - The **giant crystal cavern** behind D-10 (bigger, thicker, brighter crystals), down the bore.
-  - Give D-10 a coupling in the lake for the campaign.
-  - One cavern at a time, with screenshots after each.
+  - v11: the flooded cavern (lake, swimming, suit air, fish, dive station, dive log, the bore with D-10).
+  - v12: the giant crystal cavern behind D-10 (see-through titan crystals, crystal light on everything, glowing mist, clear pool, the pulse and the reveal, a phone tier). D-10's coupling is on the lake floor; a spare tank doubles air. Runtime in `src/runtime/geode_runtime.js`, patch `src/patches/v12_giant_crystal_cavern.py`, models `assets/modules/geode.js`.
+  - Campaign and Free play modes; couplings for every deeper door in the campaign.
+- **Next:** Christopher decides. Open ideas: the ancient alien site ("something was unearthed"); a real Pixel 7a check of the giant cavern (`&geoq=lo` is the phone version).
+- One cavern at a time, with screenshots after each.
+- Giant cavern tests: `tests/geo1.py <views>` (screenshots: pool, dim, reveal, over, hero, close, titan, up, under, bore), `tests/geo_play.py` (campaign dive in numbers), `tests/geo_err.py` (load check and counts). `__bench` also has `GEOR`, `GEOQ`; `CAVR.off` also takes `geo`, `titan`, `water`.

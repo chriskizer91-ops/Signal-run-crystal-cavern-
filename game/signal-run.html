@@ -515,7 +515,7 @@ function CaveLib(cfg) {
   const CH = 24, YCUT = -24, SHW = 1.9, SHB = -50;               // chunk size, nothing meshed above YCUT, shaft half-width and bottom
   const STATION = { x: SX, y: -53, z: SZ, hx: 6.5, hy: 3, hz: 5.5, floor: -56 };
   const LIGHT = [SX, SHB - 1.5, SZ];
-  const AMP = [1.15, 0.3, 0.03, 1.35, 0.25, 2.3, 1.2, 0.3, 1.7, 0.6, 0, 1.6, 0];   // 11: the flooded cavern, 12: the smooth bore (not natural)   // 8: stalactite hall, 9: its fluted columns   // + smooth natural tube (the door drop: no ledges to snag on)   // + crystal cavern, rock columns                    // rock roughness by kind: natural tunnel, mine drift, shaft, natural room, mine room
+  const AMP = [1.15, 0.3, 0.03, 1.35, 0.25, 2.3, 1.2, 0.3, 1.7, 0.6, 0, 1.6, 0, 1.5];   // 13: the giant crystal cavern   // 11: the flooded cavern, 12: the smooth bore (not natural)   // 8: stalactite hall, 9: its fluted columns   // + smooth natural tube (the door drop: no ledges to snag on)   // + crystal cavern, rock columns                    // rock roughness by kind: natural tunnel, mine drift, shaft, natural room, mine room
   const AMPMAX = 2.9;
   const RIM = cfg.rim || null;                                   // ground heights around the shaft opening: above them is open air
   function rimH(x, z) {
@@ -583,7 +583,10 @@ function CaveLib(cfg) {
   ];
   // the flooded cavern: below and east of the stalactite cavern, a dome over a black lake; a smooth round bore leaves from its bottom
   const LKE = { c: [350, -410, -15], r: [80, 50, 70], water: -421.5, beach: -420 };
-  const BORE = [[358, -449.2, -15], [432, -449.2, -15], [470, -470, -15]], BORER = 2.8;
+  // the bore runs on past D-10: a dip, then up into the pool of the giant crystal cavern
+  const BORE = [[358, -449.2, -15], [432, -449.2, -15], [468, -456, -15], [500, -449, -15], [538, -447, -15], [553, -437, -15], [555, -424, -15]], BORER = 2.8;
+  // the giant crystal cavern: the last and largest, a geode 260 m across and 210 m tall; its pool (where the bore comes up) is part of the lake's water
+  const GEO = { c: [600, -330, -15], r: [130, 105, 120], pool: [555, -15, 19] };
   NAT.push({ name: 'D-9 drop', pts: [[289, -314, -15, 3.6], [289, -340, -15, 4.4], [289, -362, -15, 5.0], [289, -386, -15, 5.6]], straight: true, smooth: true });
   NAT.push({ name: 'D-8 drop', pts: [[120, -181, -15, 3.6], [120, -205, -15, 4.4], [120, -235, -15, 5.0], [120, -268, -15, 5.6]], straight: true, smooth: true });
   const ROOMS = [  // natural rooms: centre, radii, floor
@@ -659,6 +662,19 @@ function CaveLib(cfg) {
     else h += vn(x * 0.21, 2.9, z * 0.21, 64) * 0.9 * min(1, -d / 4);                             // boulders and silt mounds under the water
     return h + vn(x * 0.25, 1.1, z * 0.25, 63) * 0.25;
   }
+  const GX = SX + GEO.c[0], GY = GEO.c[1], GZ = SZ + GEO.c[2], GRX = GEO.r[0], GRY = GEO.r[1], GRZ = GEO.r[2], GPX = SX + GEO.pool[0], GPZ = SZ + GEO.pool[1], GPR = GEO.pool[2];
+  S.push([13, pathId++, GX, GY, GZ, GRX, GRY, GRZ, 0, 0, 0]);
+  // its floor: a plain just above the water around the pool on the west side, rising east in great terraces, then steep to the walls
+  function geoFloor(x, z) {
+    const u = (x - GX) / GRX, v = (z - GZ) / GRZ, t = sqrt(u * u + v * v) + vn(x * 0.02, 9.1, z * 0.02, 71) * 0.1;
+    let h = WATER + 1.4 + 70 * Math.pow(max(0, t - 0.72), 1.6) + 26 * min(1, max(0, u * 0.85 + 0.35)) + vn(x * 0.05, 4.4, z * 0.05, 72) * 1.2;
+    const q = (h - WATER) / 6.5, k = floor(q), f = q - k, e = min(1, max(0, (f - 0.78) / 0.22));   // 6.5 m terraces with steep risers
+    h = WATER + (k + e * e * (3 - 2 * e)) * 6.5 + 1.4 * (1 - min(1, k));
+    const dp = Math.hypot(x - GPX, z - GPZ) / GPR;                                                    // the pool, where the bore comes up
+    if (dp < 1.25) { const b = WATER - 11 * Math.pow(max(0, 1 - dp * dp), 0.7) + 0.6; h = dp < 1 ? min(h, b) : h + (b - h) * (1.25 - dp) * 4 * (b < h ? 1 : 0); }
+    return h + vn(x * 0.21, 1.9, z * 0.21, 73) * 0.2;
+  }
+  function geoK(x, y, z) { const a = (x - GX) / GRX, b = (y - GY) / GRY, c = (z - GZ) / GRZ; return sqrt(a * a + b * b + c * c); }
   function lakeK(x, y, z) { const a = (x - LX) / LRX, b = (y - LY) / LRY, c = (z - LZ) / LRZ; return sqrt(a * a + b * b + c * c); }
   function dripK(x, y, z) { const a = (x - DX) / DRX, b = (y - DY) / DRY, c = (z - DZ) / DRZ; return sqrt(a * a + b * b + c * c); }
   // the cavern floor: a bowl rising to the walls in flat ledges with steep cliffs between them
@@ -676,7 +692,7 @@ function CaveLib(cfg) {
   function segBox(i) {
     const o = i * 11, k = SG[o];
     if (k === 2) return [SG[o + 2] - SHW, SHB - 1, SG[o + 4] - SHW, SG[o + 2] + SHW, TOP + 50, SG[o + 4] + SHW];
-    if (k === 5 || k === 8 || k === 11) return [SG[o + 2] - SG[o + 5] - 6, SG[o + 3] - SG[o + 6] - 8, SG[o + 4] - SG[o + 7] - 6, SG[o + 2] + SG[o + 5] + 6, SG[o + 3] + SG[o + 6] + 6, SG[o + 4] + SG[o + 7] + 6];
+    if (k === 5 || k === 8 || k === 11 || k === 13) return [SG[o + 2] - SG[o + 5] - 6, SG[o + 3] - SG[o + 6] - 8, SG[o + 4] - SG[o + 7] - 6, SG[o + 2] + SG[o + 5] + 6, SG[o + 3] + SG[o + 6] + 6, SG[o + 4] + SG[o + 7] + 6];
     if (k === 3 || k === 4) return [SG[o + 2] - SG[o + 5], SG[o + 3] - SG[o + 6], SG[o + 4] - SG[o + 7], SG[o + 2] + SG[o + 5], SG[o + 3] + SG[o + 6], SG[o + 4] + SG[o + 7]];
     if (k === 1) { const e = 3.8; return [min(SG[o + 2], SG[o + 5]) - e, min(SG[o + 3], SG[o + 6]) - 0.5, min(SG[o + 4], SG[o + 7]) - e, max(SG[o + 2], SG[o + 5]) + e, max(SG[o + 3], SG[o + 6]) + 4.5, max(SG[o + 4], SG[o + 7]) + e]; }
     const r = max(SG[o + 8], SG[o + 9]); return [min(SG[o + 2], SG[o + 5]) - r, min(SG[o + 3], SG[o + 6]) - r, min(SG[o + 4], SG[o + 7]) - r, max(SG[o + 2], SG[o + 5]) + r, max(SG[o + 3], SG[o + 6]) + r, max(SG[o + 4], SG[o + 7]) + r];
@@ -717,6 +733,12 @@ function CaveLib(cfg) {
       const rx = SG[o + 5], ry = SG[o + 6], rz = SG[o + 7], qx = (x - ax) / rx, qy = (y - ay) / ry, qz = (z - az) / rz, fl = SG[o + 8];
       gFloor = fl; const d = (sqrt(qx * qx + qy * qy + qz * qz) - 1) * min(rx, ry, rz);
       return d > fl - y ? d : fl - y;
+    }
+    if (k === 13) {
+      const qx = (x - ax) / GRX, qy = (y - ay) / GRY, qz = (z - az) / GRZ, fl = geoFloor(x, z);
+      gFloor = fl; let d = (sqrt(qx * qx + qy * qy + qz * qz) - 1) * GRY;
+      if (qy > 0) d -= 9 * qy * vn(x * 0.02, 1.3, z * 0.02, 74);
+      const df = (fl - y) * 0.3; return d > df ? d : df;
     }
     if (k === 11) {
       const qx = (x - ax) / LRX, qy = (y - ay) / LRY, qz = (z - az) / LRZ, fl = lakeFloor(x, z);
@@ -784,6 +806,7 @@ function CaveLib(cfg) {
     if (b > lim || b < -lim) return b;
     if (gKind === 5 || gKind === 6) { x -= COFF[0]; y -= COFF[1]; z -= COFF[2]; }   // the cavern keeps the rock it was designed with
     if (gKind === 12) return b;                                                                // the bore is perfectly smooth
+    if (gKind === 13) { if (y < gFl + 2.2) a = 0.12; else return b + a * fbm(x * 0.5, y * 0.5, z * 0.5) + 0.35 * fbm(x * 1.4, y * 1.4, z * 1.4); }
     if (gKind === 11) { if (y < gFl + 2.2) a = 0.15; else return b + a * fbm(x * 0.6, y * 0.6, z * 0.6) + 0.4 * fbm(x * 1.3, y * 0.5, z * 1.3); }
     if (gKind === 8) { if (y < gFl + 2.2) a = 0.1; else return b + a * fbm(x * 0.6, y * 0.6, z * 0.6) + 0.55 * fbm(x * 0.9, y * 0.12, z * 0.9) + 0.35 * fbm(x * 1.7, y * 1.7, z * 1.7); }   // flowstone ribs run down the walls
     if (gKind === 5) { if (y < gFl - COFF[1] + 2.2) a = 0.12; else return b + a * fbm(x * 0.6, y * 0.6, z * 0.6) + 0.5 * fbm(x * 1.7, y * 1.7, z * 1.7); }
@@ -896,7 +919,8 @@ function CaveLib(cfg) {
     CAV: { x: CX, y: CY, z: CZ, rx: RX, ry: RY, rz: RZ, pool: POOL, drop: [SX, SZ + 20] }, cavFloor, cavK, COLW,
     DOORS: DOORDEF.map(d => ({ name: d.name, x: SX + d.at[0], z: SZ + d.at[2], floor: d.at[1], dir: d.dir })), DOOR: { x: SX + DOORDEF[0].at[0], z: SZ + DOORDEF[0].at[2], floor: DOORDEF[0].at[1] },
     DRIP: { x: DX, y: DY, z: DZ, rx: DRX, ry: DRY, rz: DRZ, drop: [SX + 120, SZ - 15], step: DSTEP }, dripFloor, dripWater, dripK, DCOLW,
-    LAKE: { x: LX, y: LY, z: LZ, rx: LRX, ry: LRY, rz: LRZ, water: WATER, drop: [SX + 289, SZ - 15], bore: BORE.map(p => [SX + p[0], p[1], SZ + p[2]]), boreR: BORER }, lakeFloor, lakeK };
+    LAKE: { x: LX, y: LY, z: LZ, rx: LRX, ry: LRY, rz: LRZ, water: WATER, drop: [SX + 289, SZ - 15], bore: BORE.map(p => [SX + p[0], p[1], SZ + p[2]]), boreR: BORER }, lakeFloor, lakeK,
+    GEO: { x: GX, y: GY, z: GZ, rx: GRX, ry: GRY, rz: GRZ, pool: [GPX, GPZ, GPR] }, geoFloor, geoK };
 }
 
 (function () {
@@ -995,10 +1019,18 @@ function runPreview() {
 }
 
 /* ---------- shaders ---------- */
+const GEO_GLSL = `
+vec3 geoHue(float h){ h=fract(h)*5.; int i=int(h); float f=h-float(i); f=f*f*(3.-2.*f);   // cyan, mint, violet, rose, gold
+  const vec3 P[6]=vec3[6](vec3(0.16,0.82,1.0),vec3(0.30,1.0,0.76),vec3(0.58,0.40,1.0),vec3(1.0,0.40,0.78),vec3(1.0,0.74,0.38),vec3(0.16,0.82,1.0));
+  return mix(P[i],P[min(i+1,5)],f); }
+float geoPulseT(vec3 w, float T, vec2 c){ float ph=mod(T*16.-length(w.xz-c),300.); return 1.+1.1*exp(-ph*ph/400.); }   // a ring of light running out from the pool
+float geoWakeT(vec3 w, float T, float seen, vec2 c){ return 0.12+0.88*seen*clamp((T*16.-length(w.xz-c)+20.)/30.,0.,1.); }   // dim until the first ring passes
+`;
 const GLSL_COMMON = `
 uniform vec3 uCam, uSun, uFog; uniform sampler2D uSh; uniform vec4 uDam; // dam circle cx,cz,R, damX
 uniform vec4 uShMap; uniform highp sampler2DShadow uChS; uniform mat4 uChM; uniform float uChK, uT;
 uniform vec4 uUG, uLd, uHole, uCav, uDrp, uFdP, uFdD, uLke, uUW; uniform vec3 uFlP, uFlD, uCavR, uDrpR, uLkeR;   // underground: x on/off, y headlamp, z daylight here, w exposure; shaft light; ground hole
+uniform vec4 uGeo, uGQ, uGS, uGL[32]; uniform vec3 uGeoR;   // the giant crystal cavern: where, light count / mist / pool, pulse time / woken, 16 crystal lights
 const float WL=${WL.toFixed(1)}, RL=${RL.toFixed(1)}, WORLD=${WORLD.toFixed(1)};
 float hash11(float p){ p=fract(p*0.1031); p*=p+33.33; p*=p+p; return fract(p); }
 float hash21(vec2 p){ vec3 q=fract(vec3(p.xyx)*0.1031); q+=dot(q,q.yzx+33.33); return fract((q.x+q.y)*q.z); }
@@ -1014,12 +1046,31 @@ vec3 cavAmb(vec3 w){ return cavK(w)*vec3(0.05,0.16,0.18)*(0.55+0.9*vnoise3(w*0.0
 float drpK(vec3 w){ vec3 q=(w-uDrp.xyz)/uDrpR; return (1.-smoothstep(0.95,1.35,length(q)))*uDrp.w; }   // 1 inside the stalactite cavern
 vec3 drpAmb(vec3 w, vec3 n){ float hy=smoothstep(uDrp.y-uDrpR.y*0.6, uDrp.y+uDrpR.y*0.8, w.y); return drpK(w)*vec3(0.016,0.046,0.05)*(0.4+0.6*max(n.y,0.)+0.9*hy*max(-n.y,0.))*(0.75+0.5*vnoise3(w*0.04)); }      // soft blue-green light from the glowworm ceiling
 float lkK(vec3 w){ vec3 q=(w-uLke.xyz)/uLkeR; return (1.-smoothstep(0.95,1.3,length(q)))*uLke.w; }   // 1 inside the flooded cavern
+${GEO_GLSL}
+float geoK(vec3 w){ vec3 q=(w-uGeo.xyz)/uGeoR; return (1.-smoothstep(0.95,1.3,length(q)))*uGeo.w; }   // 1 inside the giant crystal cavern
+float geoPulse(vec3 w){ return geoPulseT(w,uGS.x,uGQ.zw); }
+float geoWake(vec3 w){ return geoWakeT(w,uGS.x,uGS.y,uGQ.zw); }
+vec3 geoLight(vec3 w, vec3 n){ vec3 s=vec3(0.); int N=int(uGQ.x); if(N==0) return s;   // light from the nearest titans, each a glowing line from base to tip
+  for(int i=0;i<16;i++){ if(i>=N) break; vec4 A=uGL[2*i], B=uGL[2*i+1]; vec3 ab=B.xyz-A.xyz; float t=clamp(dot(w-A.xyz,ab)/dot(ab,ab),0.,1.); vec3 L=A.xyz+ab*t-w; float d2=dot(L,L);
+    s+=geoHue(B.w)*A.w*(max(dot(n,L)*inversesqrt(d2+1e-4),0.)*0.85+0.15)*(260./(260.+d2)); }
+  return s*geoK(w); }
+vec3 geoIso(vec3 w){ vec3 s=vec3(0.); int N=int(uGQ.x);   // the same light, from every side (for mist and water)
+  for(int i=0;i<16;i++){ if(i>=N) break; vec4 A=uGL[2*i], B=uGL[2*i+1]; vec3 ab=B.xyz-A.xyz; float t=clamp(dot(w-A.xyz,ab)/dot(ab,ab),0.,1.); vec3 L=A.xyz+ab*t-w; s+=geoHue(B.w)*A.w*(260./(260.+dot(L,L))); }
+  return s; }
+vec3 geoMist(vec3 w, float d){ if(uGQ.y<0.5||uGQ.x<0.5) return vec3(0.); vec3 v=(w-uCam)/max(d,1e-3); float D=min(d,120.), j=hash21(gl_FragCoord.xy*0.37)-0.5; vec3 s=vec3(0.);   // the air glows near the titans
+  for(int i=0;i<3;i++){ vec3 p=uCam+v*D*(float(i)+0.5+j*0.8)/3.; s+=geoIso(p)*geoK(p); }
+  return s*D*0.0013; }
 vec3 haze(vec3 c, vec3 w){ float d=length(w-uCam); c=mix(c, vec3(0.012,0.05,0.06), (1.-exp(-d*0.0065))*cavK(w)*0.85); c=mix(c, vec3(0.010,0.026,0.029), (1.-exp(-d*0.0085))*drpK(w)*0.85);
   c=mix(c, vec3(0.004,0.008,0.009), (1.-exp(-d*0.008))*lkK(w)*0.8);
+  float gk=geoK(w); if(gk>0.){ c=mix(c, vec3(0.006,0.007,0.018), (1.-exp(-d*0.0042))*gk*0.7); if(uUW.x<0.5) c+=geoMist(w,d); }
   if(uUW.x>0.5){ vec3 v=(w-uCam)/max(d,1e-3), q=uCam+v*min(d,5.); float cs=dot(normalize(q-uFlP),uFlD);   // under water: murk, and the lamp's beam glowing in it
     vec3 murk=vec3(0.004,0.017,0.016)+vec3(0.06,0.11,0.10)*smoothstep(0.82,0.97,cs)*uUG.y*(1.-exp(-min(d,9.)*0.3));
+    float gc=geoK(uCam); if(gc>0.) murk=mix(murk, murk*0.5+vec3(0.006,0.03,0.035)*geoWake(uCam)+geoIso(uCam+v*min(d,6.))*0.02, gc);   // the crystal pool glows
+    if(uGS.z>0.){ vec3 Pc=vec3(uGQ.z,uUW.y-22.,uGQ.w), w0=Pc-uCam; vec3 cl=uCam+v*clamp(dot(w0,v),0.,d)-Pc;   // down the bore: light from the crystal pool ahead
+      murk+=vec3(0.12,0.55,0.65)*geoPulseT(Pc,uGS.x,uGQ.zw)*(0.5+0.5*uGS.y)*exp(-dot(cl,cl)/600.)*(60./(60.+dot(w0,w0)*0.02)); }
     c=mix(c, murk, 1.-exp(-d*uUW.w)); }
-  else if(w.y<uUW.y){ float lk=lkK(w); if(lk>0.){ vec3 v=normalize(w-uCam); float path=(uUW.y-w.y)/max(-v.y,0.1); c=mix(c, vec3(0.003,0.012,0.012), (1.-exp(-path*uUW.w*1.2))*lk); } }   // looking down into the lake
+  else if(w.y<uUW.y){ float lk=lkK(w), gp=geoK(w); if(lk+gp>0.){ vec3 v=normalize(w-uCam); float path=(uUW.y-w.y)/max(-v.y,0.1);   // looking down into the water
+    c=mix(c, mix(vec3(0.003,0.012,0.012), vec3(0.01,0.07,0.08)+geoIso(w+vec3(0.,4.,0.))*0.02, gp), (1.-exp(-path*uUW.w*1.2))*max(lk,gp)); } }
   return c; }
 vec3 floodL(vec3 w, vec3 n){ if(uFdP.w<=0.) return vec3(0.); vec3 L=uFdP.xyz-w; float d=length(L); vec3 l=L/max(d,1e-3); float cs=dot(-l,uFdD.xyz);   // the research team's work light
   float cone=smoothstep(uFdD.w-0.25,uFdD.w+0.12,cs)*0.85+0.15; return vec3(1.,0.9,0.74)*uFdP.w*cone*(max(dot(n,l),0.)*0.85+0.15)*30./(30.+d*d*0.35); }
@@ -1041,7 +1092,7 @@ vec3 shade(vec3 alb, vec3 n, vec3 w, float ao){
   amb+=vec3(0.55,0.36,0.22)*0.10*(1.-lm.b)*(1.-0.5*n.y);          // warm light bounced off canyon walls
   vec3 r=alb*(sun+amb);
   if(uUG.x>0.){ vec3 dv=w-uLd.xyz; float day=max(uUG.z, uLd.w/(1.+dot(dv,dv)/42.));
-    r=mix(r, alb*(flashL(w,n)+floodL(w,n)+vec3(0.9,0.95,1.05)*day*2.2+0.01+cavAmb(w)*2.6+drpAmb(w,n)*2.6)*uUG.w, uUG.x); }
+    r=mix(r, alb*(flashL(w,n)+floodL(w,n)+vec3(0.9,0.95,1.05)*day*2.2+0.01+cavAmb(w)*2.6+drpAmb(w,n)*2.6+geoLight(w,n)*1.3)*uUG.w, uUG.x); }
   return r;
 }
 vec3 fogit(vec3 c, vec3 w){ vec3 v=w-uCam; float d=length(v); float hm=(w.y+uCam.y)*0.5;
@@ -1267,8 +1318,8 @@ void main(){
 }`;
 const CAVE_VS = `#version 300 es
 layout(location=0) in vec3 aP; layout(location=1) in vec3 aN; layout(location=2) in vec2 aD;
-uniform mat4 uVP; out vec3 vW; out vec3 vN; out vec2 vD;
-void main(){ vW=aP; vN=aN; vD=aD; gl_Position=uVP*vec4(aP,1.); }`;
+uniform mat4 uVP; uniform vec3 uCam; uniform float uSink; out vec3 vW; out vec3 vN; out vec2 vD;
+void main(){ vW=aP; vN=aN; vD=aD; gl_Position=uVP*vec4(aP+normalize(aP-uCam)*uSink,1.); }`;
 const CAVE_FS = `#version 300 es
 precision highp float;
 const int CDBG=${(new URLSearchParams(location.search).get('cavedbg')|0)};
@@ -1299,6 +1350,14 @@ void main(){
     sl=mix(sl, vec3(0.42,0.39,0.33)*(0.85+0.3*vnoise3(w*1.3)), uw*smoothstep(0.2,0.8,n.y));
     sl=mix(sl, vec3(0.08,0.14,0.08), (1.-smoothstep(0.,0.6,abs(w.y-uUW.y-0.1)))*0.85);
     col=mix(col, sl, lk); }
+  float gk=geoK(w);
+  if(gk>0.&&k<1.5){ vec3 q=(w-uGeo.xyz)/uGeoR; float rr=length(q)+0.05*vnoise3(w*0.06)+0.012*vnoise3(w*0.6), b=rr*46.;
+    float bd=0.5+0.5*sin(b+2.5*vnoise3(w*0.025));
+    vec3 ag=mix(vec3(0.24,0.24,0.33), vec3(0.52,0.50,0.62), bd);
+    ag=mix(ag, vec3(0.84,0.82,0.90), smoothstep(0.9,0.98,0.5+0.5*sin(b*2.6+1.3))*0.35);
+    ag=mix(ag, vec3(0.46,0.30,0.52), smoothstep(0.7,0.9,vnoise3(w*0.045+4.))*0.4);
+    ag*=0.8+0.4*vnoise3(w*0.9)*mix(0.6,alb,0.5);
+    col=mix(col, ag, gk); }
   if(k>3.5){ float g=abs(fract(w.x*2.)-0.5); col=vec3(0.05,0.055,0.06)*mix(1.,0.35,smoothstep(0.43,0.48,g)); }
   col=pow(col,vec3(1.6));
   vec3 L=uFlP-w; vec3 l=normalize(L);
@@ -1308,6 +1367,7 @@ void main(){
   vec3 c=col*(fl+vec3(0.9,0.95,1.05)*vD.x*2.2+0.0012)+fl*sp*0.5;
   float ck=cavK(w), face=0.25+0.75*max(0.,dot(n,normalize(uCav.xyz+vec3(0.,-25.,0.)-w)));
   c+=col*cavAmb(w)*2.4*face*face+col*drpAmb(w,n)*2.;
+  if(gk>0.){ vec3 gl0=geoLight(w,n); c+=col*(gl0*1.25+vec3(0.05,0.065,0.13)*gk*geoWake(w)); c+=gl0*pow(max(dot(n,normalize(normalize(uGeo.xyz-w)+v)),0.),24.)*0.04; }
   // thin glowing mineral veins, only in some stretches of wall
   float vq=vnoise3(w*0.13+vec3(0.,vnoise3(w*0.05)*2.,0.))-0.5, vw=fwidth(vq);
   float vq2=vnoise3(w*0.37+vec3(vnoise3(w*0.11)*1.5,0.,0.)+11.)-0.5, vw2=fwidth(vq2);
@@ -1332,11 +1392,13 @@ precision highp float; in vec3 vW; in vec3 vN; in vec4 vC; in vec4 vI; out vec4 
 ${GLSL_COMMON}
 void main(){ vec3 n=normalize(vN), v=normalize(uCam-vW); if(dot(n,v)<0.) n=-n;
   vec3 hue=mix(vec3(0.16,0.88,1.0), vec3(0.70,0.30,1.0), clamp(vI.x+(vC.g-0.5)*0.3,0.,1.));
-  float pulse=0.84+0.16*sin(uT*0.55+vI.x*9.+vW.x*0.04+vW.z*0.03);
+  float gk=geoK(vW); if(gk>0.) hue=mix(hue, geoHue(vI.x+(vC.g-0.5)*0.08), gk);
+  float pulse=0.84+0.16*sin(uT*0.55+vI.x*9.+vW.x*0.04+vW.z*0.03); if(gk>0.) pulse*=mix(1.,geoPulse(vW),gk);
   float core=vC.r*vI.y*pulse, fr=pow(1.-max(dot(n,v),0.),3.), cloud=vC.b;
   vec3 fl=flashL(vW,n), L=normalize(uFlP-vW); float sp=pow(max(dot(n,normalize(L+v)),0.),90.)*(1.-0.7*cloud);
-  vec3 h2=hue*hue, body=h2*(0.02+(fl+floodL(vW,n))*0.32+cavAmb(vW)*1.1)*(1.-0.4*cloud);
+  vec3 h2=hue*hue, body=h2*(0.02+(fl+floodL(vW,n))*0.32+cavAmb(vW)*1.1+geoLight(vW,n)*0.45)*(1.-0.4*cloud);
   vec3 c=body+h2*core*1.9+mix(h2,hue,0.4)*fr*(0.1+core*0.9)*0.7+(vec3(0.7,0.85,0.9)*cloud*0.04)*cavK(vW)+fl*sp*1.6;
+  if(gk>0.){ float wk=mix(1.,geoWake(vW),gk); c*=wk; core*=wk; }
   c=haze(c,vW); o=vec4(tone(c*uUG.w), clamp(core*0.6+fr*0.15,0.,1.)); }`;
 const LIFE_FS = `#version 300 es
 precision highp float; in vec3 vW; in vec3 vN; in vec4 vC; in vec4 vI; out vec4 o;
@@ -1406,6 +1468,13 @@ precision highp float; in vec3 vW; out vec4 o;
 ${GLSL_COMMON}
 void main(){ vec2 p=vW.xz; float t=uT; bool below=uCam.y<vW.y;
   vec3 n=normalize(vec3((vnoise(p*0.9+t*0.25)-0.5)*0.05+sin(p.x*1.7+t*0.6)*0.01, 1., (vnoise(p*0.8-t*0.2+7.)-0.5)*0.05+cos(p.y*1.5+t*0.5)*0.01)); if(below) n=-n;
+  if(geoK(vW)>0.5){ vec3 v=normalize(uCam-vW); float cv=abs(dot(n,v)), fr=0.03+0.97*pow(1.-cv,5.);
+    vec3 up=vec3(0.006,0.035,0.042)+geoIso(vW-vec3(0.,3.,0.))*0.05;      // light from the crystals under the water
+    vec3 Lh=normalize(uFlP-vW); float sp=pow(max(dot(n,normalize(Lh+v)),0.),220.)*uUG.y*2.2;
+    if(below){ float win=smoothstep(0.6,0.7,cv); vec3 c=mix(up*1.6, geoIso(vW+vec3(0.,6.,0.))*0.04, win); o=vec4(tone(haze(c,vW)*uUG.w), mix(0.9,0.2,win)); return; }   // from under: a window to the cavern, mirror outside it
+    vec3 rd=reflect(-v,n); float gs=smoothstep(0.9,1.,vnoise(rd.xz/max(rd.y,0.2)*9.+t*0.03));
+    vec3 c=mix(up, geoIso(vW+rd*30.)*0.045+geoIso(vW+rd*8.)*0.02*gs, fr)+vec3(1.,.95,.85)*sp;
+    o=vec4(tone(haze(c,vW)*uUG.w), mix(0.28,0.95,fr)); return; }
   vec3 v=normalize(uCam-vW); float fr=0.03+0.97*pow(1.-abs(dot(n,v)),5.);
   vec3 fl=flashL(vW,n), fd=floodL(vW,n), L=normalize(uFlP-vW), Lf=normalize(uFdP.xyz-vW);
   float sp=pow(max(dot(n,normalize(L+v)),0.),220.)*uUG.y*2.2, spf=pow(max(dot(n,normalize(Lf+v)),0.),220.)*uFdP.w*1.2;
@@ -1438,6 +1507,90 @@ void main(){ vec3 b=aP.xyz+vec3(sin(uT*0.2+aP.w*20.)*0.4, sin(uT*0.13+aP.w*31.)*
 const SILT_FS = `#version 300 es
 precision highp float; in float vA; out vec4 o;
 void main(){ vec2 q=gl_PointCoord*2.-1.; float r=dot(q,q); if(r>1.) discard; float a=(1.-r)*vA; o=vec4(vec3(0.55,0.6,0.55)*a, a*0.3); }`;
+const TITAN_VS = `#version 300 es
+layout(location=0) in vec3 aP; layout(location=1) in vec3 aN; layout(location=2) in vec4 aC;
+layout(location=3) in vec4 iA; layout(location=4) in vec4 iB; layout(location=5) in vec4 iC;
+uniform mat4 uVP; out vec3 vW; out vec3 vN; out vec4 vC; flat out vec3 vO; flat out vec3 vX; flat out vec3 vY; flat out vec3 vZ; flat out vec4 vT;
+void main(){ vec3 f=iB.xyz, s=normalize(cross(f, abs(f.y)>0.95?vec3(1,0,0):vec3(0,1,0))), u=cross(s,f);
+  float c=cos(iC.z), sn=sin(iC.z); vec3 s2=s*c+u*sn, u2=u*c-s*sn; float L=iA.w, W=iA.w*iB.w;
+  vW=iA.xyz+f*(aP.y*L)+(s2*aP.x+u2*aP.z)*W; vN=normalize(s2*(aN.x/W)+f*(aN.y/L)+u2*(aN.z/W));
+  vC=aC; vO=iA.xyz; vX=s2/W; vY=f/L; vZ=u2/W; vT=vec4(L,W,iC.x,iC.y); gl_Position=uVP*vec4(vW,1.); }`;
+const TITAN_FS = `#version 300 es
+precision highp float;
+in vec3 vW; in vec3 vN; in vec4 vC; flat in vec3 vO; flat in vec3 vX; flat in vec3 vY; flat in vec3 vZ; flat in vec4 vT;
+uniform sampler2D uGrab; uniform vec2 uRes; uniform float uGrabOn; uniform int uSteps; uniform mat4 uVP; out vec4 o;
+${GLSL_COMMON}
+const float TA=0.17, TK=0.7727273;
+const vec2 HX[6]=vec2[6](vec2(1.,0.),vec2(0.5,0.8660254),vec2(-0.5,0.8660254),vec2(-1.,0.),vec2(-0.5,-0.8660254),vec2(0.5,-0.8660254));
+vec3 toU(vec3 p){ vec3 d=p-vO; return vec3(dot(d,vX),dot(d,vY),dot(d,vZ)); }   // into the crystal's own frame: unit length, apothem 0.17
+vec3 dirU(vec3 v){ return vec3(dot(v,vX),dot(v,vY),dot(v,vZ)); }
+vec3 nW(vec3 N){ return normalize(N.x*vX+N.y*vY+N.z*vZ); }
+void cut(vec3 N, float D, vec3 q, vec3 d, inout float tn, inout float tf, inout vec3 nI, inout vec3 nO){
+  float den=dot(N,d), num=D-dot(N,q);
+  if(den<-1e-9){ float t=num/den; if(t>tn){ tn=t; nI=N; } } else if(den>1e-9){ float t=num/den; if(t<tf){ tf=t; nO=N; } } else if(num<0.){ tn=1e9; tf=-1e9; } }
+vec2 hull(vec3 q, vec3 d, float s, out vec3 nI, out vec3 nO){   // a ray against the crystal's 13 faces (shrunk by s about its base): metres in, metres out
+  float tn=-1e9, tf=1e9; nI=vec3(0.,-1.,0.); nO=vec3(0.,1.,0.);
+  q.y+=0.06; q/=s; q.y-=0.06; d/=s;
+  for(int i=0;i<6;i++){ cut(vec3(HX[i].x,0.,HX[i].y),TA,q,d,tn,tf,nI,nO); cut(vec3(HX[i].x,TK,HX[i].y),TK,q,d,tn,tf,nI,nO); }
+  cut(vec3(0.,-1.,0.),0.06,q,d,tn,tf,nI,nO);
+  return vec2(tn,tf); }
+void main(){
+  vec3 V=vW-uCam; float dist=length(V); vec3 v=V/dist;
+  vec3 nI, nO; vec2 th=hull(toU(uCam),dirU(v),1.,nI,nO); if(th.y<=th.x) th=vec2(dist,dist+0.02);
+  bool inside=th.x<0.; if(!inside && abs(dist-th.x)>abs(dist-th.y)) discard;   // only the faces nearest the eye
+  vec3 Ng=inside? -nW(nO) : nW(nI), nm=normalize(vN); if(dot(nm,v)>0.) nm=-nm;
+  vec3 n=normalize(Ng+nm);                                                     // the true face, with the model's fine growth lines
+  float frost=vC.r, lines=vC.g, edge=vC.b, L=vT.x, glow=vT.w; vec3 hue=geoHue(vT.z), h2=hue*hue, ec=h2;
+  float wake=geoWake(vW), pul=geoPulse(vW), cosI=max(dot(-v,n),0.), F=0.04+0.96*pow(1.-cosI,5.);
+  // bend in, cross the crystal, bend out
+  vec3 dIn=v, pOut=vW, dOut=v, qa=toU(vW), da=dirU(v); float path=dist, tir=0.;
+  if(!inside){ dIn=refract(v,n,1./1.55); if(dot(dIn,dIn)<0.5) dIn=v; qa=toU(vW); da=dirU(dIn);
+    vec3 m1, m2; vec2 ex=hull(qa,da,1.,m1,m2); path=clamp(ex.y,0.05,3.*L); pOut=vW+dIn*path; vec3 nOut=nW(m2);
+    dOut=refract(dIn,-nOut,1.55); if(dot(dOut,dOut)<0.5){ tir=1.; dOut=reflect(dIn,-nOut); } }
+  else { qa=toU(uCam); da=dirU(v); dOut=refract(v,Ng,1.55); if(dot(dOut,dOut)<0.5) dOut=v; }
+  vec3 sig=(1.-hue)*0.07+0.008+frost*0.03+lines*0.015, T=exp(-sig*path)*(1.-F);
+  // what is behind, seen through the crystal: bent, tinted, split into colours at the edges, blurred where frosted
+  vec2 uv0=gl_FragCoord.xy/uRes; vec4 cp=uVP*vec4(pOut+dOut*28.,1.); vec2 uv=cp.w>0.5? cp.xy/cp.w*0.5+0.5 : uv0, dv0=clamp(uv-uv0,vec2(-0.25),vec2(0.25)); float kk=1.;
+  if(uv0.x+dv0.x>0.995) kk=min(kk,(0.995-uv0.x)/dv0.x); if(uv0.x+dv0.x<0.005) kk=min(kk,(uv0.x-0.005)/-dv0.x); if(uv0.y+dv0.y>0.995) kk=min(kk,(0.995-uv0.y)/dv0.y); if(uv0.y+dv0.y<0.005) kk=min(kk,(uv0.y-0.005)/-dv0.y);
+  uv=uv0+dv0*max(kk,0.);   // never look past the edge of the screen (no smeared streaks)
+  vec3 bg=vec3(0.); float bgA=0.;
+  if(uGrabOn>0.5){ vec2 dv=uv-uv0; vec4 g=texture(uGrab,uv); bg=vec3(texture(uGrab,uv0+dv*0.955).r, g.g, texture(uGrab,clamp(uv0+dv*1.05,0.003,0.997)).b); bgA=g.a;
+    if(frost>0.05){ vec2 r=vec2(frost*0.012, frost*0.012*uRes.x/uRes.y); bg=mix(bg,(texture(uGrab,uv+vec2(r.x,0.)).rgb+texture(uGrab,uv-vec2(r.x,0.)).rgb+texture(uGrab,uv+vec2(0.,r.y)).rgb+texture(uGrab,uv-vec2(0.,r.y)).rgb)*0.25,min(frost*1.5,1.)); } }
+  // light from inside: brightest along the core, rising toward the tip, with veils of inclusions; deep light dims on its way out
+  float j=fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(0.06711056,0.00583715)))), S=float(uSteps), dt=path/S, sg=dot(sig,vec3(0.3333)), Es=0., Ec=0.;
+  for(int i=0;i<8;i++){ if(i>=uSteps) break;
+    float tt=(float(i)+j)*dt; vec3 p=(inside?uCam+v*tt:vW+dIn*tt), q=toU(p);
+    float r=max(max(abs(dot(HX[0],q.xz)),abs(dot(HX[1],q.xz))),abs(dot(HX[2],q.xz)))/TA;
+    float veil=vnoise3(p*0.21+vec3(0.,uT*0.04,0.)); veil=veil*veil*veil*1.6;
+    float at=exp(-sg*tt), up=0.4+0.6*smoothstep(-0.06,0.75,q.y); Ec+=exp(-r*r*9.)*2.*up*at; Es+=(0.05*up+veil)*at; }
+  float kE=dt*glow*wake*pul*0.035*(1.+tir*0.25); Es*=kE; Ec*=kE;
+  // phantoms: ghost outlines of the crystal's earlier, smaller selves, brightest where seen edge-on
+  float ph=0., seed=hash11(dot(vO,vec3(0.13,0.71,0.37)));
+  if(seed>0.25) for(int k=0;k<2;k++){ float sc=k==0?0.55+0.1*seed:0.8+0.07*seed; vec3 a1,a2; vec2 h=hull(qa,da,sc,a1,a2);
+    if(h.y>h.x){ if(h.x>0.&&h.x<path) ph+=1./max(abs(dot(dIn,nW(a1))),0.12); if(h.y>0.&&h.y<path) ph+=1./max(abs(dot(dIn,nW(a2))),0.12); } }
+  ph*=glow*wake*pul*0.03;
+  // the surface: frost catches light, facet edges shine, the faces mirror the other titans
+  vec3 fl=flashL(vW,n)+floodL(vW,n), gL=geoLight(vW,n), Lh=normalize(uFlP-vW), rd=reflect(v,n), gli=vec3(0.);
+  float sp=pow(max(dot(n,normalize(Lh-v)),0.),160.)*(1.-frost*0.8);
+  int N=int(uGQ.x); for(int i=0;i<16;i++){ if(i>=N) break; vec4 A=uGL[2*i], B=uGL[2*i+1]; if(distance(A.xyz,vO)<0.2*L) continue;
+    vec3 ab=B.xyz-A.xyz, w0=A.xyz-vW; float a=dot(ab,ab), b=dot(ab,rd), d=dot(ab,w0), e=dot(rd,w0), dn=a-b*b, sa=dn>1e-4?clamp((b*e-d)/dn,0.,1.):0.;
+    vec3 cpt=A.xyz+ab*sa-vW; float cl=length(cpt); gli+=geoHue(B.w)*A.w*pow(max(dot(rd,cpt/cl),0.),28.)*(900./(900.+cl*cl)); }
+  vec3 own=ec*(Es+ph)+mix(hue,vec3(1.),0.3)*hue*Ec+mix(h2,hue,0.6)*edge*(0.18+(Es+Ec)*0.5)*wake+hue*(fl*0.22+gL*0.15)*(0.04+frost*0.8)+hue*lines*gL*0.15+(fl*sp*1.2+gli*0.6)*(0.12+F);
+  own*=(1.-lines*0.3)*(1.-(1.-exp(-dist*0.0042))*geoK(vW)*0.7);
+  vec3 tOwn=tone(own*uUG.w);
+  if(uGrabOn>0.5){ vec3 tr=bg*pow(T,vec3(0.6))*(1.-lines*0.3); o=vec4(1.-(1.-tr)*(1.-tOwn), clamp(max(bgA*dot(T,vec3(0.3333)), dot(ec,vec3(0.3))*(Es+ph)*0.9+dot(hue,vec3(0.3))*Ec*1.2+edge*0.12*wake),0.,1.)); }
+  else o=vec4(tOwn, clamp(1.-dot(T,vec3(0.3333))*0.8,0.35,1.));
+}`;
+const GEOPT_VS = `#version 300 es
+layout(location=0) in vec4 aA; layout(location=1) in vec4 aB; layout(location=2) in vec4 aC;
+uniform mat4 uVP; uniform vec3 uCam; uniform float uPx; uniform vec4 uGS; out vec3 vCol;
+${GEO_GLSL}
+void main(){ vec3 p=aA.xyz+aB.xyz*aA.w*0.3; gl_Position=uVP*vec4(p,1.); float d=length(p-uCam);
+  gl_PointSize=clamp(aA.w*300./d,1.,5.)*uPx; float tw=0.5+0.5*sin(uGS.x*(0.7+fract(aC.z*3.1))+aC.z*17.);
+  vCol=geoHue(aC.x)*aC.y*(0.25+0.75*tw)*geoPulseT(p,uGS.x,uGS.zw)*geoWakeT(p,uGS.x,uGS.y,uGS.zw)*smoothstep(38.,60.,d)*clamp(1.-d/380.,0.,1.)*0.75; }`;
+const GEOPT_FS = `#version 300 es
+precision highp float; in vec3 vCol; out vec4 o;
+void main(){ vec2 q=gl_PointCoord*2.-1.; float r=dot(q,q); if(r>1.) discard; float a=1.-r; o=vec4(vCol*a, clamp(dot(vCol,vec3(0.3))*a,0.,1.)); }`;
 const LINE_VS = `#version 300 es
 layout(location=0) in vec3 aP; layout(location=1) in float aK; uniform mat4 uVP; out vec3 vW; out float vK;
 void main(){ vW=aP; vK=aK; gl_Position=uVP*vec4(aP,1.); }`;
@@ -1455,7 +1608,7 @@ function prog(vs, fs) {
   for (let i = 0; i < n; i++) { const nm = gl.getActiveUniform(p, i).name; u[nm] = gl.getUniformLocation(p, nm); }
   return { p, u };
 }
-const pTerr = prog(TERR_VS, TERR_FS), pProp = prog(PROP_VS, PROP_FS), pSky = prog(SKY_VS, SKY_FS), pWater = prog(WATER_VS, WATER_FS), pDepth = prog(DEPTH_VS, DEPTH_FS), pFlame = prog(FLAME_VS, FLAME_FS), pGen = prog(SKY_VS, GEN_FS), pPlant = prog(PLANT_VS, PROP_FS), pGlow = prog(GLOW_VS, GLOW_FS), pPost = prog(SKY_VS, POST_FS), pCave = prog(CAVE_VS, CAVE_FS), pLine = prog(LINE_VS, LINE_FS), pCrys = prog(KIT_VS, CRYS_FS), pLife = prog(KIT_VS, LIFE_FS), pPool = prog(POOL_VS, POOL_FS), pSpore = prog(SPORE_VS, SPORE_FS), pDrip = prog(KIT_VS, DRIP_FS), pRim = prog(POOL_VS, RIM_FS), pWorm = prog(WORM_VS, WORM_FS), pLake = prog(POOL_VS, LAKE_FS), pFish = prog(FISH_VS, FISH_FS), pSilt = prog(SILT_VS, SILT_FS);
+const pTerr = prog(TERR_VS, TERR_FS), pProp = prog(PROP_VS, PROP_FS), pSky = prog(SKY_VS, SKY_FS), pWater = prog(WATER_VS, WATER_FS), pDepth = prog(DEPTH_VS, DEPTH_FS), pFlame = prog(FLAME_VS, FLAME_FS), pGen = prog(SKY_VS, GEN_FS), pPlant = prog(PLANT_VS, PROP_FS), pGlow = prog(GLOW_VS, GLOW_FS), pPost = prog(SKY_VS, POST_FS), pCave = prog(CAVE_VS, CAVE_FS), pLine = prog(LINE_VS, LINE_FS), pCrys = prog(KIT_VS, CRYS_FS), pLife = prog(KIT_VS, LIFE_FS), pPool = prog(POOL_VS, POOL_FS), pSpore = prog(SPORE_VS, SPORE_FS), pDrip = prog(KIT_VS, DRIP_FS), pRim = prog(POOL_VS, RIM_FS), pWorm = prog(WORM_VS, WORM_FS), pLake = prog(POOL_VS, LAKE_FS), pFish = prog(FISH_VS, FISH_FS), pSilt = prog(SILT_VS, SILT_FS), pTitan = prog(TITAN_VS, TITAN_FS), pGeoPt = prog(GEOPT_VS, GEOPT_FS);
 const SUN = norm([0.56, 0.5, 0.66]), FOG = [0.74, 0.80, 0.87];
 
 /* ---------- per-frame counters: every draw call goes through these ---------- */
@@ -10726,6 +10879,491 @@ const ASSET_DEFS = {
       { name: 'dropped_dive_light', budget: 400, build: buildDiveLight, colliders: [], attach: DL_ATTACH }
     ]
   };
+}) },
+  "geode": { fn: (function (K) {
+  // Geode kit (Signal Run, the giant crystal cavern behind D-10).
+  //
+  // TITANS (titan_a, titan_b, titan_c): unit frame, grows along +Y; the game stretches y by length and x/z by length x width.
+  //   Exact hull the see-through shader assumes:
+  //     regular hexagon, apothem A = 0.17, face normals at 0, 60 ... 300 degrees around +Y,
+  //     prism from y = -0.06 (buried) to y = 0.78, six flat termination faces from the prism's top edges to one tip at (0, 1, 0).
+  //   All surface detail stays inside the hull by at most 0.005 (growth steps, etch pits, chips, frost roughness).
+  //   Colour: r = frost (0 clear .. 1 milky), g = line darkness (growth lines, etch pits, phantom outlines 0.4-0.8),
+  //           b = edge brightness (1 on facet edges and chips, fading to 0 over 0.012), a = 0.
+  //   Built as flat 2D polygons on each face, cut into bands and regions, then joined without cracks (no T-junctions).
+  //
+  // DRUSE (druse_patch, druse_cluster): natural size in metres, rock plane y = 0, +Y away from the rock.
+  //   Same convention as crystals.js: r = inner glow (dim at the rock, bright at tips), g = tint shift, b = cloudiness, a = 0.
+  const { MB, rnd, norm, sub, scale, cross, dot } = K;
+  const PI = Math.PI, cl = v => Math.max(0, Math.min(1, v));
+  const ss = (a, b, x) => { const t = cl((x - a) / (b - a)); return t * t * (3 - 2 * t); };
+
+  // =====================================================================================
+  // TITAN HULL
+  // =====================================================================================
+  const A = 0.17, YB = -0.06, YS = 0.78, TIP = 1.0, HT = TIP - YS;
+  const H0 = A * Math.tan(PI / 6);          // half width of a prism face (0.0981)
+  const SL = Math.hypot(A, HT);             // slant height of a termination face (0.278)
+  const W = 0.012;                          // width of the bright edge strips
+  const NK = k => [Math.cos(k * PI / 3), 0, Math.sin(k * PI / 3)];
+  const TK = k => [-Math.sin(k * PI / 3), 0, Math.cos(k * PI / 3)];
+  const NT = k => norm([Math.cos(k * PI / 3), A / HT, Math.sin(k * PI / 3)]);       // termination face normal
+  const CORNER = k => { const a = k * PI / 3 + PI / 6, r = A / Math.cos(PI / 6); return [r * Math.cos(a), YS, r * Math.sin(a)]; };   // corner between face k and k+1
+
+  // face parameters (t, y): t across the face (along TK), y height. Termination faces use the same (t, y), seen straight on.
+  function to3(kind, k, t, y) {
+    const n = NK(k), tt = TK(k), s = kind === 'p' ? A : A * (TIP - y) / HT;
+    return [n[0] * s + tt[0] * t, y, n[2] * s + tt[2] * t];
+  }
+  // termination: in-plane slant coordinate u <-> y
+  const uOf = y => (y - YS) * SL / HT, yOf = u => YS + u * HT / SL;
+
+  // hull edges (for edge brightness): vertical prism edges, shoulder edges, termination edges
+  const EDGES = [];
+  for (let k = 0; k < 6; k++) {
+    const c = CORNER(k), c2 = CORNER((k + 1) % 6);
+    EDGES.push([[c[0], 0, c[2]], c], [c, c2], [c, [0, TIP, 0]]);
+  }
+  function segDist(p, a, b) {
+    const v = sub(b, a), w = sub(p, a), u = cl(dot(w, v) / dot(v, v));
+    return Math.hypot(w[0] - v[0] * u, w[1] - v[1] * u, w[2] - v[2] * u);
+  }
+  const edgeB = P => { let d = 1e9; for (const e of EDGES) d = Math.min(d, segDist(P, e[0], e[1])); return P[1] < 0 ? 0 : cl(1 - d / W); };
+
+  // ---------- 2D convex polygon tools (face parameter space) ----------
+  const area2 = P => { let s = 0; for (let i = 0; i < P.length; i++) { const a = P[i], b = P[(i + 1) % P.length]; s += a[0] * b[1] - b[0] * a[1]; } return s / 2; };
+  const cen2 = P => { let x = 0, y = 0; for (const p of P) { x += p[0]; y += p[1]; } return [x / P.length, y / P.length]; };
+  function clean(P) { const o = []; for (const p of P) { const q = o[o.length - 1]; if (!q || Math.hypot(p[0] - q[0], p[1] - q[1]) > 1e-11) o.push(p); } if (o.length > 1 && Math.hypot(o[0][0] - o[o.length - 1][0], o[0][1] - o[o.length - 1][1]) < 1e-11) o.pop(); return o; }
+  // keep the part of P on the left of the line a + s*d (sgn = 1) or on the right (sgn = -1)
+  function half(P, a, d, sgn) {
+    const side = q => sgn * (d[0] * (q[1] - a[1]) - d[1] * (q[0] - a[0])), o = [];
+    for (let i = 0; i < P.length; i++) {
+      const p = P[i], q = P[(i + 1) % P.length], sp = side(p), sq = side(q);
+      if (sp >= -1e-13) o.push(p);
+      if ((sp > 1e-13 && sq < -1e-13) || (sp < -1e-13 && sq > 1e-13)) {
+        // intersection computed from the endpoints in a fixed order so both halves get identical numbers
+        const flip = (p[0] > q[0]) || (p[0] === q[0] && p[1] > q[1]), P0 = flip ? q : p, Q0 = flip ? p : q;
+        const s0 = flip ? sq : sp, s1 = flip ? sp : sq, t = s0 / (s0 - s1);
+        o.push([P0[0] + (Q0[0] - P0[0]) * t, P0[1] + (Q0[1] - P0[1]) * t]);
+      }
+    }
+    return clean(o);
+  }
+  const ok = P => P.length >= 3 && Math.abs(area2(P)) > 1e-11;
+  const inConvex = (P, q) => { const s = Math.sign(area2(P)); for (let i = 0; i < P.length; i++) { const a = P[i], b = P[(i + 1) % P.length]; if (s * ((b[0] - a[0]) * (q[1] - a[1]) - (b[1] - a[1]) * (q[0] - a[0])) < -1e-12) return false; } return true; };
+  const ccw = P => area2(P) < 0 ? P.slice().reverse() : P;
+
+  // split every polygon passing pred by the line a + s*d
+  function cutAll(polys, pred, a, d) {
+    const out = [];
+    for (const p of polys) {
+      if (!pred(p)) { out.push(p); continue; }
+      const L = half(p.pts, a, d, 1), R = half(p.pts, a, d, -1);
+      if (ok(L) && ok(R)) { out.push(Object.assign({}, p, { pts: L, tag: Object.assign({}, p.tag) }), Object.assign({}, p, { pts: R, tag: Object.assign({}, p.tag) })); }
+      else out.push(p);
+    }
+    return out;
+  }
+  const hcut = (polys, pred, y) => cutAll(polys, pred, [0, y], [1, 0]);
+  const vcut = (polys, pred, t) => cutAll(polys, pred, [t, 0], [0, 1]);
+  // cut out a convex region (CCW, face coords) from every polygon of face k it overlaps; the inside pieces get tag[name] = val
+  function isolate(polys, pred, region, name, val) {
+    region = ccw(region);
+    const out = [];
+    for (const p of polys) {
+      if (!pred(p)) { out.push(p); continue; }
+      let inside = p.pts; for (let i = 0; i < region.length && inside.length; i++) inside = half(inside, region[i], sub2(region[(i + 1) % region.length], region[i]), 1);
+      if (!ok(inside)) { out.push(p); continue; }
+      let rest = p.pts;
+      for (let i = 0; i < region.length; i++) {
+        const a = region[i], d = sub2(region[(i + 1) % region.length], region[i]);
+        const outer = half(rest, a, d, -1), inner = half(rest, a, d, 1);
+        if (ok(outer) && ok(inner)) { out.push(Object.assign({}, p, { pts: outer, tag: Object.assign({}, p.tag) })); rest = inner; }
+        else if (!ok(inner)) { rest = null; break; }
+      }
+      if (rest && ok(rest)) { const tag = Object.assign({}, p.tag); tag[name] = val === undefined ? 1 : val; out.push(Object.assign({}, p, { pts: rest, tag })); }
+      else out.push(p);
+    }
+    return out;
+  }
+  const sub2 = (a, b) => [a[0] - b[0], a[1] - b[1]];
+
+  // ear clipping for convex polygons that may carry extra points along their edges (never makes zero-area triangles)
+  function triangulate(P) {
+    const s = Math.sign(area2(P)) || 1, ar = (a, b, c) => s * ((P[b][0] - P[a][0]) * (P[c][1] - P[a][1]) - (P[b][1] - P[a][1]) * (P[c][0] - P[a][0]));
+    let idx = P.map((_, i) => i); const out = [];
+    const nonDeg = id => { for (let i = 0; i < id.length; i++) if (Math.abs(ar(id[(i + id.length - 1) % id.length], id[i], id[(i + 1) % id.length])) > 1e-13) return true; return false; };
+    while (idx.length > 3) {
+      let best = -1, bA = 1e-13;
+      for (let i = 0; i < idx.length; i++) {
+        const a = idx[(i + idx.length - 1) % idx.length], b = idx[i], c = idx[(i + 1) % idx.length], v = ar(a, b, c);
+        if (v > bA && nonDeg(idx.filter((_, j) => j !== i))) { best = i; bA = v; }
+      }
+      if (best < 0) return null;
+      out.push([idx[(best + idx.length - 1) % idx.length], idx[best], idx[(best + 1) % idx.length]]); idx.splice(best, 1);
+    }
+    if (ar(idx[0], idx[1], idx[2]) > 1e-13) out.push(idx);
+    return out;
+  }
+
+  // termination face triangle in in-plane coords (t, u); nested similar triangles; rings between them
+  const FACE = [[-H0, 0], [H0, 0], [0, SL]];
+  const r0 = H0 * SL / (H0 + Math.hypot(H0, SL)), f0 = (r0 - W) / r0;           // incircle radius; inner triangle scale
+  const triIn = (s, cu) => FACE.map(v => [v[0] * s, cu + (v[1] - cu) * s]);      // FACE scaled by s about (0, cu)
+  const toTY = v => [v[0], yOf(v[1])];
+  // three trapezoids between an outer and an inner triangle (both CCW, same orientation)
+  const ring = (k, O, I, tag) => [0, 1, 2].map(i => ({ k, kind: 't', pts: [O[i], O[(i + 1) % 3], I[(i + 1) % 3], I[i]].map(toTY), tag: Object.assign({}, tag) }));
+
+  // ---------- titan builder ----------
+  // cfg: { detail, seed, decorate(polys, R) -> polys, extra: [3D points to weld into edges], disp(P, kind) -> P, col(P, poly, t, y) -> [r, g], pitDepth }
+  function titan(cfg) {
+    // every face = an inner panel plus a ring of three edge strips W wide (they carry the edge glow, b)
+    const iw = H0 - W, it = YS - W;
+    const inner = triIn(f0, r0);
+    let polys = [];
+    for (let k = 0; k < 6; k++) {
+      polys.push({ k, kind: 'p', pts: [[-H0, YB], [-iw, YB], [-iw, it], [-H0, YS]], tag: { strip: 1 } });
+      polys.push({ k, kind: 'p', pts: [[iw, YB], [H0, YB], [H0, YS], [iw, it]], tag: { strip: 1 } });
+      polys.push({ k, kind: 'p', pts: [[-iw, it], [iw, it], [H0, YS], [-H0, YS]], tag: { strip: 1 } });
+      polys.push({ k, kind: 'p', pts: [[-iw, YB], [iw, YB], [iw, it], [-iw, it]], tag: { mid: 1 } });
+      polys.push(...ring(k, FACE, inner, {}));
+      polys.push({ k, kind: 't', pts: inner.map(toTY), tag: { inner: 1 } });
+    }
+    const isP = p => p.kind === 'p', isT = p => p.kind === 't';
+    polys = cfg.decorate(polys, { isP, isT, inner });
+
+    // ---- 3D, weld points, remove T-junctions ----
+    const G = [];   // global unique points (undisplaced)
+    const weld = P => { for (const q of G) if (Math.abs(q[0] - P[0]) < 1e-9 && Math.abs(q[1] - P[1]) < 1e-9 && Math.abs(q[2] - P[2]) < 1e-9) return q; G.push(P); return P; };
+    for (const p of polys) p.P3 = p.pts.map(q => weld(to3(p.kind, p.k, q[0], q[1])));
+    for (const e of (cfg.extra || [])) weld(e);
+    for (const p of polys) {
+      const pts = [], P3 = [], n = p.pts.length;
+      for (let i = 0; i < n; i++) {
+        const a = p.P3[i], b = p.P3[(i + 1) % n], v = sub(b, a), L2 = dot(v, v), ins = [];
+        pts.push(p.pts[i]); P3.push(a);
+        for (const q of G) {
+          if (q === a || q === b) continue;
+          const w = sub(q, a), u = dot(w, v) / L2; if (u < 1e-7 || u > 1 - 1e-7) continue;
+          if (Math.hypot(w[0] - v[0] * u, w[1] - v[1] * u, w[2] - v[2] * u) < 1e-9) ins.push([u, q]);
+        }
+        ins.sort((x, y) => x[0] - y[0]);
+        const qa = p.pts[i], qb = p.pts[(i + 1) % n];
+        for (const [u, q] of ins) { pts.push([qa[0] + (qb[0] - qa[0]) * u, qa[1] + (qb[1] - qa[1]) * u]); P3.push(q); }
+      }
+      p.pts = pts; p.P3 = P3;
+    }
+
+    // ---- emit flat triangles ----
+    const mb = new MB();
+    const emit = (p, a, b, c, ca, cb, cc) => {
+      const want = p.kind === 'p' ? NK(p.k) : NT(p.k);
+      let nrm = cross(sub(b, a), sub(c, a));
+      if (dot(nrm, want) < 0) { const t = b; b = c; c = t; const u = cb; cb = cc; cc = u; nrm = scale(nrm, -1); }
+      nrm = norm(nrm);
+      mb.tri(mb.v(a[0], a[1], a[2], nrm[0], nrm[1], nrm[2], ca), mb.v(b[0], b[1], b[2], nrm[0], nrm[1], nrm[2], cb), mb.v(c[0], c[1], c[2], nrm[0], nrm[1], nrm[2], cc));
+    };
+    const colour = (P, p, t, y, extraG) => { const rg = cfg.col(P, p, t, y); return [cl(rg[0]), cl(rg[1] + (extraG || 0)), cl(Math.max(edgeB(P), cfg.chipB ? cfg.chipB(P) : 0)), 0]; };
+    for (const p of polys) {
+      const D = p.P3.map(P => cfg.disp(P, p.kind)), C = p.P3.map((P, i) => colour(P, p, p.pts[i][0], p.pts[i][1]));
+      if (p.tag.pit) {
+        // shallow pyramidal etch pit: centre pushed into the face
+        const c2 = cen2(p.pts), c3 = to3(p.kind, p.k, c2[0], c2[1]), nt = NT(p.k), dep = cfg.pitDepth || 0.0035;
+        const cP = [c3[0] - nt[0] * dep, c3[1] - nt[1] * dep, c3[2] - nt[2] * dep], cC = colour(c3, p, c2[0], c2[1], 0.12);
+        for (let i = 0; i < D.length; i++) emit(p, D[i], D[(i + 1) % D.length], cP, C[i], C[(i + 1) % D.length], cC);
+        continue;
+      }
+      const T = triangulate(p.pts);
+      if (!T) throw new Error('titan: could not triangulate a polygon');
+      for (const [a, b, c] of T) emit(p, D[a], D[b], D[c], C[a], C[b], C[c]);
+    }
+    return mb;
+  }
+
+  // deterministic hash of a point (same point -> same number, on every face that shares it)
+  const hashP = (P, s) => rnd(((Math.round(P[0] * 1e5) * 73856093) ^ (Math.round(P[1] * 1e5) * 19349663) ^ (Math.round(P[2] * 1e5) * 83492791) ^ s) >>> 0)();
+  // inset a prism point by d (moves it onto the face plane d further in; corners stay shared)
+  const insetP = (P, d) => [P[0] * (1 - d / A), P[1], P[2] * (1 - d / A)];
+  const lerpTab = (tab, y) => { if (y <= tab[0][0]) return tab[0][1]; for (let i = 1; i < tab.length; i++) if (y <= tab[i][0]) { const [y0, v0] = tab[i - 1], [y1, v1] = tab[i]; return y1 - y0 < 1e-12 ? v1 : v0 + (v1 - v0) * (y - y0) / (y1 - y0); } return tab[tab.length - 1][1]; };
+  const baseFrost = y => 0.3 * (1 - ss(-0.04, 0.05, y));     // rock contact: a little milky where it is buried
+
+  // place an equilateral etch triangle (in-plane coords t,u) inside the inner triangle
+  function etchTri(R, innerU, size, placed) {
+    for (let tries = 0; tries < 80; tries++) {
+      const a = R(), b = R(), w0 = Math.min(a, b), w1 = Math.abs(a - b), w2 = 1 - Math.max(a, b);
+      const c = [innerU[0][0] * w0 + innerU[1][0] * w1 + innerU[2][0] * w2, innerU[0][1] * w0 + innerU[1][1] * w1 + innerU[2][1] * w2];
+      const rot = -PI / 2 + (R() - 0.5) * 0.3, rr = size / Math.sqrt(3);     // one point toward the base, like quartz trigons
+      const tri = [0, 1, 2].map(i => [c[0] + rr * Math.cos(rot + i * 2 * PI / 3), c[1] + rr * Math.sin(rot + i * 2 * PI / 3)]);
+      const shrink = innerU.map(v => { const m = cen2(innerU); return [m[0] + (v[0] - m[0]) * 0.88, m[1] + (v[1] - m[1]) * 0.88]; });
+      if (!tri.every(q => inConvex(shrink, q))) continue;
+      if (placed.some(q => Math.hypot(q[0] - c[0], q[1] - c[1]) < size * 1.6)) continue;
+      placed.push(c); return tri.map(q => [q[0], yOf(q[1])]);
+    }
+    return null;
+  }
+
+  // ---------- titan_a: growth striations (small steps) + etched triangles ----------
+  function titanA(detail) {
+    const R = rnd(1101);
+    // striation lines: [y, line width, darkness]; each is a thin band whose top edge is set 0.003 in (a tiny growth step)
+    const lines = [];
+    if (detail) {
+      let y = 0.035;
+      while (lines.length < 8) {
+        y += 0.045 + 0.075 * R(); if (y > 0.71) break;
+        const lw = 0.0045 + 0.004 * R(); lines.push([y, lw, 0.42 + 0.3 * R()]);
+        if (R() < 0.45 && lines.length < 8) { const y2 = y + lw + 0.006 + 0.008 * R(); const lw2 = 0.004 + 0.003 * R(); if (y2 + lw2 < 0.72) { lines.push([y2, lw2, 0.4 + 0.25 * R()]); y = y2 + lw2; } }
+        else y += lw;
+      }
+    }
+    const step = 0.003, dTab = [[YB, 0]];
+    for (const [y, lw] of lines) dTab.push([y, 0], [y + lw, step]);
+    dTab.push([YS - W, 0], [YS, 0]);
+    // etched triangles per face (in-plane size)
+    const etchN = detail ? [2, 0, 1, 1, 0, 2] : [0, 0, 0, 0, 0, 0];
+    return titan({
+      decorate(polys, h) {
+        for (const [y, lw, g] of lines) {
+          polys = hcut(polys, p => p.tag.mid, y); polys = hcut(polys, p => p.tag.mid, y + lw);
+          for (const p of polys) if (p.tag.mid) { const c = cen2(p.pts)[1]; if (c > y && c < y + lw) p.tag.line = g; }
+        }
+        for (let k = 0; k < 6; k++) {
+          const placed = [];
+          for (let e = 0; e < etchN[k]; e++) {
+            const tri = etchTri(R, h.inner, 0.016 + 0.014 * R(), placed);
+            if (tri) polys = isolate(polys, p => p.kind === 't' && p.k === k && p.tag.inner, tri, 'pit', 0.55 + 0.2 * R());
+          }
+        }
+        return polys;
+      },
+      disp: (P, kind) => kind === 'p' && P[1] < YS - 1e-9 ? insetP(P, lerpTab(dTab, P[1])) : P,
+      col: (P, p) => [baseFrost(P[1]), p.tag.line || p.tag.pit || 0],
+      pitDepth: 0.0035
+    });
+  }
+
+  // ---------- titan_b: two phantom outlines + chipped tip edges ----------
+  function titanB(detail) {
+    const R = rnd(2202);
+    // phantoms: ghost outlines of two earlier, smaller tips, drawn on every termination face (similar triangles, nested)
+    // [scale of the face triangle, line width (in-plane), darkness]; centred a little below the face's incentre
+    const phantoms = detail ? [[0.6, 0.0055, 0.5], [0.34, 0.0045, 0.42]] : [];
+    // chips: on some termination edges near the tip, [edge k, s start, s length, depth] (s: 0 shoulder corner .. 1 tip)
+    const chips = [], extra = [], chipD = new Map(), chipZone = [];
+    if (detail) {
+      const spec = [[0, 0.62, 0.09, 0.0045], [0, 0.86, 0.07, 0.0035], [2, 0.74, 0.1, 0.005], [3, 0.9, 0.06, 0.004], [5, 0.58, 0.08, 0.004], [5, 0.8, 0.11, 0.0048]];
+      for (const [k, s0, sl, dep] of spec) {
+        const c = CORNER(k), tip = [0, TIP, 0], at = s => [c[0] + (tip[0] - c[0]) * s, c[1] + (tip[1] - c[1]) * s, c[2] + (tip[2] - c[2]) * s];
+        const bis = norm(scale([NT(k)[0] + NT((k + 1) % 6)[0], NT(k)[1] + NT((k + 1) % 6)[1], NT(k)[2] + NT((k + 1) % 6)[2]], -1));
+        // a conchoidal nick: steep on the tip side, gentle on the other, with a slightly uneven floor
+        const prof = [[0, 0], [0.22, 0.75 + 0.2 * R()], [0.55, 1], [0.82, 0.8 + 0.15 * R()], [1, 0]];
+        for (const [u, d] of prof) { const P = at(s0 + sl * u); extra.push(P); if (d > 0) chipD.set(P, scale(bis, d * dep)); }
+        chipZone.push([at(s0 - 0.02), at(s0 + sl + 0.02)]);
+      }
+    }
+    const cu = r0 * 0.82, tris = [triIn(f0, r0)];
+    for (const [sc0, lw] of phantoms) { const o = triIn(sc0, cu), ir = sc0 * r0, ic = cu + (r0 - cu) * sc0; tris.push(o, o.map(v => [v[0] * (ir - lw) / ir, ic + (v[1] - ic) * (ir - lw) / ir])); }
+    for (let i = 1; i < tris.length; i++) if (!tris[i].every(q => inConvex(tris[i - 1], q))) throw new Error('titan_b: phantom outlines overlap');
+    return titan({
+      decorate(polys) {
+        if (!phantoms.length) return polys;
+        polys = polys.filter(p => !p.tag.inner);
+        for (let k = 0; k < 6; k++) {
+          for (let i = 0; i < tris.length - 1; i++) polys.push(...ring(k, tris[i], tris[i + 1], i % 2 ? { ph: phantoms[(i - 1) >> 1][2] } : {}));
+          polys.push({ k, kind: 't', pts: tris[tris.length - 1].map(toTY), tag: {} });
+        }
+        return polys;
+      },
+      extra,
+      disp: (P, kind) => { const d = chipD.get(P); return d ? [P[0] + d[0], P[1] + d[1], P[2] + d[2]] : P; },
+      chipB: P => { for (const [a, b] of chipZone) if (segDist(P, a, b) < 1e-6) return 1; return 0; },
+      col: (P, p) => [baseFrost(P[1]), p.tag.ph || 0]
+    });
+  }
+
+  // ---------- titan_c: frosted, milky lower third with a fine rough skin; clean glass above ----------
+  function titanC(detail) {
+    const FT = 0.30;                                     // frost fades out around here
+    const rows = detail ? [0.0, 0.06, 0.12, 0.18, 0.23, 0.28, 0.33, 0.375, 0.42] : [0.3];
+    const wob = P => { const a = Math.atan2(P[2], P[0]); return 0.035 * Math.sin(a * 5 + 1.3) + 0.02 * Math.sin(a * 11 + 0.4); };
+    const frost = P => Math.max(baseFrost(P[1]), P[1] > 0.415 ? 0 : 0.82 * (1 - ss(FT - 0.08, FT + 0.06, P[1] + wob(P))));   // wob <= 0.055, so it is 0 by y 0.415
+    return titan({
+      decorate(polys) {
+        for (const y of rows) polys = hcut(polys, p => p.tag.mid, y);
+        if (detail) {
+          polys = hcut(polys, p => p.tag.strip, 0.2);         // strips: keep frost from streaking up the edges
+          polys = hcut(polys, p => p.tag.strip, 0.42);
+          for (const t of [-0.033, 0.033]) polys = vcut(polys, p => p.tag.mid && cen2(p.pts)[1] < 0.42, t);
+        }
+        return polys;
+      },
+      // micro-roughness: every vertex in the frosted zone sinks 0..0.004 (hash of its position, so shared corners agree)
+      disp: (P, kind) => {
+        if (!detail || kind !== 'p' || P[1] >= 0.4 || P[1] < -0.059) return P;
+        return insetP(P, 0.004 * hashP(P, 77) * (1 - ss(0.28, 0.4, P[1])));
+      },
+      col: P => [frost(P), 0]
+    });
+  }
+
+  // =====================================================================================
+  // DRUSE (crystal-kit convention, natural size)
+  // =====================================================================================
+  function face(R, milkyChance) { return { j: R() - 0.5, g: R() - 0.5, m: R() < (milkyChance || 0.18) ? 1 : 0 }; }
+  function colr(hn, f, kind, G) {
+    let r, b;
+    if (kind === 'tip') { r = 0.3 + 0.36 * ss(0.55, 1.0, hn) + f.j * 0.34; b = 0.12 + f.m * 0.25 - 0.08 * ss(0.7, 1, hn); }
+    else if (kind === 'matrix') { r = 0.06 + 0.05 * f.j; b = 0.9; }
+    else { const r0 = 0.06 + 0.42 * ss(-0.02, 0.95, hn); r = Math.max(r0 * 0.6, r0 + f.j * 0.34 * ss(0.0, 0.35, hn)); b = 0.82 - 0.62 * ss(-0.04, 0.3, hn) + f.m * 0.32; }
+    return [cl(r * G), cl(0.5 + f.g * 0.62), cl(b), 0];
+  }
+  function ftri(mb, a, b, c, ca, cb, cc, ref) {
+    let n = norm(cross(sub(b, a), sub(c, a)));
+    const cen = [(a[0] + b[0] + c[0]) / 3, (a[1] + b[1] + c[1]) / 3, (a[2] + b[2] + c[2]) / 3];
+    if (dot(n, sub(cen, ref)) < 0) { const t = b; b = c; c = t; const u = cb; cb = cc; cc = u; n = scale(n, -1); }
+    mb.tri(mb.v(a[0], a[1], a[2], n[0], n[1], n[2], ca), mb.v(b[0], b[1], b[2], n[0], n[1], n[2], cb), mb.v(c[0], c[1], c[2], n[0], n[1], n[2], cc));
+  }
+  // irregular cross-section: n cut lines at unequal distances (opposite faces stay parallel)
+  function section(R, n, jit) {
+    const rot = R() * PI * 2, L = [];
+    for (let j = 0; j < n; j++) L.push([rot + j * 2 * PI / n + (R() - 0.5) * 0.06, 1 + (R() * 2 - 1) * jit]);
+    const P = [];
+    for (let j = 0; j < n; j++) {
+      const [t0, d0] = L[j], [t1, d1] = L[(j + 1) % n], det = Math.cos(t0) * Math.sin(t1) - Math.sin(t0) * Math.cos(t1);
+      P.push([(d0 * Math.sin(t1) - d1 * Math.sin(t0)) / det, (Math.cos(t0) * d1 - Math.cos(t1) * d0) / det]);
+    }
+    return P;
+  }
+  // one crystal: B base point, F axis, len, rad, sec, rings [{h, k, off, dh, kind}], tip {h, ridge, dB, off}
+  function crystal(mb, o) {
+    const R = rnd(o.seed), F = norm(o.F), S = norm(cross(F, Math.abs(F[1]) > 0.9 ? [1, 0, 0] : [0, 1, 0])), U = cross(S, F), B = o.B, len = o.len, G = o.G || 1;
+    const Wp = (h, x, z) => [B[0] + F[0] * h + S[0] * x + U[0] * z, B[1] + F[1] * h + S[1] * x + U[1] * z, B[2] + F[2] * h + S[2] * x + U[2] * z];
+    const sec = o.sec, n = sec.length;
+    const rings = o.rings.map(rg => { const off = rg.off || [0, 0]; return sec.map((p, i) => { const x = p[0] * o.rad * rg.k + off[0], z = p[1] * o.rad * rg.k + off[1]; return { h: rg.h + (rg.dh ? rg.dh(i) : 0), x, z, off }; }); });
+    const P = q => Wp(q.h, q.x, q.z), cols = sec.map(() => face(R, o.milky));
+    for (let r = 0; r < rings.length - 1; r++) {
+      const r0 = rings[r], r1 = rings[r + 1], kind = o.rings[r + 1].kind || 'side';
+      for (let i = 0; i < n; i++) {
+        const i1 = (i + 1) % n, a = r0[i], b = r0[i1], c = r1[i1], d = r1[i], cf = cols[i], ledge = Math.abs(a.h - d.h) < o.rad * 0.1;
+        const f = (ledge || kind === 'tip') ? face(R, o.milky) : { j: cf.j + (R() - 0.5) * 0.08, g: cf.g + (R() - 0.5) * 0.06, m: cf.m };
+        const hmin = Math.min(a.h, b.h, c.h, d.h), ref = Wp(hmin - o.rad * 0.6, (r0[0].off[0] + r1[0].off[0]) / 2, (r0[0].off[1] + r1[0].off[1]) / 2);
+        const C = q => colr(q.h / len, f, kind, G);
+        ftri(mb, P(a), P(b), P(c), C(a), C(b), C(c), ref);
+        ftri(mb, P(a), P(c), P(d), C(a), C(c), C(d), ref);
+      }
+    }
+    const top = rings[rings.length - 1], toff = top[0].off;
+    let hmin = 1e9; for (const q of top) hmin = Math.min(hmin, q.h);
+    const ref = Wp(hmin - o.rad * 1.2, toff[0], toff[1]);
+    const t = o.tip, ra = (t.ang === undefined ? R() * PI : t.ang), rd = [Math.cos(ra), Math.sin(ra)], rl = (t.ridge || 0) * o.rad;
+    const cx = toff[0] + (t.off ? t.off[0] * o.rad : 0), cz = toff[1] + (t.off ? t.off[1] * o.rad : 0);
+    const TA = { h: t.h, x: cx + rd[0] * rl / 2, z: cz + rd[1] * rl / 2 }, TB = { h: t.h - (t.dB || 0), x: cx - rd[0] * rl / 2, z: cz - rd[1] * rl / 2 };
+    const side = top.map(q => rl > 0 && ((q.x - cx) * rd[0] + (q.z - cz) * rd[1]) < 0 ? TB : TA);
+    for (let i = 0; i < n; i++) {
+      const i1 = (i + 1) % n, a = top[i], b = top[i1], X = side[i], Y = side[i1], f = face(R, o.milky * 0.5), C = q => colr(q.h / len, f, 'tip', G);
+      ftri(mb, P(a), P(b), P(Y), C(a), C(b), C(Y), ref);
+      if (X !== Y) ftri(mb, P(a), P(Y), P(X), C(a), C(Y), C(X), ref);
+    }
+  }
+  const dirOf = (tilt, az) => [Math.sin(tilt) * Math.cos(az), Math.cos(tilt), Math.sin(tilt) * Math.sin(az)];
+  // full-detail point: base, body (optional growth step), zig-zag shoulder, kinked termination, chisel tip
+  function fullPoint(R, rad, len, opt) {
+    opt = opt || {};
+    const tipL = rad * (opt.tipK || 2.2), sh = len - tipL, taper = opt.taper === undefined ? 0.08 : opt.taper, zz = rad * 0.22;
+    const k = h => 1 - taper * Math.max(0, h) / len, rings = [{ h: opt.h0 === undefined ? -0.03 : opt.h0, k: 1.02 }];
+    for (const tt of (opt.body || [])) {
+      const h = sh * tt; rings.push({ h, k: k(h) * (1 + (R() - 0.5) * 0.03) });
+      if (opt.steps && opt.steps.indexOf(tt) >= 0) rings.push({ h: h + rad * 0.03, k: k(h) * 0.95 });
+    }
+    rings.push({ h: sh, k: k(sh), dh: i => (i % 2 ? zz : -zz) * (0.6 + 0.8 * R()) });
+    if (opt.kink) rings.push({ h: sh + tipL * 0.5, k: k(sh) * 0.5, kind: 'tip', off: [(R() - 0.5) * rad * 0.15, (R() - 0.5) * rad * 0.15], dh: i => (i % 2 ? zz : -zz) * 0.5 * R() });
+    return { rings, tip: { h: len, ridge: opt.ridge === undefined ? 0.35 + 0.3 * R() : opt.ridge, dB: rad * (0.1 + 0.25 * R()), off: [(R() - 0.5) * 0.25, (R() - 0.5) * 0.25] } };
+  }
+  // simple point: one band + pyramid (or pyramid only)
+  function simplePoint(rad, len, h0, pyramidOnly, tipK) {
+    if (pyramidOnly) return { rings: [{ h: h0, k: 1 }], tip: { h: len, ridge: 0 } };
+    return { rings: [{ h: h0, k: 1 }, { h: len - rad * (tipK || 2.0), k: 0.93 }], tip: { h: len, ridge: 0 } };
+  }
+  // fused rock-matrix crust at the root of a cluster
+  function matrix(mb, R, rx, rz, sides, h) {
+    const pts = [], apex = [(R() - 0.5) * rx * 0.2, h, (R() - 0.5) * rz * 0.2], ref = [0, -0.2, 0];
+    for (let i = 0; i < sides; i++) { const a = i / sides * PI * 2 + (R() - 0.5) * 0.4, s = 0.75 + 0.35 * R(); pts.push([Math.cos(a) * rx * s, -0.02 - 0.02 * R(), Math.sin(a) * rz * s]); }
+    for (let i = 0; i < sides; i++) { const f = face(R), a = pts[i], b = pts[(i + 1) % sides], C = colr(0, f, 'matrix', 1); ftri(mb, a, b, apex, C, C, C, ref); }
+  }
+
+  // ---------- druse_patch: a 1.6 m carpet of small points, for tiling over whole walls ----------
+  const PATCH = (() => {
+    const R = rnd(3303), out = [], N = 62, RMAX = 0.8;
+    const edge = a => RMAX * (0.9 + 0.07 * Math.sin(3 * a + 0.7) + 0.04 * Math.sin(5 * a + 2.1));     // slightly ragged outline
+    // sizes first, biggest placed first (they sit nearer the middle so tiled copies blend at their edges)
+    const sizes = []; for (let i = 0; i < N; i++) { const u = R(); sizes.push(0.05 + 0.3 * Math.pow(u, 1.8)); }
+    sizes.sort((a, b) => b - a);
+    for (const len of sizes) {
+      const rad = len * (0.19 + 0.07 * R()) + 0.011;
+      let best = null;
+      for (let tries = 0; tries < 400 && !best; tries++) {
+        const a = R() * PI * 2, rr = Math.sqrt(R()), lim = edge(a) * (1 - 0.45 * (len - 0.05) / 0.3) - rad * 0.5, x = Math.cos(a) * rr * lim, z = Math.sin(a) * rr * lim;
+        const relax = tries > 250 ? 0.62 : 0.78;
+        if (out.every(c => Math.hypot(c.x - x, c.z - z) > (c.rad + rad) * relax)) best = { x, z };
+      }
+      if (!best) continue;
+      const d = Math.hypot(best.x, best.z) / RMAX, az = Math.atan2(best.z, best.x) + (R() - 0.5) * 1.8;
+      const tilt = 0.04 + 0.26 * d + 0.1 * R();
+      out.push({ x: best.x, z: best.z, len, rad, tilt, az, seed: 3400 + out.length, G: 0.8 + 0.25 * R() });
+    }
+    return out;
+  })();
+  function drusePatch(detail) {
+    const mb = new MB();
+    PATCH.forEach((c, i) => {
+      const Rq = rnd(c.seed), big = i < 22;
+      if (!detail && i >= 26) return;
+      const sides = detail ? (big ? 6 : 4) : 3, sec = section(Rq, sides, 0.16);
+      const spec = detail ? simplePoint(c.rad, c.len, -0.03, false, 1.8 + 0.6 * Rq()) : simplePoint(c.rad, c.len, -0.03, i >= 12, 1.9);
+      crystal(mb, Object.assign({ B: [c.x, 0, c.z], F: dirOf(c.tilt, c.az), len: c.len, rad: c.rad, sec, G: c.G, seed: c.seed + 50, milky: 0.2 }, spec));
+    });
+    return mb;
+  }
+
+  // ---------- druse_cluster: a 0.8 m sea-urchin burst of 13 crystals from one root ----------
+  const CLUSTER = (() => {
+    const R = rnd(4404), out = [];
+    // [tilt, azimuth, length]: long ones near upright, short ones lying out sideways
+    const golden = PI * (3 - Math.sqrt(5));
+    for (let q = 0; q < 13; q++) {
+      const tilt = q === 0 ? 0.08 : 0.32 + 1.0 * Math.pow(q / 12, 0.8) + (R() - 0.5) * 0.14;
+      const az = q * golden + (R() - 0.5) * 0.5;
+      const len = q === 0 ? 0.9 : Math.max(0.2, 0.82 - 0.55 * (tilt - 0.3) / 1.0 + (R() - 0.5) * 0.12);
+      const rad = 0.018 + 0.05 * len;
+      out.push({ tilt, az, len, rad, seed: 4500 + q });
+    }
+    return out;
+  })();
+  function druseCluster(detail) {
+    const mb = new MB(), R = rnd(4405);
+    CLUSTER.forEach((c, q) => {
+      const Rq = rnd(c.seed), F = dirOf(c.tilt, c.az), B = [F[0] * 0.02, 0.012, F[2] * 0.02];
+      const sides = detail ? 6 : (q === 0 ? 6 : 3), sec = section(Rq, sides, 0.15), h0 = -0.04;
+      let spec;
+      if (!detail) spec = simplePoint(c.rad, c.len, h0, false, 2.1);
+      else if (q < 6) spec = fullPoint(Rq, c.rad, c.len, { body: [0.12, 0.42, 0.7], steps: q < 3 ? [0.42] : [], kink: true, h0, ridge: 0.3 + 0.3 * Rq() });
+      else spec = fullPoint(Rq, c.rad, c.len, { body: [0.35], kink: q < 10, h0 });
+      crystal(mb, Object.assign({ B, F, len: c.len, rad: c.rad, sec, G: 0.88 + 0.12 * c.len, seed: c.seed + 40, milky: 0.18 }, spec));
+    });
+    if (detail) matrix(mb, R, 0.11, 0.1, 9, 0.035);
+    return mb;
+  }
+
+  return {
+    name: 'geode',
+    items: [
+      { name: 'titan_a', budget: 700, build: titanA, colliders: [] },
+      { name: 'titan_b', budget: 700, build: titanB, colliders: [] },
+      { name: 'titan_c', budget: 700, build: titanC, colliders: [] },
+      { name: 'druse_patch', budget: 900, build: drusePatch, colliders: [] },
+      { name: 'druse_cluster', budget: 900, build: druseCluster, colliders: [] }
+    ]
+  };
 }) }
 };
 /* ---------- placed assets: modelled by sub-agents with the AssetKit, placed here ---------- */
@@ -11067,11 +11705,12 @@ function doorWorld(D, u, v) { return [D.x + D.c * u + D.s * v, D.z - D.s * u + D
 const PARTS = [                              // the power couplings (campaign): where the research team left them
   { door: 'D-8', at: CV.floorNear(-44, -163, -179), packYaw: 0.6 },
   { door: 'D-9', at: CV.floorNear(170, -300, -60), packYaw: 2.1 },
+  { door: 'D-10', at: CV.floorNear(318, -432, -7), packYaw: 1.2 },   // on the lake floor, 16 m down
 ];
 const STATION_PROPS = [], FLOODS = [], STAKES = [];
 const ROUTES = {"D-8":[[1453,-180.13,1504],[1461,-180.13,1502],[1469,-179.88,1502],[1475,-179.25,1502],[1477,-172.75,1502],[1485,-171.13,1500],[1493,-170.88,1496],[1501,-171.13,1494],[1507,-171.13,1490],[1509,-173.13,1488],[1511,-176.63,1486],[1515,-180,1480],[1519,-180.75,1474]],"D-9":[[1567,-311.5,1467],[1573,-315.25,1463],[1581,-318.5,1459],[1589,-321.25,1459],[1597,-324.5,1459],[1605,-327.13,1459],[1613,-329,1459],[1621,-330.5,1459],[1629,-331.63,1459],[1637,-332,1459],[1645,-331.63,1459],[1653,-331.63,1459],[1661,-330.13,1457],[1669,-328.88,1459],[1675,-327.13,1459],[1683,-324.38,1459],[1691,-320,1461],[1699,-314.63,1465]],"D-10":[[1740,-425.88,1469],[1748,-431,1469],[1756,-434.13,1469],[1764,-439.25,1469],[1772,-444.88,1469],[1780,-448.75,1469],[1788,-451.88,1469],[1796,-454.63,1469],[1804,-454.25,1471],[1822,-452,1471],[1832,-452,1471]]};   // the research team's route stakes, landing -> exit door (src/node/routes.js)
 const nearRoute = p => { for (const k in ROUTES) for (const q of ROUTES[k]) if (Math.abs(q[1] - p[1]) < 3.5 && Math.hypot(q[0] - p[0], q[2] - p[2]) < 1.5) return true; return false; };
-function doorReady(D) { return D.name !== 'D-10'; }     // D-10: the giant crystal cavern beyond it comes in the next build
+function doorReady(D) { return true; }
 function doorUnlocked(D) {
   if (!doorReady(D)) return false; if (game.free) return true; if (D.i === 0) return game.online >= 7;
   const k = PARTS.findIndex(p => p.door === D.name); return k >= 0 && !!(cave.parts && cave.parts[k]);
@@ -11085,7 +11724,7 @@ function doorUpdate(dt) {
     const f = doorWorld(D, 0, -2), d = Math.hypot(state.px - f[0], state.pz - f[1]), near = cave.under && d < 6.5 && Math.abs(state.py - D.y) < 4, un = doorUnlocked(D);
     if (D.open < 1 && un && near && !D.moving) {
       D.moving = true; thud(0.5, 120); tone([110, 147, 165], 1.4, 'sawtooth', 0.05, 0.25);
-      toast(D.i === 0 ? (game.free ? 'The deep door grinds open.' : 'The deep door has power again. It grinds open.') : game.free ? D.name + ' grinds open.' : 'You seat the coupling in ' + D.name + '. Its panel lights, and the door grinds open.', 5);
+      toast((D.i === 0 ? (game.free ? 'The deep door grinds open.' : 'The deep door has power again. It grinds open.') : game.free ? D.name + ' grinds open.' : 'You seat the coupling in ' + D.name + '. Its panel lights, and the door grinds open.') + (D.name === 'D-10' ? ' Far down the bore, a light is pulsing.' : ''), D.name === 'D-10' ? 7 : 5);
     }
     if (D.moving) { D.open = Math.min(1, D.open + dt / 3.6); if (D.open >= 1) { D.moving = false; thud(0.6, 90); saveGame(); } }
     if (!un && near && d < 4.5 && state.time - D.told > 25) {
@@ -11331,7 +11970,7 @@ const LOG = [   // the research team's dive log (draft text: Christopher may rew
 ];
 function inWater(x, y, z) {                  // below the lake's surface: in the lake, or in the flooded bore
   if (y >= LWL) return false;
-  if (CV.lakeK(x, y, z) < 1.08) return true;
+  if (CV.lakeK(x, y, z) < 1.08 || CV.geoK(x, y, z) < 1.05) return true;
   const B = LAKE.bore; return x > B[0][0] - 3 && x < B[B.length - 1][0] + 3 && Math.abs(z - B[0][2]) < LAKE.boreR + 1;
 }
 function lakeHits() {
@@ -11414,7 +12053,7 @@ function lakeInit() {
     const p = { mesh: a, it: a.it, p: [x, yy, z], yaw, m: new Float32Array(mulAll(tr(x, yy, z), rotY(yaw))) }; LAKER.props.push(p); return p; };
   const S = STATION_AT, wpt = (p, a) => { const c = Math.cos(p.yaw), s = Math.sin(p.yaw); return [p.p[0] + c * a[0] + s * a[2], p.p[1] + a[1], p.p[2] - s * a[0] + c * a[2]]; };
   place('divesite', 'dive_platform', S[0] + 6.5, S[1], 0, LWL);
-  place('divesite', 'tank_rack', S[0] - 4, S[1] - 3, 0.4);
+  LAKER.rack = place('divesite', 'tank_rack', S[0] - 4, S[1] - 3, 0.4);
   const term = place('divesite', 'log_terminal', S[0] - 1.5, S[1] + 5.5, 0);
   const spool = place('divesite', 'line_spool', S[0] + 1.5, S[1] - 2.5, 0);
   place('divesite', 'dropped_dive_light', S[0] - 0.5, S[1] + 1.5, 1.1);
@@ -11455,7 +12094,7 @@ function lakeInit() {
 /* the fish keep their distance: they circle you out at the edge of the murk, flee when your light finds them, and now and then one darts past */
 function fishUpdate(dt) {
   const E = cam.eye, F = [Math.cos(state.pitch) * -Math.sin(state.yaw), -Math.sin(state.pitch), Math.cos(state.pitch) * -Math.cos(state.yaw)];
-  const P = [state.px, state.py + 1.4, state.pz], playerIn = inWater(P[0], P[1], P[2]), t = state.time, r = Math.random;
+  const P = [state.px, state.py + 1.4, state.pz], playerIn = inWater(P[0], P[1], P[2]) && CV.lakeK(P[0], P[1], P[2]) < 1.3, t = state.time, r = Math.random;
   const nearLake = !playerIn && cave.under && CV.lakeK(P[0], P[1], P[2]) < 1.05 && P[1] < LWL + 6;
   if (playerIn && t > LAKER.dartT) {        // a dart: one fish crosses right in front of you, fast
     LAKER.dartT = t + 14 + r() * 18; const c = LAKER.fish.filter(f => f.mode !== 'dart' && Math.hypot(f.p[0] - P[0], f.p[1] - P[1], f.p[2] - P[2]) > 9);
@@ -11489,7 +12128,8 @@ function fishUpdate(dt) {
 function lakeUpdate(dt) {
   const px = state.px, py = state.py, pz = state.pz, head = inWater(px, py + 1.6, pz);
   if (cave.under && CV.lakeK(px, py + 1, pz) < 1.0 && !LAKER.seen) { LAKER.seen = true; toast('Humidity 100%. Water temperature 4 °C. Something moved, out on the water.', 7); tone([196, 185, 147], 2.6, 'sine', 0.09, 0.6); }
-  if (head) LAKER.air = Math.max(0, LAKER.air - dt * 100 / 75); else LAKER.air = Math.min(100, LAKER.air + dt * 40);
+  const R = LAKER.rack; if (R && !cave.tank && !game.free && cave.under && Math.hypot(R.p[0] - px, R.p[2] - pz) < 2.6 && Math.abs(R.p[1] - py) < 2.5) { cave.tank = true; tone([523, 659, 784], 0.5, 'triangle', 0.15); toast('You clip a spare tank from the rack onto your suit. Your air now lasts twice as long.', 7); saveGame(); }
+  if (head) LAKER.air = Math.max(0, LAKER.air - dt * 100 / (cave.tank || game.free ? 150 : 75)); else LAKER.air = Math.min(100, LAKER.air + dt * 40);
   if (head && LAKER.air < 30 && !LAKER.warned) { LAKER.warned = 1; toast('Suit air 30%. Head for the surface.', 4); tone([440, 330], 0.4, 'square', 0.08, 0.2); }
   if (LAKER.air > 60) LAKER.warned = 0;
   if (head && LAKER.air <= 0 && !LAKER.out && state.play) {
@@ -11553,13 +12193,246 @@ function drawLakeGlow() {                    // with the glow program bound: eye
   }
   const T = LAKER.term; if (T && Math.hypot(T.at[0] - E[0], T.at[1] - E[1], T.at[2] - E[2]) < 80) glowDraw(crystal, mulAll(tr(T.at[0], T.at[1], T.at[2]), sc(0.16, 0.1, 0.04)), 0.55, 1.0, 0.9, 0.7 + 0.15 * Math.sin(state.time * 9) * Math.sin(state.time * 2.3), 0);
 }
+/* ---------- the giant crystal cavern: titans you can see into, a lining of crystals, and the light they give ---------- */
+const GEOC = CV.GEO;
+const GEOR = { tris: 0, kits: [], ranges: [], inst: null, count: 0, hits: 0, pts: null, titans: [], tinst: null, motes: null, nMotes: 0, pool: null,
+  seen: false, pt0: 0, k: +(params.get('geok') || 0.14), lights: new Float32Array(128), nl: 0, clearK: 0, bore: 0, grab: null, ms: 0, inGeo: false };
+const GEOQ = (() => { const q = params.get('geoq'), phone = q ? q === 'lo' : ('ontouchstart' in window || navigator.maxTouchPoints > 0);   // phones get a lighter version
+  return phone ? { lights: 8, scatter: 0, steps: 3, druse: 0.55, hiR: 16, meshR: 40, tier: 'phone' } : { lights: 16, scatter: 1, steps: 6, druse: 1, hiR: 28, meshR: 52, tier: 'full' }; })();
+const GEO_TA = 0.17, GEO_TK = 0.17 / 0.22;
+const GEO_PL = [0, 1, 2, 3, 4, 5].flatMap(i => { const a = i * Math.PI / 3, c = Math.cos(a), s = Math.sin(a); return [[c, 0, s, GEO_TA], [c, GEO_TK, s, GEO_TK]]; }).concat([[0, -1, 0, 0.06]]);   // the titan's exact shape: 13 flat faces
+const geoTime = () => state.time - GEOR.pt0;
+const geoPulse = (x, z) => { const ph = ((geoTime() * 16 - Math.hypot(x - GEOC.pool[0], z - GEOC.pool[1])) % 300 + 300) % 300; return 1 + 1.1 * Math.exp(-ph * ph / 400); };   // the signal: a ring of light running out from the pool
+const geoWake = (x, z) => GEOR.seen ? 0.12 + 0.88 * Math.max(0, Math.min(1, (geoTime() * 16 - Math.hypot(x - GEOC.pool[0], z - GEOC.pool[1]) + 20) / 30)) : 0.12;   // dim until you surface; the first ring wakes them
+
+// the route on from D-10: stakes along the bore floor to the rise into the pool
+ROUTES.GEO = (() => { const B = CV.LAKE.bore, out = [];
+  for (let x = 412; x <= 548; x += 12) { const wx = CV.SX + x; let i = 1; while (i < B.length - 1 && B[i][0] < wx) i++; const a = B[i - 1], b = B[i], t = (wx - a[0]) / (b[0] - a[0]), cy = a[1] + (b[1] - a[1]) * t, y = CV.floorAt(wx, cy, B[0][2]);
+    if (y > cy - 4 && y < cy) out.push([wx, Math.round(y * 100) / 100, B[0][2]]); }
+  return out; })();
+
+function geoHits() {
+  const C = GEOC, out = [], r = cavRnd(9001);
+  const origins = [[0, 0, 0], [0, -55, 0], [-60, -40, 0], [60, -40, 0], [0, -40, -55], [0, -40, 55], [-50, -15, -45], [50, -15, 45], [45, 20, -40], [-45, 20, 40], [0, 45, 0], [-45, -60, -10]];
+  for (const o of origins) {
+    const ox = C.x + o[0], oy = C.y + o[1], oz = C.z + o[2]; if (CV.sdf(ox, oy, oz) > -3) continue;
+    const N = 1500;
+    for (let i = 0; i < N; i++) {
+      const yv = 1 - 2 * (i + 0.5) / N, rr = Math.sqrt(1 - yv * yv), ph = i * 2.39996 + r() * 0.3, dx = Math.cos(ph) * rr, dy = yv, dz = Math.sin(ph) * rr;
+      let t = 0, hit = null;
+      for (let it = 0; it < 300 && t < 320; it++) { const x = ox + dx * t, y = oy + dy * t, z = oz + dz * t, d = CV.sdf(x, y, z); if (d > -0.04) { hit = [x, y, z]; break; } t += Math.max(-d * 0.8, 0.15); }
+      if (!hit || CV.geoK(hit[0], hit[1], hit[2]) > 1.2 || hit[1] < LWL - 0.3) continue;   // nothing under the pool's water
+      const e = 0.4, g = [CV.sdf(hit[0] + e, hit[1], hit[2]) - CV.sdf(hit[0] - e, hit[1], hit[2]), CV.sdf(hit[0], hit[1] + e, hit[2]) - CV.sdf(hit[0], hit[1] - e, hit[2]), CV.sdf(hit[0], hit[1], hit[2] + e) - CV.sdf(hit[0], hit[1], hit[2] - e)];
+      out.push({ p: hit, n: norm([-g[0], -g[1], -g[2]]) });
+    }
+  }
+  return out;
+}
+function geoScatter(hits) {
+  const r = cavRnd(5150), bag = {}, push = (k, v) => (bag[k] = bag[k] || []).push(v), titans = [], C = GEOC;
+  const pick = opts => { let x = r() * opts.reduce((a, o) => a + o[1], 0); for (const o of opts) { x -= o[1]; if (x <= 0) return o[0]; } return opts[0][0]; };
+  const hueOf = () => (pick([[0.0, 4], [0.2, 2], [0.4, 3], [0.6, 1.5], [0.8, 0.35]]) + (r() - 0.5) * 0.06 + 1) % 1;   // cyan, mint, violet, rose, a rare gold
+  const poolD = p => Math.hypot(p[0] - C.pool[0], p[2] - C.pool[1]);
+  const free = (p, gap) => titans.every(t => Math.hypot(t.p[0] - p[0], t.p[1] - p[1], t.p[2] - p[2]) > gap);
+  const addTitan = (p, ax, L, wf, kind) => { titans.push({ p: [p[0] - ax[0] * 0.05 * L, p[1] - ax[1] * 0.05 * L, p[2] - ax[2] * 0.05 * L], ax, L, wf, roll: r() * 6.283, hue: hueOf(), glow: 0.8 + r() * 0.45, v: ['titan_a', 'titan_b', 'titan_c'][(r() * 3) | 0], kind }); };
+  const floors = hits.filter(h => h.n[1] > 0.6 && h.p[1] > LWL + 0.5), walls = hits.filter(h => Math.abs(h.n[1]) < 0.45 && h.p[1] > LWL + 18), ceils = hits.filter(h => h.n[1] < -0.6);
+  const rnd = a => a[(r() * a.length) | 0];
+  // three titans at the pool's edge, half drowned, glowing up through the water
+  for (let k = 0, tries = 0; k < 3 && tries < 600 && floors.length; tries++) { const h = rnd(floors), d = poolD(h.p); if (d < 14 || d > 30 || !free(h.p, 16)) continue;
+    const out = norm([h.p[0] - C.pool[0], 0, h.p[2] - C.pool[1]]); addTitan([h.p[0], LWL - 6, h.p[2]], norm([out[0] * 0.45 + (r() - 0.5) * 0.2, 1, out[2] * 0.45 + (r() - 0.5) * 0.2]), 30 + r() * 16, 0.5 + r() * 0.1, 'pool'); k++; }
+  // a ring of great titans on the terraces, leaning out from the centre like the inside of a geode
+  for (let k = 0, tries = 0; k < 14 && tries < 3000 && floors.length; tries++) { const h = rnd(floors), d = poolD(h.p); if (d < 32 || !free(h.p, 22)) continue;
+    const out = norm([h.p[0] - C.x, 0, h.p[2] - C.z]); addTitan(h.p, norm([out[0] * 0.3 + h.n[0] * 0.3 + (r() - 0.5) * 0.25, 1, out[2] * 0.3 + h.n[2] * 0.3 + (r() - 0.5) * 0.25]), 28 + r() * 44, 0.42 + r() * 0.18, 'floor'); k++; }
+  // titans thrusting out of the walls, and hanging from the dome
+  for (let k = 0, tries = 0; k < 10 && tries < 3000 && walls.length; tries++) { const h = rnd(walls); if (!free(h.p, 24)) continue; addTitan(h.p, norm([h.n[0] * 0.85 + (r() - 0.5) * 0.3, -0.2 + (r() - 0.5) * 0.3, h.n[2] * 0.85 + (r() - 0.5) * 0.3]), 34 + r() * 52, 0.36 + r() * 0.14, 'wall'); k++; }
+  for (let k = 0, tries = 0; k < 6 && tries < 3000 && ceils.length; tries++) { const h = rnd(ceils); if (!free(h.p, 26)) continue; addTitan(h.p, norm([h.n[0] + (r() - 0.5) * 0.3, -1, h.n[2] + (r() - 0.5) * 0.3]), 25 + r() * 35, 0.4 + r() * 0.15, 'ceil'); k++; }
+  // two colossi rising from the far terraces almost to the dome
+  for (let k = 0, tries = 0; k < 2 && tries < 3000 && floors.length; tries++) { const h = rnd(floors); if (h.p[0] < C.x + 15 || !free(h.p, 45)) continue; const cy = CV.ceilAt(h.p[0], h.p[1] + 1, h.p[2]); if (!(cy < 1e8) || cy - h.p[1] < 90) continue;
+    addTitan(h.p, norm([(r() - 0.5) * 0.12, 1, (r() - 0.5) * 0.12]), (cy - h.p[1]) * 0.9, 0.27 + r() * 0.04, 'colossus'); k++; }
+  // the lining: every surface carpeted with small crystals, mostly the colour of the nearest titan
+  const near = p => { let b = null, bd = 1e9; for (const t of titans) { const d = Math.hypot(t.p[0] - p[0], t.p[1] - p[1], t.p[2] - p[2]); if (d < bd) { bd = d; b = t; } } return b; };
+  const tangent = n => { const a = norm(cross(n, Math.abs(n[1]) > 0.9 ? [1, 0, 0] : [0, 1, 0])); return [a, cross(n, a)]; };
+  const inTitan = p => titans.some(q => { const w = [p[0] - q.p[0], p[1] - q.p[1], p[2] - q.p[2]], tt = Math.max(0, Math.min(1, (w[0] * q.ax[0] + w[1] * q.ax[1] + w[2] * q.ax[2]) / q.L)); return Math.hypot(w[0] - q.ax[0] * q.L * tt, w[1] - q.ax[1] * q.L * tt, w[2] - q.ax[2] * q.L * tt) < q.L * q.wf * 0.2; });
+  const clear = p => Math.hypot(p[0] - C.pool[0], p[2] - C.pool[1]) > 4.5 || p[1] > LWL + 3;   // keep the pool's middle open
+  for (const h of hits) {
+    const p = h.p, n = h.n; if (!clear(p) || inTitan(p)) continue;
+    const t = near(p), hv = t && r() < 0.85 ? (t.hue + (r() - 0.5) * 0.1 + 1) % 1 : hueOf(), ceil = n[1] < -0.45, floor = n[1] > 0.55;
+    if (r() < 0.62) { const s = 0.8 + r() * 1.5; push('druse_patch', [p[0] - n[0] * 0.05, p[1] - n[1] * 0.05, p[2] - n[2] * 0.05, s, n[0], n[1], n[2], 1, hv, 0.9 + r() * 0.5, r() * 6.283, 0]); }
+    if (r() < 0.32) {
+      const item = floor ? pick([['crystal_cluster', 3], ['druse_cluster', 3], ['crystal_point', 2]]) : ceil ? pick([['druse_cluster', 3], ['crystal_spray', 2], ['crystal_point', 2]]) : pick([['crystal_cluster', 2], ['druse_cluster', 3], ['crystal_point', 2], ['crystal_spray', 1]]);
+      const [ta, tb] = tangent(n), j = 0.5, L = item === 'druse_cluster' ? 0.8 + r() * 1.4 : 0.5 * Math.exp(r() * 2.1);
+      const ax = norm([n[0] + (ta[0] * (r() - 0.5) + tb[0] * (r() - 0.5)) * j * 2, n[1] + (ta[1] * (r() - 0.5) + tb[1] * (r() - 0.5)) * j * 2, n[2] + (ta[2] * (r() - 0.5) + tb[2] * (r() - 0.5)) * j * 2]);
+      push(item, [p[0] - n[0] * 0.08 * L, p[1] - n[1] * 0.08 * L, p[2] - n[2] * 0.08 * L, L, ax[0], ax[1], ax[2], item === 'druse_cluster' ? 1 : 0.8 + r() * 0.5, hv, 1.0 + r() * 0.6, r() * 6.283, 0]);
+    }
+  }
+  return { bag, titans };
+}
+function geoFrame(t) {                       // the same frame the shader builds: x across, y along the crystal, z across
+  const f = t.ax, s = norm(cross(f, Math.abs(f[1]) > 0.95 ? [1, 0, 0] : [0, 1, 0])), u = cross(s, f), c = Math.cos(t.roll), sn = Math.sin(t.roll), W = t.L * t.wf;
+  const s2 = [s[0] * c + u[0] * sn, s[1] * c + u[1] * sn, s[2] * c + u[2] * sn], u2 = [u[0] * c - s[0] * sn, u[1] * c - s[1] * sn, u[2] * c - s[2] * sn];
+  t.X = s2.map(v => v / W); t.Y = f.map(v => v / t.L); t.Z = u2.map(v => v / W);
+  t.mid = [t.p[0] + f[0] * t.L * 0.5, t.p[1] + f[1] * t.L * 0.5, t.p[2] + f[2] * t.L * 0.5]; t.rad = t.L * 0.56 + W * 0.25;
+  t.planes = GEO_PL.map(P => { const g = [P[0] * t.X[0] + P[1] * t.Y[0] + P[2] * t.Z[0], P[0] * t.X[1] + P[1] * t.Y[1] + P[2] * t.Z[1], P[0] * t.X[2] + P[1] * t.Y[2] + P[2] * t.Z[2]], l = Math.hypot(g[0], g[1], g[2]); return [g[0] / l, g[1] / l, g[2] / l, l, P]; });
+}
+function geoSD(t, x, y, z) {                 // metres from a titan's surface (negative inside), and which face is nearest
+  const d = [x - t.p[0], y - t.p[1], z - t.p[2]], q = [d[0] * t.X[0] + d[1] * t.X[1] + d[2] * t.X[2], d[0] * t.Y[0] + d[1] * t.Y[1] + d[2] * t.Y[2], d[0] * t.Z[0] + d[1] * t.Z[1] + d[2] * t.Z[2]];
+  let best = -1e9, bn = null; for (const P of t.planes) { const v = (P[4][0] * q[0] + P[4][1] * q[1] + P[4][2] * q[2] - P[4][3]) / P[3]; if (v > best) { best = v; bn = P; } }
+  return [best, bn];
+}
+function geoFloorY(x, z, py) {               // the top of any titan you are standing on
+  let top = -1e9; if (!GEOR.inGeoP) return top;
+  for (const t of GEOR.titans) {
+    if (Math.hypot(t.mid[0] - x, t.mid[2] - z) > t.rad) continue;
+    let lo = py - 2.5, hi = py + 0.9; if (geoSD(t, x, hi, z)[0] < 0 || geoSD(t, x, lo, z)[0] > 0) continue;   // inside it (the push-out deals with that), or nothing of it under your feet
+    for (let i = 0; i < 12; i++) { const m = (lo + hi) / 2; if (geoSD(t, x, m, z)[0] < 0) lo = m; else hi = m; }
+    top = Math.max(top, hi);
+  }
+  return top;
+}
+function geoPush() {                         // keep the body out of the titans: slide along their faces
+  if (!GEOR.inGeoP) return;
+  for (const t of GEOR.titans) {
+    if (Math.hypot(t.mid[0] - state.px, t.mid[1] - state.py - 1, t.mid[2] - state.pz) > t.rad + 2) continue;
+    for (const hy of [0.75, 1.25, 1.75]) {
+      const [sd, P] = geoSD(t, state.px, state.py + hy, state.pz); if (sd > 0.4) continue;
+      const k = 0.4 - sd; state.px += P[0] * k; state.py += P[1] * k; state.pz += P[2] * k;
+      const vn = state.vx * P[0] + state.vy * P[1] + state.vz * P[2]; if (vn < 0) { state.vx -= vn * P[0]; state.vy -= vn * P[1]; state.vz -= vn * P[2]; }
+    }
+  }
+}
+function geoInit() {
+  const t0 = performance.now(), hits = geoHits(), sc = geoScatter(hits), all = [], CELL = 48;
+  for (const name in sc.bag) {
+    const a = assetItem(name.startsWith('druse') ? 'geode' : 'crystals', name); if (!a) continue;
+    const kit = { name, hi: a.hi, lo: a.lo }; GEOR.kits.push(kit);
+    const cells = new Map();
+    for (const v of sc.bag[name]) { const key = Math.floor(v[0] / CELL) + ',' + Math.floor(v[1] / CELL) + ',' + Math.floor(v[2] / CELL); if (!cells.has(key)) cells.set(key, []); cells.get(key).push(v); }
+    for (const [key, list] of cells) {
+      let mn = [1e9, 1e9, 1e9], mx = [-1e9, -1e9, -1e9];
+      for (const v of list) for (let q = 0; q < 3; q++) { mn[q] = Math.min(mn[q], v[q] - v[3]); mx[q] = Math.max(mx[q], v[q] + v[3]); }
+      GEOR.ranges.push({ kit, first: all.length / 12, count: list.length, mn, mx, c: [(mn[0] + mx[0]) / 2, (mn[1] + mx[1]) / 2, (mn[2] + mx[2]) / 2] }); for (const v of list) all.push(...v);
+    }
+  }
+  GEOR.count = all.length / 12; GEOR.hits = hits.length;
+  const instAttr = (m, buf) => { gl.bindVertexArray(m.vao); gl.bindBuffer(gl.ARRAY_BUFFER, buf); for (let q = 3; q <= 5; q++) { gl.enableVertexAttribArray(q); gl.vertexAttribDivisor(q, 1); gl.vertexAttribPointer(q, 4, gl.FLOAT, false, 48, (q - 3) * 16); } m.instReady = true; };
+  if (all.length) {
+    GEOR.inst = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, GEOR.inst); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(all), gl.STATIC_DRAW);
+    for (const k of GEOR.kits) for (const m of [k.hi, k.lo]) if (!m.instReady) instAttr(m, GEOR.inst);
+    // far away, the lining is drawn as glittering points read straight from the same list
+    const vao = gl.createVertexArray(); gl.bindVertexArray(vao); gl.bindBuffer(gl.ARRAY_BUFFER, GEOR.inst);
+    for (let q = 0; q < 3; q++) { gl.enableVertexAttribArray(q); gl.vertexAttribPointer(q, 4, gl.FLOAT, false, 48, q * 16); }
+    GEOR.pts = vao;
+  }
+  // the titans: one copy each, drawn one at a time, far ones first
+  const T = []; GEOR.titans = sc.titans.filter(t => assetItem('geode', t.v));
+  GEOR.titans.forEach((t, i) => { t.first = i; t.mesh = assetItem('geode', t.v); geoFrame(t); T.push(t.p[0], t.p[1], t.p[2], t.L, t.ax[0], t.ax[1], t.ax[2], t.wf, t.hue, t.glow, t.roll, 0); });
+  if (T.length) { GEOR.tinst = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, GEOR.tinst); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(T), gl.STATIC_DRAW); for (const t of GEOR.titans) for (const m of [t.mesh.hi, t.mesh.lo]) instAttr(m, GEOR.tinst); }
+  gl.bindVertexArray(null);
+  // motes of light drifting through the whole cavern
+  { const C = GEOC, r = cavRnd(31337), P = []; let tries = 0; while (P.length < 4 * 6000 && tries++ < 60000) { const u = r() * 2 - 1, v = r() * 2 - 1, w = r() * 2 - 1; if (u * u + v * v + w * w > 0.8) continue; const x = C.x + u * C.rx, y = C.y + v * C.ry, z = C.z + w * C.rz; if (CV.sdf(x, y, z) > -2 || y < LWL + 1) continue; P.push(x, y, z, r()); }
+    const vao = gl.createVertexArray(); gl.bindVertexArray(vao); const vb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vb); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(P), gl.STATIC_DRAW); gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 4, gl.FLOAT, false, 16, 0); gl.bindVertexArray(null); GEOR.motes = vao; GEOR.nMotes = P.length / 4; }
+  // the pool's surface
+  { const N = 96, R = GEOC.pool[2] * 1.35, cx = GEOC.pool[0], cz = GEOC.pool[1], V = [cx, LWL, cz], I = [];
+    for (let i = 0; i <= N; i++) { const a = i / N * Math.PI * 2; V.push(cx + Math.cos(a) * R, LWL, cz + Math.sin(a) * R); if (i) I.push(0, i, i + 1); }
+    const vao = gl.createVertexArray(); gl.bindVertexArray(vao); const vb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vb); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(V), gl.STATIC_DRAW); gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 12, 0);
+    const ib = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint32Array(I), gl.STATIC_DRAW); gl.bindVertexArray(null); GEOR.pool = { vao, count: I.length }; }
+  GEOR.ms = Math.round(performance.now() - t0);
+}
+function geoUpdate(dt) {
+  const E = cam.eye; GEOR.inGeo = CV.geoK(E[0], E[1], E[2]) < 1.2; GEOR.inGeoP = cave.under && CV.geoK(state.px, state.py, state.pz) < 1.3;
+  GEOR.clearK = Math.max(0, Math.min(1, (1.22 - CV.geoK(E[0], E[1], E[2])) / 0.15)); GEOR.bore = E[0] > CV.SX + 395 && LAKER.camUnder ? 1 : 0;
+  GEOR.nl = 0;
+  if (GEOR.inGeo && GEOR.titans.length) {
+    // the titans nearest the camera are the lights: each a glowing line from base to tip, pulsing with the signal
+    const L = GEOR.titans.map(q => { const w = [E[0] - q.p[0], E[1] - q.p[1], E[2] - q.p[2]], s = Math.max(0, Math.min(1, (w[0] * q.ax[0] + w[1] * q.ax[1] + w[2] * q.ax[2]) / q.L)); return [Math.hypot(w[0] - q.ax[0] * q.L * s, w[1] - q.ax[1] * q.L * s, w[2] - q.ax[2] * q.L * s), q]; }).sort((a, b) => a[0] - b[0]);
+    const n = Math.min(GEOQ.lights, L.length), A = GEOR.lights, cut = n < L.length ? L[n][0] : 1e9;
+    for (let i = 0; i < n; i++) { const [d, q] = L[i], fade = Math.max(0, Math.min(1, (cut - d) / (cut * 0.3 + 1))), o = i * 8;
+      const I = q.glow * (0.55 + q.L / 50) * geoPulse(q.mid[0], q.mid[2]) * geoWake(q.mid[0], q.mid[2]) * fade * GEOR.k;
+      A[o] = q.p[0] + q.ax[0] * q.L * 0.08; A[o + 1] = q.p[1] + q.ax[1] * q.L * 0.08; A[o + 2] = q.p[2] + q.ax[2] * q.L * 0.08; A[o + 3] = I;
+      A[o + 4] = q.p[0] + q.ax[0] * q.L * 0.8; A[o + 5] = q.p[1] + q.ax[1] * q.L * 0.8; A[o + 6] = q.p[2] + q.ax[2] * q.L * 0.8; A[o + 7] = q.hue; }
+    GEOR.nl = n;
+  }
+  // the reveal: the first time your head comes up out of the pool
+  if (!GEOR.seen && cave.under && CV.geoK(state.px, state.py + 1.6, state.pz) < 1 && state.py + 1.6 > LWL - 0.2) {
+    GEOR.seen = true; GEOR.pt0 = state.time - 0.3;
+    toast('Your suit radio fills with a slow, steady pulse: the same pattern the array was built to hear. It is coming from the crystals.', 11);
+    tone([130.8, 196, 261.6, 329.6, 392], 6, 'sine', 0.06, 0.4); setTimeout(() => tone([174.6, 261.6, 349.2, 440, 523.3], 7, 'sine', 0.05, 0.5), 2800); setTimeout(() => tone([196, 293.7, 392, 493.9, 587.3], 8, 'sine', 0.045, 0.55), 6000);
+    saveGame();
+  }
+}
+function geoUniforms(p) {
+  if (p.u.uGeo) gl.uniform4f(p.u.uGeo, GEOC.x, GEOC.y, GEOC.z, 1); if (p.u.uGeoR) gl.uniform3f(p.u.uGeoR, GEOC.rx, GEOC.ry, GEOC.rz);
+  if (p.u.uGQ) gl.uniform4f(p.u.uGQ, GEOR.nl, GEOQ.scatter, GEOC.pool[0], GEOC.pool[1]); if (p.u.uGS) gl.uniform4f(p.u.uGS, geoTime(), GEOR.seen ? 1 : 0, GEOR.bore, 0);
+  if (p.u['uGL[0]'] && GEOR.nl) gl.uniform4fv(p.u['uGL[0]'], GEOR.lights);
+}
+function geoGrab() {                         // a snapshot of everything drawn so far, for the titans to look through
+  const w = fx.w, h = fx.h;
+  if (!GEOR.grab || GEOR.grab.w !== w || GEOR.grab.h !== h) {
+    gl.activeTexture(gl.TEXTURE6);
+    if (GEOR.grab) { gl.deleteTexture(GEOR.grab.t); gl.deleteFramebuffer(GEOR.grab.f); }
+    const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t); gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA8, w, h);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    const f = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, f); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
+    GEOR.grab = { t, f, w, h }; gl.bindTexture(gl.TEXTURE_2D, null); gl.activeTexture(gl.TEXTURE0);
+  }
+  gl.activeTexture(gl.TEXTURE6); gl.bindTexture(gl.TEXTURE_2D, null); gl.activeTexture(gl.TEXTURE0);   // never read and write the snapshot at once
+  gl.bindFramebuffer(gl.READ_FRAMEBUFFER, fx.ms); gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, GEOR.grab.f); gl.blitFramebuffer(0, 0, w, h, 0, 0, w, h, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fx.ms); stats.calls++; GEOR.grabs++; return GEOR.grab.t;
+}
+function drawGeo() {                         // the lining: small glowing crystals, near ones as meshes
+  const E = cam.eye; if (!GEOR.inst || !GEOR.inGeo || CAVR.off.geo) return;
+  const P = cam.planes; setCommon(pCrys); GEOR.tris = 0;
+  for (const g of GEOR.ranges) {
+    if (!classify(P, g.mn[0], g.mn[1], g.mn[2], g.mx[0], g.mx[1], g.mx[2], 0)) continue;
+    const cx = Math.max(g.mn[0], Math.min(E[0], g.mx[0])), cy = Math.max(g.mn[1], Math.min(E[1], g.mx[1])), cz = Math.max(g.mn[2], Math.min(E[2], g.mx[2])), d = Math.hypot(cx - E[0], cy - E[1], cz - E[2]);
+    if (d > GEOQ.meshR) continue;
+    const m = d < GEOQ.hiR ? g.kit.hi : g.kit.lo, n = Math.max(1, Math.round(g.count * (d < GEOQ.hiR ? 1 : GEOQ.druse))); gl.bindVertexArray(m.vao); gl.bindBuffer(gl.ARRAY_BUFFER, GEOR.inst);
+    for (let q = 3; q <= 5; q++) gl.vertexAttribPointer(q, 4, gl.FLOAT, false, 48, g.first * 48 + (q - 3) * 16);
+    gl.drawElementsInstanced(gl.TRIANGLES, m.count, gl.UNSIGNED_INT, 0, n); stats.cave += m.tris * n; stats.calls++; stats.submitted += m.tris * n; GEOR.tris += m.tris * n;
+  }
+  gl.bindVertexArray(null);
+}
+function drawTitans(useFx) {                 // the titans: see-through, drawn after everything solid, far ones first
+  const E = cam.eye; GEOR.grabs = 0; if (!GEOR.tinst || !GEOR.inGeo || CAVR.off.titan) return;
+  const P = cam.planes, go = !!(useFx && fx.ok);
+  const order = GEOR.titans.filter(q => classify(P, q.mid[0] - q.rad, q.mid[1] - q.rad, q.mid[2] - q.rad, q.mid[0] + q.rad, q.mid[1] + q.rad, q.mid[2] + q.rad, 0))
+    .map(q => [Math.hypot(q.mid[0] - E[0], q.mid[1] - E[1], q.mid[2] - E[2]) - q.rad * 0.5, q]).sort((a, b) => b[0] - a[0]);
+  if (!order.length) return;
+  if (go) { gl.disable(gl.BLEND); gl.depthMask(true); } else { gl.enable(gl.BLEND); gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ZERO, gl.ONE); gl.depthMask(true); }
+  const setup = grab => { setCommon(pTitan); geoUniforms(pTitan); gl.uniform2f(pTitan.u.uRes, go ? fx.w : canvas.width, go ? fx.h : canvas.height); gl.uniform1i(pTitan.u.uGrab, 6); gl.uniform1f(pTitan.u.uGrabOn, grab ? 1 : 0); gl.uniform1i(pTitan.u.uSteps, GEOQ.steps);
+    gl.activeTexture(gl.TEXTURE6); gl.bindTexture(gl.TEXTURE_2D, grab); gl.activeTexture(gl.TEXTURE0); };
+  let grab = go ? geoGrab() : null, again = !go; setup(grab);
+  for (const [d, q] of order) {
+    if (!again && d < 70) { again = true; grab = geoGrab(); setup(grab); }   // a fresh snapshot, so the near titans show the far ones through them
+    const m = d < 150 ? q.mesh.hi : q.mesh.lo; gl.bindVertexArray(m.vao); gl.bindBuffer(gl.ARRAY_BUFFER, GEOR.tinst);
+    for (let k = 3; k <= 5; k++) gl.vertexAttribPointer(k, 4, gl.FLOAT, false, 48, q.first * 48 + (k - 3) * 16);
+    gl.drawElementsInstanced(gl.TRIANGLES, m.count, gl.UNSIGNED_INT, 0, 1); stats.cave += m.tris; stats.calls++; stats.submitted += m.tris;
+  }
+  gl.activeTexture(gl.TEXTURE6); gl.bindTexture(gl.TEXTURE_2D, null); gl.activeTexture(gl.TEXTURE0); gl.bindVertexArray(null);
+  gl.enable(gl.BLEND); gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ZERO, gl.ONE); gl.depthMask(false);   // as the water pass left it
+}
+function drawGeoFx() {
+  if (!GEOR.inGeo) return;
+  if (GEOR.pool && !CAVR.off.water) { gl.enable(gl.BLEND); gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ZERO, gl.ONE); gl.depthMask(false); setCommon(pLake); geoUniforms(pLake); gl.bindVertexArray(GEOR.pool.vao); stats.cave += drawElems(GEOR.pool.count, gl.UNSIGNED_INT, 0); }
+  gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE); gl.depthMask(false);
+  if (GEOR.pts && !CAVR.off.geo) {           // the far lining as glitter
+    gl.useProgram(pGeoPt.p); gl.uniformMatrix4fv(pGeoPt.u.uVP, false, cam.vp32); gl.uniform3fv(pGeoPt.u.uCam, cam.eye); gl.uniform1f(pGeoPt.u.uPx, canvas.height / 900); gl.uniform4f(pGeoPt.u.uGS, geoTime(), GEOR.seen ? 1 : 0, GEOC.pool[0], GEOC.pool[1]);
+    gl.bindVertexArray(GEOR.pts); const P = cam.planes, E = cam.eye;
+    for (const g of GEOR.ranges) { if (!classify(P, g.mn[0], g.mn[1], g.mn[2], g.mx[0], g.mx[1], g.mx[2], 0)) continue; if (Math.hypot(g.c[0] - E[0], g.c[1] - E[1], g.c[2] - E[2]) < 40) continue; gl.drawArrays(gl.POINTS, g.first, g.count); stats.calls++; }
+  }
+  if (GEOR.motes && !CAVR.off.life) {
+    gl.useProgram(pSpore.p); gl.uniformMatrix4fv(pSpore.u.uVP, false, cam.vp32); gl.uniform1f(pSpore.u.uT, state.time); gl.uniform3fv(pSpore.u.uCam, cam.eye); gl.uniform1f(pSpore.u.uPx, canvas.height / 900);
+    gl.bindVertexArray(GEOR.motes); gl.drawArrays(gl.POINTS, 0, GEOR.nMotes); stats.calls++;
+  }
+  gl.depthMask(true); gl.disable(gl.BLEND); gl.bindVertexArray(null);
+}
 function caveStep(nx, nz, f) {
   if (cave.under && doorBlocks(nx, nz, state.py) && !doorBlocks(state.px, state.pz, state.py)) return 1e9;   // a closed door: but never trap someone already behind it
   if (f > 1e8 && cave.under && CV.sdf(nx, state.py + 1.25, nz) < CV.sdf(state.px, state.py + 1.25, state.pz) - 0.002) return CV.floorAt(nx, state.py, nz, true);
   return f;
 }
 // is a body at (x, py, z) below the ground, i.e. in the shaft or the caves?
-const CAVE_AREA = [CV.SX - 200, CV.SZ - 220, CV.SX + 560, CV.SZ + 320];   // the caves lie wholly under this patch of the map
+const CAVE_AREA = [CV.SX - 200, CV.SZ - 220, CV.SX + 780, CV.SZ + 320];   // the caves lie wholly under this patch of the map
 function caveUnder(x, z, py) {
   if (x < CAVE_AREA[0] || z < CAVE_AREA[1] || x > CAVE_AREA[2] || z > CAVE_AREA[3]) return false;
   return CV.inShaft(x, z) ? py < CV.TOP + 1.6 : py < T.height(x, z) - 6;   // exact terrain, never the drawn mesh
@@ -11743,7 +12616,7 @@ function lineRebuild() {
 /* ---------- per frame: battery, pickups, the line, passing out in the dark ---------- */
 function caveUpdate(dt) {
   const px = state.px, py = state.py, pz = state.pz;
-  doorUpdate(dt); lakeUpdate(dt);
+  doorUpdate(dt); lakeUpdate(dt); geoUpdate(dt);
   PICKS.forEach((pk, i) => {
     if (cave.picked[i] || !cave.under) return; const a = pk.at;
     if (Math.hypot(a[0] - px, a[2] - pz) > 2.0 || Math.abs(a[1] - py) > 2.4) return;
@@ -11808,6 +12681,7 @@ function caveTeleport(where) {
   else if (where === 'door' || where === 'crystal') { state.px = DOOR.x + 0.6; state.pz = DOOR.z - 4.2; state.py = CV.floorAt(state.px, -55, state.pz); state.yaw = Math.PI; state.heading = 0; state.pitch = 0.18; }
   else if (where === 'lake') { const C = CV.LAKE; state.px = C.drop[0] - 1.5; state.pz = C.drop[1] + 1; state.py = CV.floorAt(state.px, C.y + 20, state.pz); state.yaw = -Math.PI / 2; state.heading = Math.PI / 2; state.pitch = 0.2; }
   else if (where === 'd8' || where === 'd9' || where === 'd10') { const D = DOORS.find(d => d.name === (where === 'd8' ? 'D-8' : where === 'd9' ? 'D-9' : 'D-10')), f = doorWorld(D, 0.6, -4.5); state.px = f[0]; state.pz = f[1]; state.py = CV.floorAt(f[0], D.y + 2, f[1]); state.yaw = D.yaw + Math.PI; state.heading = D.yaw; state.pitch = 0.18; }
+  else if (where === 'pool' || where === 'geo') { const C = GEOC; state.px = where === 'pool' ? C.pool[0] - 6 : C.pool[0] - 4; state.pz = C.pool[1] + (where === 'pool' ? 0 : 24); state.py = where === 'pool' ? LWL - 1.25 : CV.floorAt(state.px, LWL + 12, state.pz); state.yaw = -Math.PI / 2; state.heading = Math.PI / 2; state.pitch = where === 'pool' ? 0.12 : 0.2; }
   else if (where === 'drip') { const C = CV.DRIP; state.px = C.drop[0] + 1.5; state.pz = C.drop[1] + 2; state.py = CV.floorAt(state.px, C.y + 10, state.pz); state.yaw = -Math.PI / 2; state.heading = Math.PI / 2; state.pitch = 0.2; }
   else if (where === 'cavern') { state.px = CV.CAV.drop[0] - 2; state.pz = CV.CAV.drop[1] - 10; state.py = CV.floorAt(state.px, CV.CAV.y + 22, state.pz); state.yaw = 0.07; state.heading = Math.atan2(-0.07, -1); state.pitch = 0.22; }
   else { state.px = CV.SX + 2.5; state.pz = CV.SZ - 1.5; state.py = CV.floorAt(state.px, -55, state.pz); state.yaw = -Math.PI / 2; state.heading = Math.PI / 2; state.pitch = 0.15; }
@@ -11817,28 +12691,32 @@ function caveTeleport(where) {
 /* ---------- drawing ---------- */
 function drawCave() {
   if (!cave.visible) return;
-  setCommon(pCave); gl.disable(gl.CULL_FACE);
+  setCommon(pCave); gl.disable(gl.CULL_FACE); gl.uniform1f(pCave.u.uSink, 0); const under = [];
   const P = cam.planes, E = cam.eye, D7 = CV.CAV.drop, D8 = CV.DRIP.drop;
   const nearCol = (c, D) => Math.hypot(c.x0 + 12 - D[0], c.z0 + 12 - D[1]) < 30, inCol = D => Math.hypot(E[0] - D[0], E[2] - D[1]) < 14;
-  const D9 = CV.LAKE.drop, zone = E[1] > -118 && !inCol(D7) ? 0 : E[1] > -225 ? 1 : E[1] > -345 ? 2 : 3;   // 0: Level 1, 1: crystal cavern, 2: stalactite cavern, 3: flooded cavern
+  const D9 = CV.LAKE.drop, GX = CV.SX + 470, zone = E[0] > GX && E[1] < -200 ? 4 : E[1] > -118 && !inCol(D7) ? 0 : E[1] > -225 ? 1 : E[1] > -345 ? 2 : 3;   // 0: Level 1, 1: crystal cavern, 2: stalactite cavern, 3: flooded cavern, 4: giant crystal cavern
   for (const c of cave.ch) {
     const top = c.y0 + CAVE_CH;
-    if (zone === 0 ? top < -136 : zone === 1 ? (c.y0 > -110 && !nearCol(c, D7)) || (top < -235 && !nearCol(c, D8)) : zone === 2 ? (c.y0 > -230 && !nearCol(c, D8)) || (top < -355 && !nearCol(c, D9)) : c.y0 > -350 && !nearCol(c, D9)) continue;
+    if (zone === 0 ? top < -136 : zone === 1 ? (c.y0 > -110 && !nearCol(c, D7)) || (top < -235 && !nearCol(c, D8)) : zone === 2 ? (c.y0 > -230 && !nearCol(c, D8)) || (top < -355 && !nearCol(c, D9)) : zone === 3 ? (c.y0 > -350 && !nearCol(c, D9)) || (c.x0 > GX && c.y0 > -432) : c.x0 + CAVE_CH < CV.SX + 380 || c.y0 > -200) continue;
     if (CAVR.off.rock || c.d > 330 || !classify(P, c.x0, c.y0, c.z0, c.x0 + CAVE_CH, c.y0 + CAVE_CH, c.z0 + CAVE_CH, 0)) continue;
     const m = (c.d < LOD0_R && c.m[0]) || c.m[1] || c.m[0]; if (!m || !m.count) continue;
     gl.bindVertexArray(m.vao); stats.cave += drawElems(m.count, gl.UNSIGNED_INT, 0);
+    if (m === c.m[0] && c.m[1] && c.m[1].count) under.push(c.m[1]);
   }
+  if (under.length) { gl.uniform1f(pCave.u.uSink, 0.15); for (const u of under) { gl.bindVertexArray(u.vao); stats.cave += drawElems(u.count, gl.UNSIGNED_INT, 0); } gl.uniform1f(pCave.u.uSink, 0); }
   if (cave.fixed) { gl.bindVertexArray(cave.fixed.vao); stats.cave += drawElems(cave.fixed.count, gl.UNSIGNED_INT, 0); }
   drawDoor();
   drawCavern();
   drawDrip();
   drawLake();
+  drawGeo();
 }
 function drawCaveFx() {
   if (!cave.visible) return;
   drawCavernFx();
   drawDripFx();
   drawLakeFx();
+  drawGeoFx();
   if (cave.lineDirty && state.time - cave.lineT > 0.2) { cave.lineT = state.time; lineRebuild(); }
   gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE); gl.depthMask(false);
   const m = cave.lineMesh;
@@ -11858,11 +12736,11 @@ function drawCaveFx() {
 }
 
 /* ---------- saving ---------- */
-function caveSave() { return { doors: DOORS.map(d => d.open >= 1 ? 1 : 0), parts: (cave.parts || []).slice(), batt: Math.round(cave.batt * 10) / 10, spares: cave.spares, picked: cave.picked, reel: line.reel, left: Math.round(line.left * 10) / 10, warn: line.warn, pts: line.pts.map(p => [Math.round(p.x * 100) / 100, Math.round(p.y * 100) / 100, Math.round(p.z * 100) / 100, p.p]) }; }
-function caveReset() { DOORS.forEach(d => { d.open = 0; d.moving = false; }); cave.parts = PARTS.map(() => false); cave.batt = 100; cave.spares = 0; cave.dead = false; cave.darkWalk = 0; cave.picked = [false, false, false, false]; line.pts = []; line.left = 0; line.reel = 0; line.active = false; line.warn = 0; cave.lineDirty = true; }
+function caveSave() { return { doors: DOORS.map(d => d.open >= 1 ? 1 : 0), parts: (cave.parts || []).slice(), tank: cave.tank ? 1 : 0, geo: GEOR.seen ? 1 : 0, batt: Math.round(cave.batt * 10) / 10, spares: cave.spares, picked: cave.picked, reel: line.reel, left: Math.round(line.left * 10) / 10, warn: line.warn, pts: line.pts.map(p => [Math.round(p.x * 100) / 100, Math.round(p.y * 100) / 100, Math.round(p.z * 100) / 100, p.p]) }; }
+function caveReset() { DOORS.forEach(d => { d.open = 0; d.moving = false; }); cave.parts = PARTS.map(() => false); cave.tank = false; GEOR.seen = false; GEOR.pt0 = 0; cave.batt = 100; cave.spares = 0; cave.dead = false; cave.darkWalk = 0; cave.picked = [false, false, false, false]; line.pts = []; line.left = 0; line.reel = 0; line.active = false; line.warn = 0; cave.lineDirty = true; }
 function caveLoad(c) {
   caveReset(); if (!c) return;
-  DOORS.forEach((d, i) => { d.open = (Array.isArray(c.doors) ? c.doors[i] : (i ? 0 : c.door)) ? 1 : 0; }); if (Array.isArray(c.parts)) cave.parts = PARTS.map((p, i) => !!c.parts[i]);
+  DOORS.forEach((d, i) => { d.open = (Array.isArray(c.doors) ? c.doors[i] : (i ? 0 : c.door)) ? 1 : 0; }); if (Array.isArray(c.parts)) cave.parts = PARTS.map((p, i) => !!c.parts[i]); cave.tank = !!c.tank; if (c.geo) { GEOR.seen = true; GEOR.pt0 = -1e4; }
   cave.batt = +c.batt || 0; cave.spares = c.spares | 0; cave.dead = cave.batt <= 0; if (Array.isArray(c.picked)) cave.picked = cave.picked.map((v, i) => !!c.picked[i]);
   line.reel = c.reel | 0; line.left = +c.left || 0; line.warn = c.warn | 0;
   if (Array.isArray(c.pts)) for (const q of c.pts) { const par = line.pts[q[3]]; line.pts.push({ x: q[0], y: q[1], z: q[2], p: q[3], d: par ? par.d + Math.hypot(q[0] - par.x, q[1] - par.y, q[2] - par.z) : 0 }); }
@@ -12067,6 +12945,7 @@ function update(dt) {
     else state.roll *= Math.max(0, 1 - dt * 5);
     let floorY = floorAt(state.px, state.pz, state.py);
     if (floorY > 1e8) floorY = CV.floorAt(state.px, state.py, state.pz, true);   // pressed against cave rock: land on the floor, not on the wall
+    if (cave.under) floorY = Math.max(floorY, geoFloorY(state.px, state.pz, state.py));   // the top of a titan
     // jetpack: Space climbs, letting go settles into a slow free drift down, C dives
     if (jet) { state.vy = Math.min(state.vy + 60 * dt, boost ? (cave.under ? 15 : 45) : (cave.under ? 9 : 28)); state.grounded = false; state.hover = true; if (play) game.fuel = Math.max(0, game.fuel - (boost ? 14 : 9) * dt); }
     if (state.grounded) { if (state.py - floorY > 0.9) state.grounded = false; else { state.py = floorY; state.vy = 0; if (play) game.fuel = Math.min(game.tank, game.fuel + 45 * dt); } }
@@ -12085,7 +12964,7 @@ function update(dt) {
     state.moving = state.grounded ? hs > 0.4 : ml > 0;
     state.airK = ease(state.airK, state.grounded ? 0 : 1, 7); state.gait = ease(state.gait, state.grounded ? Math.min(1, hs / 6) : 0, 9); if (state.grounded && hs > 0.3) state.walk += dt * (3 + hs * 0.85);
     state.thrust = ease(state.thrust, swim ? 0 : jet ? 1 : state.grounded ? 0 : (keys.Space && !hasFuel) ? 0.12 : drop ? 0.08 : state.hover && hasFuel ? 0.55 : 0.38, 10); state.hspeed = ease(state.hspeed, hs, 6);
-    if (cave.under) cave.ceil = CV.ceilAt(state.px, state.py, state.pz);
+    if (cave.under) { geoPush(); cave.ceil = CV.ceilAt(state.px, state.py, state.pz); }
     caveUpdate(dt);
     if (play) gameUpdate(dt, prev);
   }
@@ -12125,8 +13004,9 @@ function setCommon(p) {
   if (p.u.uUG) gl.uniform4f(p.u.uUG, 0, cave.flash, cave.pday, cave.expo); if (p.u.uFlP) gl.uniform3fv(p.u.uFlP, cave.flP); if (p.u.uFlD) gl.uniform3fv(p.u.uFlD, cave.flD);
   if (p.u.uLd) gl.uniform4f(p.u.uLd, CV.LIGHT[0], CV.LIGHT[1], CV.LIGHT[2], CV.dayK(CV.SHB) * 3.5); if (p.u.uHole) gl.uniform4f(p.u.uHole, CV.SX, CV.SZ, HOLE, 0);
   if (p.u.uCav) gl.uniform4f(p.u.uCav, CV.CAV.x, CV.CAV.y, CV.CAV.z, 1); if (p.u.uCavR) gl.uniform3f(p.u.uCavR, CV.CAV.rx, CV.CAV.ry, CV.CAV.rz);
-  if (p.u.uLke) gl.uniform4f(p.u.uLke, CV.LAKE.x, CV.LAKE.y, CV.LAKE.z, 1); if (p.u.uLkeR) gl.uniform3f(p.u.uLkeR, CV.LAKE.rx, CV.LAKE.ry, CV.LAKE.rz); if (p.u.uUW) gl.uniform4f(p.u.uUW, LAKER.camUnder ? 1 : 0, CV.LAKE.water, 1, 0.115);
+  if (p.u.uLke) gl.uniform4f(p.u.uLke, CV.LAKE.x, CV.LAKE.y, CV.LAKE.z, 1); if (p.u.uLkeR) gl.uniform3f(p.u.uLkeR, CV.LAKE.rx, CV.LAKE.ry, CV.LAKE.rz); if (p.u.uUW) gl.uniform4f(p.u.uUW, LAKER.camUnder ? 1 : 0, CV.LAKE.water, 1, 0.115 - 0.093 * GEOR.clearK);
   if (p.u.uDrp) gl.uniform4f(p.u.uDrp, CV.DRIP.x, CV.DRIP.y, CV.DRIP.z, 1); if (p.u.uDrpR) gl.uniform3f(p.u.uDrpR, CV.DRIP.rx, CV.DRIP.ry, CV.DRIP.rz);
+  geoUniforms(p);
   if (p.u.uFdP) { const F = cave.flood; if (F && cave.visible) { gl.uniform4f(p.u.uFdP, F.lp[0], F.lp[1], F.lp[2], 1.35); gl.uniform4f(p.u.uFdD, F.dir[0], F.dir[1], F.dir[2], 0.78); } else gl.uniform4f(p.u.uFdP, 0, 0, 0, 0); }
 }
 function render() {
@@ -12237,6 +13117,7 @@ function render() {
     for (const k of ['thrL', 'thrR']) { gl.uniformMatrix4fv(pFlame.u.uM, false, new Float32Array(mulAll(pose[k], tr(0, 0.975, 0), sc(0.062, len, 0.062)))); stats.chr += drawElems(flame.count, gl.UNSIGNED_INT, 0); }
   }
   if (cave.surface) drawGlow();
+  if (cave.visible) drawTitans(useFx);
   drawCaveFx();
   gl.depthMask(true); gl.disable(gl.BLEND); gl.bindVertexArray(null);
   if (useFx) fxFinish();
@@ -12428,7 +13309,7 @@ function start() {
     $('loadBar').style.width = (row / GRID * 100) + '%';
     if (row < GRID) { setTimeout(chunk, 0); return; }
     setLight(bakeLight(hg, W, H, CX * LODS[BASE], CZ * LODS[BASE], SUN, WORLD, false), W, H, CX * LODS[BASE], CZ * LODS[BASE], 'coarse');
-    buildBlocks(baseData); buildProps(); buildCharacter(); buildGame(); placeAssets(); caveInit(); cavernInit(); doorInit(); dripInit(); lakeInit(); buildPlants(); if (!params.has('coarselight')) startFineLight();
+    buildBlocks(baseData); buildProps(); buildCharacter(); buildGame(); placeAssets(); caveInit(); cavernInit(); geoInit(); doorInit(); dripInit(); lakeInit(); buildPlants(); if (!params.has('coarselight')) startFineLight();
     world = worldTotals();
     $('cWorld').textContent = fmt(world.total);
     $('cWorld').title = fmt(world.terrain) + ' terrain + ' + fmt(world.land) + ' landmarks + ' + fmt(world.wat + world.chr) + ' water & character';
@@ -12437,13 +13318,13 @@ function start() {
     setMode(0); resetView();
     $('loading').hidden = true; window.__loadMs = Math.round(performance.now());
     if (params.has('play')) { const pv = params.get('play'); game.free = pv === 'free' || pv === 'freenew'; startPlay(pv === 'new' || pv === 'freenew', game.free); } else if (params.has('bench') || params.has('mode')) { game.inMode = 'bench'; startBench(); if (params.get('mode') === 'explore') setMode(0); } else showMenu(true);
-    { const at = params.get('at'); if (at === 'mine') caveTeleport('top'); else if (at === 'cave') caveTeleport('station'); else if (['crystal', 'door', 'cavern', 'd8', 'd9', 'drip', 'lake', 'd10'].includes(at)) caveTeleport(at); }
+    { const at = params.get('at'); if (at === 'mine') caveTeleport('top'); else if (at === 'cave') caveTeleport('station'); else if (['crystal', 'door', 'cavern', 'd8', 'd9', 'drip', 'lake', 'd10', 'pool', 'geo'].includes(at)) caveTeleport(at); }
     setTimeout(() => $('hint').classList.add('fade'), 9000);
     last = performance.now(); requestAnimationFrame(loop);
   })();
 }
 canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); $('banner').hidden = false; $('banner').textContent = 'The graphics context was lost (the GPU ran out of memory or was reset). Reload the page to restart.'; });
-window.__bench = { DOOR, DOORS, PARTS, FLOODS, STAKES, DRIPR, LAKER, inWater, logShow, state, stats, cam, sel, selfCheck, setMode, resetView, cycleOverlay, toggleDetails, shared, cache, pending, T, get perf() { return hudPerf; }, get gpu() { return gpuName; }, get gpuMs() { return gpuMs; }, get world() { return world; }, get evictions() { return evictions; }, placedLog, props, place, K, game, cells, dishes, courses, colliders, floorAt, startPlay, startBench, showMenu, get plantTotal() { return plantTotal; }, cave, line, CV, caveTeleport, update, CAVR, cavePrebuild, get workerMode() { return workerMode; }, get light() { return lightInfo; }, pose, get charTris() { return [charFullTris, charLowTris]; }, groundAt, MAX_FULL, N_FULL, TRIM_LOD, N_SEL, keys };
+window.__bench = { DOOR, DOORS, PARTS, FLOODS, STAKES, DRIPR, LAKER, GEOR, GEOQ, inWater, logShow, state, stats, cam, sel, selfCheck, setMode, resetView, cycleOverlay, toggleDetails, shared, cache, pending, T, get perf() { return hudPerf; }, get gpu() { return gpuName; }, get gpuMs() { return gpuMs; }, get world() { return world; }, get evictions() { return evictions; }, placedLog, props, place, K, game, cells, dishes, courses, colliders, floorAt, startPlay, startBench, showMenu, get plantTotal() { return plantTotal; }, cave, line, CV, caveTeleport, update, CAVR, cavePrebuild, get workerMode() { return workerMode; }, get light() { return lightInfo; }, pose, get charTris() { return [charFullTris, charLowTris]; }, groundAt, MAX_FULL, N_FULL, TRIM_LOD, N_SEL, keys };
 start();
 })();
 

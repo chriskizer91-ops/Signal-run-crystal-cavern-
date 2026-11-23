@@ -1,6 +1,6 @@
 # Signal Run — Caves & Mine Expansion (design plan)
 
-Status (23 Nov 2026): **partly built.** Current game file: signal-run-v11-flooded-cavern.html (also `game/signal-run.html` in the GitHub repo `chriskizer91-ops/Signal-run-crystal-cavern-`). See `claude/signal-run-engine-handoff.md` for how the built parts work.
+Status (23 Nov 2026): **the four stacked caverns are built.** Current game file: signal-run-v12-giant-crystal-cavern.html (also `game/signal-run.html` in the GitHub repo `chriskizer91-ops/Signal-run-crystal-cavern-`). See `claude/signal-run-engine-handoff.md` for how the built parts work.
 
 ## Built so far
 - **v4: Level 1.**
@@ -49,7 +49,7 @@ Christopher, after seeing the crystal cavern: "We absolutely have to have an add
 3. **Flooded cavern** (**built in v11**): you get into the water and swim with your headlamp in murky water.
    - **Creepy fish:** big enough to look dangerous, barely seen, very fast. They never attack, but they're interested in you and keep their distance. You see glowing eyes, or something darting past.
    - **Lore text you read** there: something creepy.
-4. **Giant crystal cavern** (deeper): more massive, thicker crystals, brighter glow.
+4. **Giant crystal cavern** (**built in v12**): more massive, thicker crystals, brighter glow. The finale.
 
 **Doors:**
 - **Free play:** every door is open.
@@ -71,6 +71,16 @@ Christopher, after seeing the crystal cavern: "We absolutely have to have an add
 - Suit air lasts 75 s; running out means you black out and wake on the shore.
 - 7 fish circle at the edge of the murk, flee your lamp, dart past and peek from under the surface. Their eyes shine in your light.
 - The trail and the research team's old line lead down to a perfectly smooth bore at the bottom, where D-10 is sealed (the next build).
+
+**Built in v12, the giant crystal cavern** (Christopher: "the reveal be that sealed door gets opened and it's the most epic, most beautiful Crystal cavern… semi-translucent… luminescent… the absolute pinnacle"):
+- D-10 opens (campaign: its coupling lies on the lake floor, 16.5 m down). The toast says a light is pulsing far down the bore, and the bore's water does glow toward its end.
+- The bore runs about 140 m past D-10 and turns straight up into a clear pool in the middle of a giant geode, 260 m across and 210 m tall. Agate-banded walls are carpeted with 16,000 small crystals; far away they glitter like stars.
+- **34 titan crystals** (28–104 m long, up to 15 m thick): some half drowned around the pool, some on the terraces, out of the walls, from the dome, and one colossus. You can see into them: the cavern behind bends through them, a white-hot core glows inside, and ghost outlines of younger crystals show within.
+- Their light colours the rock, the water, the air and the player.
+- **The reveal:** the cavern is dim when you come up. A ring of light pulses out from the pool and wakes each crystal as it passes, with a swelling chord and the radio message (draft): the pulse is the pattern the array was built to hear.
+- The swim from the beach to the pool is about 56 s under water: inside the 75 s suit with ~20 s to spare. A **spare tank** on the dive station's rack doubles the air (campaign; free play has it).
+- Titans are solid: you can land and stand on them.
+- Phones get a lighter version (8 crystal lights instead of 16, no glowing mist, a thinner lining, 3 steps inside the crystals instead of 6).
 
 **Flying (v10):** no more sliding after letting go, slower and steadier in caves, and **hover** when you let go of JET (DIVE to go down).
 

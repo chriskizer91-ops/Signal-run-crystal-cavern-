@@ -1,6 +1,6 @@
 # Signal Run — engine & state handoff (read this first in any new session)
 
-Status as of 23 Nov 2026: **v11 (signal-run-v11-flooded-cavern.html, ~1.0 MB)** is current.
+Status as of 23 Nov 2026: **v12 (signal-run-v12-giant-crystal-cavern.html, ~1.1 MB)** is current.
 
 **Everything lives in the GitHub repo `chriskizer91-ops/Signal-run-crystal-cavern-`:** the game (`game/signal-run.html` plus every older version), the CaveLib mirror, patch scripts, all model modules and model tools, agent briefs, tests, these docs and screenshots. Start there in a new session, and read its `CLAUDE.md`. It is one self-contained HTML file: WebGL 2, no images; every texture, mesh and sound is generated in code.
 - Design plans: `claude/signal-run-caves-design.md`.
@@ -73,6 +73,7 @@ It started as a rendering benchmark: 147M triangles at full detail, plus a "10M 
     - Crystals and dripstone are kept 1.5 m clear of the stakes (`nearRoute`).
   - The surface is pixel-identical to v9.
 - **v11: the flooded cavern** behind D-9 (details in its own section below). The surface is pixel-identical to v10.
+- **v12: the giant crystal cavern** behind D-10 (details in its own section below): see-through titan crystals, the crystals' light on everything, the pulse and the reveal. The surface is pixel-identical to v11.
 
 ## Map facts (metres; y is up)
 - World 3072 × 3072 (48 × 48 tiles of 64 m). Canyon floor ≈ 95, lowest terrain 87.5, highest ≈ 632.
@@ -369,10 +370,68 @@ These tools lived in the temporary workspace and are easy to recreate from this 
   - A "Read the dive log" button (`#logBtn`) appears only within 3 m of the terminal (key E on a laptop).
   - `#logCard` has Back, Next and Close (arrow keys and Esc work too) and pauses the game while open.
 - **Trail** (`ROUTES['D-10']`): 9 stakes down the beach and across the lake floor to the bore's mouth, plus 2 inside the bore.
-- **Doors:** D-9 now opens (free play, or the campaign with its coupling). **D-10 is not ready**: "sealed tight… (The giant crystal cavern comes in the next build.)"
+- **Doors:** D-9 now opens (free play, or the campaign with its coupling). D-10 opens from v12 (see below).
 - **Draw zone 3** (camera below −345) skips chunks above −350, except along the D-9 drop. Zone 2 skips below −355, except along the D-9 drop.
 - **Numbers** (headless): about 0.48–0.9M triangles submitted around the lake. No errors.
 - **Teleports:** `&at=lake` (the beach), `&at=d10` (under water in the bore). `__bench` adds `LAKER`, `inWater`, `logShow`. Tests: `tests/lake1.py` (views), `tests/lake2.py` (drop, swim, air, log in numbers).
+
+## The giant crystal cavern (v12)
+The finale: a giant geode behind D-10, reached by swimming the bore and coming up into a clear pool.
+- **Geometry (CaveLib):**
+  - `GEO`, kind 13 (AMP 1.5): centre (2044, −330, 1471), radii 130 × 105 × 120. `geoK(x,y,z)` is the normalised ellipsoid distance (< 1 inside).
+  - `geoFloor()`: 6.5 m terraces rising from the water's edge (+1.4 m) toward the walls, with noise. The ceiling has a broad dome term.
+  - **The pool**: centre (1999, 1471), radius 19, same water level as the lake (−421.5). Its bowl goes from −418.5 at the rim to −439 in the middle.
+  - **The bore** now carries on past D-10: (1802 → 1876, −449.2), dips to −456 at 1912, rises to −447 at 1982, then turns straight up at (1997–1999) into the middle of the pool. About 140 m from D-10 to the pool.
+  - `CAVE_AREA` reaches x 2224. The node check found no floating rock inside the cavern.
+  - Exports: `CV.GEO` (x, y, z, rx, ry, rz, pool [x, z, r]), `geoFloor`, `geoK`.
+- **Models** (`geode` module, Opus 5.5 sub-agent, brief `assets/briefs/GEODE_BRIEF.md`):
+  - `titan_a` (558 / 90 triangles), `titan_b` (294 / 90), `titan_c` (582 / 114): the same exact hull with different surface detail (growth lines and etched triangles; ghost outlines and chipped edges; a frosted lower third). Colours: r frost, g line darkness, b edge brightness.
+  - **The hull every titan matches** (unit frame, +Y along the crystal): a regular hexagon with apothem 0.17, the prism from y −0.06 to 0.78, six faces meeting at a tip at (0, 1, 0). Checked: no vertex is outside it, and the deepest detail is 0.0046 inside.
+  - `druse_patch` (876 / 150): a 1.6 m patch of 62 small points. `druse_cluster` (725 / 126): a 0.8 m burst of 13 crystals. Both use the crystal-kit colour convention.
+- **Placement (`geoInit`, seeded):** 17,776 surface hits from rays cast from 12 points inside.
+  - 34 titans: 3 standing in the pool's edge, 14 on the terraces leaning out from the centre (28–72 m), 10 thrusting from the walls (34–86 m), 6 hanging from the dome, 1 colossus (104 m). Width = length × 0.27–0.6.
+  - Hues: cyan, mint, violet, rose and a rare gold (`geoHue`, shared by JS and every shader).
+  - 16,307 lining pieces, mostly the colour of the nearest titan; kept out of the titans and the pool's middle. 6,000 drifting motes. Takes about 0.6 s at load (headless).
+- **The titan shader (`TITAN_VS/FS`)**, per pixel:
+  - The exact ray–hull test (13 planes) gives where the eye enters and leaves the crystal. Only the near faces draw; from inside a titan, the far faces.
+  - **Refraction:** bend in (index 1.55), cross the crystal, bend out; total internal reflection is handled. The background is read from a snapshot of the frame (`geoGrab`, texture unit 6) at the exit ray's point 28 m on. Red and blue are read slightly apart (dispersion) and the offset never reaches past the screen edge. Frosted parts blur it.
+  - **Colour through the crystal:** absorption `(1−hue)·0.07 + 0.008` per metre, plus frost and lines.
+  - **Light from inside:** 6 steps (3 on phones) through the crystal: a white-hot core along the axis, rising toward the tip, plus veils of inclusions (`vnoise3`). Deep light dims on its way out.
+  - **Phantoms:** two shrunken copies of the hull (55–65% and 80–87%) inside most titans, drawn as thin glowing outlines that are brightest edge-on.
+  - **Surface:** frost catches light, facet edges shine, and the faces mirror the other titans' light (`gli`).
+  - **Compositing:** a screen blend over the bent background. The alpha (bloom mask) carries the core glow.
+  - **Order:** after all solid things, far to near. One snapshot before the first titan and a fresh one before titans within 70 m, so near titans show far ones through them. Without the bloom framebuffer it falls back to plain blending.
+- **The crystals' light (`GLSL_COMMON`):** `uGL[32]` holds the 16 titans nearest the camera (8 on phones) as glowing lines from 8% to 80% of their length.
+  - Intensity = glow × (0.55 + L/50) × pulse × wake × fade × 0.14 (`&geok=` changes the 0.14).
+  - `geoLight(w, n)` lights the rock, the lining, every prop and the character. `geoIso(w)` is the same without a normal, for the air and the water.
+  - `geoMist` glows the air: 3 samples along the view, out to 120 m. It is off on phones.
+- **The pulse and the reveal:** a ring of light runs out from the pool at 16 m/s every 18.75 s, +110% as it passes (`geoPulse`).
+  - Before you have seen the cavern, everything is at 12% (`geoWake`).
+  - The first time your head comes up in the cavern (`GEOR.seen`, saved), the first ring wakes each crystal as it passes. A three-chord swell plays, and the toast says (draft): *"Your suit radio fills with a slow, steady pulse: the same pattern the array was built to hear. It is coming from the crystals."*
+- **Rock:** agate banding (concentric shells of the ellipsoid plus noise, slate to lavender with thin white bands), lit by the titans, plus a soft ambient (0.05, 0.065, 0.13) × wake from the crystal carpet.
+- **Lining LOD:** meshes within 52 m (full detail within 28 m). Phones use 40 m and 16 m, and draw 55% of the far copies. Beyond 40 m the lining is drawn as glittering points (`GEOPT_VS/FS`) that fade in over 38–60 m.
+- **Water:**
+  - The pool is clear. Murk density goes from 0.115 to 0.022 as the camera comes into the cavern (`GEOR.clearK`).
+  - `LAKE_FS` has a geode branch: lit from below by the drowned titans; from underneath, a window to the cavern with a mirror outside it.
+  - In the bore past D-10 the murk glows teal toward the rise (`uGS.z`), pulsing: the "light at the end of the tunnel".
+- **Play:**
+  - D-10 now opens: free play, or the campaign with its coupling. The coupling lies on the lake floor 16.5 m down at local (318, −438, −7). The door toast adds "Far down the bore, a light is pulsing."
+  - The spare tank (`cave.tank`, saved) comes from walking up to the dive station's rack. Air lasts 150 s instead of 75; free play always has it.
+  - Route `ROUTES.GEO`: 12 stakes along the bore floor from D-10 to the rise, computed at load.
+  - **Titans are solid:** `geoFloorY` lets you stand on them, and `geoPush` slides you along their faces.
+  - The fish only follow you while you're in the lake (`lakeK` < 1.3).
+- **Draw zones:** zone 4 (camera x > SX+470 and below −200) draws only chunks east of SX+380 and below −200. Zone 3 skips the geode's chunks above −432.
+- **Rock gap fix (all caverns):** wherever a close-up chunk is drawn, its rough copy is drawn 0.15 m behind it (`uSink` in `CAVE_VS`). This fills the hairline gaps where close-up and rough chunks meet, which showed against the bright geode walls.
+- **Numbers (headless, 960 × 540):**
+  - Triangles: surfacing in the pool 1.42M (lining 0.60M), across the cavern 1.72M, from high above 0.99M, under the pool 2.0M. Phone setting, surfacing: 1.07M (lining 0.25M). 340–570 draw calls.
+  - The dive (`tests/geo_play.py`, campaign, swimming with boost):
+    - The coupling: 8.6 s down.
+    - Beach to D-10: 20.9 s.
+    - D-10 to surfacing in the pool: 35.7 s.
+    - **55.9 s under water** in total: the 75 s suit is enough if you know the way, and with the spare tank 62% of the air is left.
+  - Dropped onto a titan: you stand on it 29 m above the rock. Started inside one: pushed out within 0.5 s.
+  - The surface is pixel-identical to v11.
+- **Teleports:** `&at=pool`, `&at=geo`. Phone or laptop version: `&geoq=lo|hi`. Tests: `tests/geo1.py` (views), `tests/geo_play.py` (numbers), `tests/geo_err.py` (load).
 
 ## Controls
 - Keyboard: WASD move, Space jetpack, Shift boost, C dive, drag to look, wheel to zoom, Esc menu, R back to the lookout, N sound, I details.
@@ -383,6 +442,8 @@ These tools lived in the temporary workspace and are easy to recreate from this 
   - `&at=door` (in the station facing the deep door; `crystal` is an alias), `&at=cavern` (on the landing ledge in the cavern)
   - `?play=free` (free play, continue), `?play=freenew` (new free play)
   - `&at=d8`, `&at=d9` (in front of those doors), `&at=drip` (the stalactite cavern landing)
+  - `&at=lake` (the beach), `&at=d10` (in the bore), `&at=pool` (the giant cavern's pool), `&at=geo` (its floor)
+  - `&geoq=lo|hi` (phone or laptop version of the giant cavern), `&geok=0.14` (its light strength)
   - `&battery=fast`, `?noworker`, `?bench`, `?mode=explore`
   - `&cavedbg=N`: debug views of the rock shader. 1 daylight/kind, 2 face term, 3 normals, 4 ambient only, 5 albedo, 6 exposure, 7 colour + specular, 8 headlamp only, 9 vein glow.
 
@@ -394,7 +455,7 @@ Use headless Chrome through Playwright with `--use-angle=swiftshader --enable-un
 - Wait 15–30 s before each screenshot so frames and close-up chunks catch up.
 - `__bench.CAVR.off = { crys:1, life:1, spore:1, rock:1, props:1, pool:1, line:1 }` hides parts one at a time. This is useful for finding which draw causes a visual problem.
 - For still shots, set `__bench.game.paused = true`. Rendering continues but physics stops, so a falling player stays put while frames catch up.
-- `__bench.DOOR`, `DOORS`, `PARTS`, `FLOODS`, `STAKES` and `DRIPR` expose the door, coupling, light, trail and stalactite-cavern state.
+- `__bench.DOOR`, `DOORS`, `PARTS`, `FLOODS`, `STAKES`, `DRIPR`, `LAKER`, `GEOR` and `GEOQ` expose the door, coupling, light, trail and cavern state. `CAVR.off` also takes `geo` (lining), `titan` and `water`.
 - `tests/flight.py` measures flying (climb, hover, top speed, slide, dive) in the old version against the new one. `tests/surface_compare.py <old version file>` compares the surface start view.
 - Cavern test views must use heights relative to `CV.CAV.y`, because the cavern moved in v8.
 - Phone checks: viewport 915 × 412 with `has_touch`, and touches sent through CDP `Input.dispatchTouchEvent`.
@@ -403,7 +464,6 @@ Use headless Chrome through Playwright with `--use-angle=swiftshader --enable-un
 - Rock up close still looks a bit tile-like (it reuses the terrain's rock texture).
 - Sky and water are Earth-like on purpose (terraformed), and the timber mine fits the colonists' own mine.
 - Not built yet:
-  - **next: the giant crystal cavern** behind D-10, down the bore: more massive, thicker crystals, brighter glow. Add D-10's coupling (in the lake) for the campaign.
   - the ancient alien artifact site
   - flares, the scanner
   - wall-touch feedback, hard mode and sonar, first-person view
@@ -413,5 +473,5 @@ Use headless Chrome through Playwright with `--use-angle=swiftshader --enable-un
   - hard mode and sonar
   - wall-touch feedback in the dark
   - flares, the scanner, and a stationary light elsewhere
-  - crystal collision
-  - Pixel 7a performance check of the cavern
+  - crystal collision (the giant cavern's titans are solid; the smaller crystals are not)
+  - Pixel 7a performance check of the caverns, especially the giant one (`&geoq=lo` is its phone version, untested on a real phone)
