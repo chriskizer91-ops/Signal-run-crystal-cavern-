@@ -43,7 +43,7 @@ The same three docs also live in the claude.ai Project "Build" as `claude/*.md`.
 - `__bench` exposes `state, stats, cam, game, cave, line, CV, CAVR, DRIPR, LAKER, GEOR, GEOQ, DOORS, PARTS, FLOODS, STAKES, inWater, logShow, caveTeleport, update, cavePrebuild`.
 - Useful URL options:
   - `?play=new | freenew | free`
-  - `&at=mine | cave | door | cavern | d8 | drip | d9 | lake | d10 | pool | geo`, and `&geoq=lo|hi` (phone or laptop version of the giant cavern)
+  - `&at=mine | cave | door | cavern | d8 | drip | d9 | lake | d10 | ledge | pool | geo`, and `&geoq=lo|hi` (phone or laptop version of the giant cavern)
   - `&cavedbg=N` (rock shader debug views)
   - `__bench.CAVR.off = {crys:1, life:1, …}` hides parts to find a visual bug
 - Before delivering, always compare the surface start view against the previous version: `python3 tests/surface_compare.py <previous version file name>`. It has stayed 100% identical since v7.
@@ -55,8 +55,9 @@ The same three docs also live in the claude.ai Project "Build" as `claude/*.md`.
   - v9: crystal cavern (D-7) → stalactite cavern (D-8) → door D-9.
   - v10: steadier flying (no slide, cave speeds, hover) and glowing route stakes. Trails come from `src/node/routes.js`; rerun it and re-paste `ROUTES` if a cavern changes.
   - v11: the flooded cavern (lake, swimming, suit air, fish, dive station, dive log, the bore with D-10).
-  - v12: the giant crystal cavern behind D-10 (see-through titan crystals, crystal light on everything, glowing mist, clear pool, the pulse and the reveal, a phone tier). D-10's coupling is on the lake floor; a spare tank doubles air. Runtime in `src/runtime/geode_runtime.js`, patch `src/patches/v12_giant_crystal_cavern.py`, models `assets/modules/geode.js`.
+  - v12: the giant crystal cavern behind D-10 (see-through titan crystals, crystal light on everything, glowing mist, clear pool, the pulse and the reveal, a phone tier). D-10's coupling is on the lake floor; a spare tank doubles air. Models `assets/modules/geode.js`.
+  - v13: past D-10 the tunnel climbs out of the water to a balcony high in the giant cavern's wall (about 12 s of swimming after the door, not 36 s). Runtime in `src/runtime/geode_runtime.js`, patch `src/patches/v13_dry_tunnel.py` (builds v13 from v11; it replaces the v12 patch).
   - Campaign and Free play modes; couplings for every deeper door in the campaign.
 - **Next:** Christopher decides. Open ideas: the ancient alien site ("something was unearthed"); a real Pixel 7a check of the giant cavern (`&geoq=lo` is the phone version).
 - One cavern at a time, with screenshots after each.
-- Giant cavern tests: `tests/geo1.py <views>` (screenshots: pool, dim, reveal, over, hero, close, titan, up, under, bore), `tests/geo_play.py` (campaign dive in numbers), `tests/geo_err.py` (load check and counts). `__bench` also has `GEOR`, `GEOQ`; `CAVR.off` also takes `geo`, `titan`, `water`.
+- Giant cavern tests: `tests/geo1.py <views>` (screenshots: tunwet, tunup, mouth, ledgedim, ledge, pool, dim, reveal, over, hero, close, titan, up, under), `tests/geo_play.py` (campaign dive in numbers), `tests/geo_err.py` (load check and counts). `__bench` also has `GEOR`, `GEOQ`; `CAVR.off` also takes `geo`, `titan`, `water`.

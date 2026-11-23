@@ -1,7 +1,7 @@
 /* ---------- the giant crystal cavern: titans you can see into, a lining of crystals, and the light they give ---------- */
 const GEOC = CV.GEO;
 const GEOR = { tris: 0, kits: [], ranges: [], inst: null, count: 0, hits: 0, pts: null, titans: [], tinst: null, motes: null, nMotes: 0, pool: null,
-  seen: false, pt0: 0, k: +(params.get('geok') || 0.14), lights: new Float32Array(128), nl: 0, clearK: 0, bore: 0, grab: null, ms: 0, inGeo: false };
+  seen: false, pt0: 0, k: +(params.get('geok') || 0.14), lights: new Float32Array(128), nl: 0, clearK: 0, tun: false, glowT: 0, surf: null, grab: null, ms: 0, inGeo: false };
 const GEOQ = (() => { const q = params.get('geoq'), phone = q ? q === 'lo' : ('ontouchstart' in window || navigator.maxTouchPoints > 0);   // phones get a lighter version
   return phone ? { lights: 8, scatter: 0, steps: 3, druse: 0.55, hiR: 16, meshR: 40, tier: 'phone' } : { lights: 16, scatter: 1, steps: 6, druse: 1, hiR: 28, meshR: 52, tier: 'full' }; })();
 const GEO_TA = 0.17, GEO_TK = 0.17 / 0.22;
@@ -10,11 +10,18 @@ const geoTime = () => state.time - GEOR.pt0;
 const geoPulse = (x, z) => { const ph = ((geoTime() * 16 - Math.hypot(x - GEOC.pool[0], z - GEOC.pool[1])) % 300 + 300) % 300; return 1 + 1.1 * Math.exp(-ph * ph / 400); };   // the signal: a ring of light running out from the pool
 const geoWake = (x, z) => GEOR.seen ? 0.12 + 0.88 * Math.max(0, Math.min(1, (geoTime() * 16 - Math.hypot(x - GEOC.pool[0], z - GEOC.pool[1]) + 20) / 30)) : 0.12;   // dim until you surface; the first ring wakes them
 
-// the route on from D-10: stakes along the bore floor to the rise into the pool
-ROUTES.GEO = (() => { const B = CV.LAKE.bore, out = [];
-  for (let x = 412; x <= 548; x += 12) { const wx = CV.SX + x; let i = 1; while (i < B.length - 1 && B[i][0] < wx) i++; const a = B[i - 1], b = B[i], t = (wx - a[0]) / (b[0] - a[0]), cy = a[1] + (b[1] - a[1]) * t, y = CV.floorAt(wx, cy, B[0][2]);
-    if (y > cy - 4 && y < cy) out.push([wx, Math.round(y * 100) / 100, B[0][2]]); }
-  return out; })();
+// the tunnel from the lake through D-10 and up to the balcony: how far a point is from its middle line
+const GEO_TUN = CV.GEO.tunnel, GEO_D10X = CV.DOORS.find(d => d.name === 'D-10').x;
+function tunnelD(x, y, z) { let best = 1e9; for (let i = 0; i < GEO_TUN.length - 1; i++) { const a = GEO_TUN[i], b = GEO_TUN[i + 1], ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], w = [x - a[0], y - a[1], z - a[2]];
+  const t = Math.max(0, Math.min(1, (w[0] * ab[0] + w[1] * ab[1] + w[2] * ab[2]) / (ab[0] * ab[0] + ab[1] * ab[1] + ab[2] * ab[2]))); best = Math.min(best, Math.hypot(w[0] - ab[0] * t, w[1] - ab[1] * t, w[2] - ab[2] * t)); } return best; }
+const GEO_MOUTH = (() => { const n = GEO_TUN.length, a = GEO_TUN[n - 2], b = GEO_TUN[n - 1], d = norm([b[0] - a[0], b[1] - a[1], b[2] - a[2]]); return [b[0] + d[0] * 4, b[1] + d[1] * 4 + 1.5, b[2] + d[2] * 4]; })();   // just outside the tunnel's end: its light spills down the tunnel
+const GEO_SURF = (() => { for (let i = 0; i < GEO_TUN.length - 1; i++) { const a = GEO_TUN[i], b = GEO_TUN[i + 1]; if (a[1] < LWL && b[1] >= LWL) { const t = (LWL - a[1]) / (b[1] - a[1]); return [a[0] + (b[0] - a[0]) * t, LWL, a[2] + (b[2] - a[2]) * t]; } } return null; })();   // where the climbing tunnel comes up through the water
+// the route on from D-10: stakes every 10 m along the tunnel floor, up to the balcony
+ROUTES.GEO = (() => { const out = []; let run = 0, next = 0;
+  for (let i = 0; i < GEO_TUN.length - 1; i++) { const a = GEO_TUN[i], b = GEO_TUN[i + 1], L = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+    for (let s = 0; s < L; s += 1, run += 1) { const t = s / L, p = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+      if (p[0] < GEO_D10X + 4 || run < next) continue; const y = CV.floorAt(p[0], p[1], p[2]); if (y > p[1] - 4 && y < p[1]) { out.push([+p[0].toFixed(2), Math.round(y * 100) / 100, +p[2].toFixed(2)]); next = run + 10; } } }
+  const g = CV.GEO.ledge; out.push([g[0], g[1], g[2]]); return out; })();
 
 function geoHits() {
   const C = GEOC, out = [], r = cavRnd(9001);
@@ -38,7 +45,7 @@ function geoScatter(hits) {
   const pick = opts => { let x = r() * opts.reduce((a, o) => a + o[1], 0); for (const o of opts) { x -= o[1]; if (x <= 0) return o[0]; } return opts[0][0]; };
   const hueOf = () => (pick([[0.0, 4], [0.2, 2], [0.4, 3], [0.6, 1.5], [0.8, 0.35]]) + (r() - 0.5) * 0.06 + 1) % 1;   // cyan, mint, violet, rose, a rare gold
   const poolD = p => Math.hypot(p[0] - C.pool[0], p[2] - C.pool[1]);
-  const free = (p, gap) => titans.every(t => Math.hypot(t.p[0] - p[0], t.p[1] - p[1], t.p[2] - p[2]) > gap);
+  const LG = CV.GEO.ledge, free = (p, gap) => Math.hypot(p[0] - LG[0], p[1] - LG[1], p[2] - LG[2]) > 30 && titans.every(t => Math.hypot(t.p[0] - p[0], t.p[1] - p[1], t.p[2] - p[2]) > gap);   // and none on or right by the balcony
   const addTitan = (p, ax, L, wf, kind) => { titans.push({ p: [p[0] - ax[0] * 0.05 * L, p[1] - ax[1] * 0.05 * L, p[2] - ax[2] * 0.05 * L], ax, L, wf, roll: r() * 6.283, hue: hueOf(), glow: 0.8 + r() * 0.45, v: ['titan_a', 'titan_b', 'titan_c'][(r() * 3) | 0], kind }); };
   const floors = hits.filter(h => h.n[1] > 0.6 && h.p[1] > LWL + 0.5), walls = hits.filter(h => Math.abs(h.n[1]) < 0.45 && h.p[1] > LWL + 18), ceils = hits.filter(h => h.n[1] < -0.6);
   const rnd = a => a[(r() * a.length) | 0];
@@ -63,7 +70,7 @@ function geoScatter(hits) {
     const p = h.p, n = h.n; if (!clear(p) || inTitan(p)) continue;
     const t = near(p), hv = t && r() < 0.85 ? (t.hue + (r() - 0.5) * 0.1 + 1) % 1 : hueOf(), ceil = n[1] < -0.45, floor = n[1] > 0.55;
     if (r() < 0.62) { const s = 0.8 + r() * 1.5; push('druse_patch', [p[0] - n[0] * 0.05, p[1] - n[1] * 0.05, p[2] - n[2] * 0.05, s, n[0], n[1], n[2], 1, hv, 0.9 + r() * 0.5, r() * 6.283, 0]); }
-    if (r() < 0.32) {
+    if (r() < 0.32 && tunnelD(p[0], p[1], p[2]) > 4.5 && Math.hypot(p[0] - LG[0], p[2] - LG[2]) > LG[3] + 1) {
       const item = floor ? pick([['crystal_cluster', 3], ['druse_cluster', 3], ['crystal_point', 2]]) : ceil ? pick([['druse_cluster', 3], ['crystal_spray', 2], ['crystal_point', 2]]) : pick([['crystal_cluster', 2], ['druse_cluster', 3], ['crystal_point', 2], ['crystal_spray', 1]]);
       const [ta, tb] = tangent(n), j = 0.5, L = item === 'druse_cluster' ? 0.8 + r() * 1.4 : 0.5 * Math.exp(r() * 2.1);
       const ax = norm([n[0] + (ta[0] * (r() - 0.5) + tb[0] * (r() - 0.5)) * j * 2, n[1] + (ta[1] * (r() - 0.5) + tb[1] * (r() - 0.5)) * j * 2, n[2] + (ta[2] * (r() - 0.5) + tb[2] * (r() - 0.5)) * j * 2]);
@@ -136,6 +143,10 @@ function geoInit() {
   // motes of light drifting through the whole cavern
   { const C = GEOC, r = cavRnd(31337), P = []; let tries = 0; while (P.length < 4 * 6000 && tries++ < 60000) { const u = r() * 2 - 1, v = r() * 2 - 1, w = r() * 2 - 1; if (u * u + v * v + w * w > 0.8) continue; const x = C.x + u * C.rx, y = C.y + v * C.ry, z = C.z + w * C.rz; if (CV.sdf(x, y, z) > -2 || y < LWL + 1) continue; P.push(x, y, z, r()); }
     const vao = gl.createVertexArray(); gl.bindVertexArray(vao); const vb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vb); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(P), gl.STATIC_DRAW); gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 4, gl.FLOAT, false, 16, 0); gl.bindVertexArray(null); GEOR.motes = vao; GEOR.nMotes = P.length / 4; }
+  // the water's surface where the climbing tunnel comes up out of it
+  if (GEO_SURF) { const N = 40, R = 7.5, V = [GEO_SURF[0], LWL, GEO_SURF[2]], I = []; for (let i = 0; i <= N; i++) { const a = i / N * Math.PI * 2; V.push(GEO_SURF[0] + Math.cos(a) * R, LWL, GEO_SURF[2] + Math.sin(a) * R); if (i) I.push(0, i, i + 1); }
+    const vao = gl.createVertexArray(); gl.bindVertexArray(vao); const vb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vb); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(V), gl.STATIC_DRAW); gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 12, 0);
+    const ib = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint32Array(I), gl.STATIC_DRAW); gl.bindVertexArray(null); GEOR.surf = { vao, count: I.length }; }
   // the pool's surface
   { const N = 96, R = GEOC.pool[2] * 1.35, cx = GEOC.pool[0], cz = GEOC.pool[1], V = [cx, LWL, cz], I = [];
     for (let i = 0; i <= N; i++) { const a = i / N * Math.PI * 2; V.push(cx + Math.cos(a) * R, LWL, cz + Math.sin(a) * R); if (i) I.push(0, i, i + 1); }
@@ -144,8 +155,8 @@ function geoInit() {
   GEOR.ms = Math.round(performance.now() - t0);
 }
 function geoUpdate(dt) {
-  const E = cam.eye; GEOR.inGeo = CV.geoK(E[0], E[1], E[2]) < 1.2; GEOR.inGeoP = cave.under && CV.geoK(state.px, state.py, state.pz) < 1.3;
-  GEOR.clearK = Math.max(0, Math.min(1, (1.22 - CV.geoK(E[0], E[1], E[2])) / 0.15)); GEOR.bore = E[0] > CV.SX + 395 && LAKER.camUnder ? 1 : 0;
+  const E = cam.eye; GEOR.tun = E[0] > GEO_D10X + 0.5 && tunnelD(E[0], E[1], E[2]) < CV.LAKE.boreR + 2; GEOR.inGeo = CV.geoK(E[0], E[1], E[2]) < 1.2 || GEOR.tun; GEOR.inGeoP = cave.under && CV.geoK(state.px, state.py, state.pz) < 1.3;
+  GEOR.clearK = Math.max(0, Math.min(1, (1.22 - CV.geoK(E[0], E[1], E[2])) / 0.15)); GEOR.glowT = GEOR.inGeo ? 1.2 * (0.35 + 0.65 * geoWake(GEO_MOUTH[0], GEO_MOUTH[2])) * geoPulse(GEO_MOUTH[0], GEO_MOUTH[2]) : 0;
   GEOR.nl = 0;
   if (GEOR.inGeo && GEOR.titans.length) {
     // the titans nearest the camera are the lights: each a glowing line from base to tip, pulsing with the signal
@@ -157,8 +168,8 @@ function geoUpdate(dt) {
       A[o + 4] = q.p[0] + q.ax[0] * q.L * 0.8; A[o + 5] = q.p[1] + q.ax[1] * q.L * 0.8; A[o + 6] = q.p[2] + q.ax[2] * q.L * 0.8; A[o + 7] = q.hue; }
     GEOR.nl = n;
   }
-  // the reveal: the first time your head comes up out of the pool
-  if (!GEOR.seen && cave.under && CV.geoK(state.px, state.py + 1.6, state.pz) < 1 && state.py + 1.6 > LWL - 0.2) {
+  // the reveal: the first time you step out of the tunnel onto the balcony (or come into the cavern any other way)
+  if (!GEOR.seen && cave.under && CV.geoK(state.px, state.py + 1.6, state.pz) < 0.935 && state.py + 1.6 > LWL - 0.2) {
     GEOR.seen = true; GEOR.pt0 = state.time - 0.3;
     toast('Your suit radio fills with a slow, steady pulse: the same pattern the array was built to hear. It is coming from the crystals.', 11);
     tone([130.8, 196, 261.6, 329.6, 392], 6, 'sine', 0.06, 0.4); setTimeout(() => tone([174.6, 261.6, 349.2, 440, 523.3], 7, 'sine', 0.05, 0.5), 2800); setTimeout(() => tone([196, 293.7, 392, 493.9, 587.3], 8, 'sine', 0.045, 0.55), 6000);
@@ -167,7 +178,7 @@ function geoUpdate(dt) {
 }
 function geoUniforms(p) {
   if (p.u.uGeo) gl.uniform4f(p.u.uGeo, GEOC.x, GEOC.y, GEOC.z, 1); if (p.u.uGeoR) gl.uniform3f(p.u.uGeoR, GEOC.rx, GEOC.ry, GEOC.rz);
-  if (p.u.uGQ) gl.uniform4f(p.u.uGQ, GEOR.nl, GEOQ.scatter, GEOC.pool[0], GEOC.pool[1]); if (p.u.uGS) gl.uniform4f(p.u.uGS, geoTime(), GEOR.seen ? 1 : 0, GEOR.bore, 0);
+  if (p.u.uGQ) gl.uniform4f(p.u.uGQ, GEOR.nl, GEOQ.scatter, GEOC.pool[0], GEOC.pool[1]); if (p.u.uGS) gl.uniform4f(p.u.uGS, geoTime(), GEOR.seen ? 1 : 0, 0, 0); if (p.u.uGT) gl.uniform4f(p.u.uGT, GEO_MOUTH[0], GEO_MOUTH[1], GEO_MOUTH[2], GEOR.glowT);
   if (p.u['uGL[0]'] && GEOR.nl) gl.uniform4fv(p.u['uGL[0]'], GEOR.lights);
 }
 function geoGrab() {                         // a snapshot of everything drawn so far, for the titans to look through
@@ -218,7 +229,8 @@ function drawTitans(useFx) {                 // the titans: see-through, drawn a
 }
 function drawGeoFx() {
   if (!GEOR.inGeo) return;
-  if (GEOR.pool && !CAVR.off.water) { gl.enable(gl.BLEND); gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ZERO, gl.ONE); gl.depthMask(false); setCommon(pLake); geoUniforms(pLake); gl.bindVertexArray(GEOR.pool.vao); stats.cave += drawElems(GEOR.pool.count, gl.UNSIGNED_INT, 0); }
+  if (GEOR.pool && !CAVR.off.water) { gl.enable(gl.BLEND); gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ZERO, gl.ONE); gl.depthMask(false); setCommon(pLake); geoUniforms(pLake); gl.bindVertexArray(GEOR.pool.vao); stats.cave += drawElems(GEOR.pool.count, gl.UNSIGNED_INT, 0);
+    if (GEOR.surf && GEOR.tun) { gl.bindVertexArray(GEOR.surf.vao); stats.cave += drawElems(GEOR.surf.count, gl.UNSIGNED_INT, 0); } }
   gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE); gl.depthMask(false);
   if (GEOR.pts && !CAVR.off.geo) {           // the far lining as glitter
     gl.useProgram(pGeoPt.p); gl.uniformMatrix4fv(pGeoPt.u.uVP, false, cam.vp32); gl.uniform3fv(pGeoPt.u.uCam, cam.eye); gl.uniform1f(pGeoPt.u.uPx, canvas.height / 900); gl.uniform4f(pGeoPt.u.uGS, geoTime(), GEOR.seen ? 1 : 0, GEOC.pool[0], GEOC.pool[1]);

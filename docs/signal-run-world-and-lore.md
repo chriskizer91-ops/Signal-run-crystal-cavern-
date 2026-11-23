@@ -39,8 +39,9 @@ Status (23 Nov 2026): Christopher is **sitting with these ideas**. Treat everyth
   - Their old guideline runs into the bore and ends **cut clean** at the door.
   - The lake's **fish** are big, pale and fast. They never attack, but they watch: eyes at the edge of the light, flaring in your lamp.
 
-- **The giant crystal cavern (v12)**, behind D-10, up the bore: a geode of enormous glowing crystals.
-  - It is dim until you surface. Then a slow pulse of light rings out from the pool and wakes the crystals one by one.
+- **The giant crystal cavern (v12, way in rebuilt in v13)**, behind D-10: a geode of enormous glowing crystals.
+  - Past D-10 the bore climbs up out of the water and ends at a balcony high in the cavern's wall.
+  - It is dim when you step out. Then a slow pulse of light rings out from the pool below and wakes the crystals one by one.
   - Draft radio message (Christopher may rewrite): *"Your suit radio fills with a slow, steady pulse: the same pattern the array was built to hear. It is coming from the crystals."*
   - Open: is the cavern itself the source of the signal? Did the crystals grow, or were they grown? Did the bore's builders come for them, or put them here? Where is Kel?
 

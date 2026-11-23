@@ -6,17 +6,17 @@ It started as a canyon rendering benchmark: 147 million triangles of terrain, a 
 - **Surface:** the radio array is dark. Find 7 power cells and fly them back with your jetpack.
 - **Underground:** an old mine shaft leads down into caves. You have a headlamp with a battery and a glowing guideline so you can find your way out. Below that, a series of giant caverns are stacked deeper and deeper, joined by sealed doors and drop shafts.
 
-**Play it:** open [`game/signal-run.html`](game/signal-run.html) (v12) (download it, then open the file in your browser).
+**Play it:** open [`game/signal-run.html`](game/signal-run.html) (v13) (download it, then open the file in your browser).
 
 ## Where things are
 
 | Folder | What's in it |
 |---|---|
-| `game/signal-run.html` | **The game.** The current version (v12). This one file is the real source. |
-| `game/versions/` | Every version, from the original v2 up to v12, so nothing is lost. |
+| `game/signal-run.html` | **The game.** The current version (v13). This one file is the real source. |
+| `game/versions/` | Every version, from the original v2 up to v13, so nothing is lost. |
 | `src/cavelib.js` | The cave system's code (shapes of all tunnels and caverns, floors, physics). An exact copy of the part inside the game, kept separately so it can be tested on its own. |
 | `src/runtime/` | The code for the caves and each cavern (crystal, stalactite, flooded, giant crystal) as it was written before being added to the game. |
-| `src/patches/` | The scripts that turned each version into the next (v4 caves, v7 crystal cavern, v8 door and modes, v9 stalactite cavern, v10 flight and trails, v11 flooded cavern, v12 giant crystal cavern). |
+| `src/patches/` | The scripts that turned each version into the next (v4 caves, v7 crystal cavern, v8 door and modes, v9 stalactite cavern, v10 flight and trails, v11 flooded cavern, v12 giant crystal cavern, v13 dry tunnel). |
 | `assets/modules/` | **Every 3D model**, one file per group: vehicles, camp, outpost buildings, marina, plants, power lines, bridge, crystals, glowing cave life, the survey camp, the sealed doors, the work lights and parts, the dripstone, the fish, the dive station, and the giant crystals and crystal carpet (`geode`). |
 | `assets/modules/originals/` | The surface models as they were before the far-future reskin. |
 | `assets/previews/` | Pictures of each model. |
@@ -56,6 +56,10 @@ It started as a canyon rendering benchmark: 147 million triangles of terrain, a 
   - You surface in a clear pool. The cavern is dim until a slow pulse of light rings out from the pool and wakes it.
   - In the campaign, D-10's coupling lies on the lake floor, and a spare tank on the dive station's rack doubles your air.
   - You can stand on the giant crystals; they're solid.
+- **v13:** a new way into the giant crystal cavern (Christopher ran out of air in v12's long flooded tunnel).
+  - Past D-10 the tunnel climbs up out of the water. You swim about 12 s after the door, then walk up a dry tunnel.
+  - It ends at a balcony high in the cavern's wall, 38 m above the water. You step out, and the pulse wakes the cavern in front of you.
+  - Measured without the spare tank: 32 s under water in all, out of 75 s of air.
 
 ## What's next
 Christopher decides. Open ideas: the ancient alien site ("something was unearthed"), and checking the giant cavern on the Pixel 7a.
@@ -64,5 +68,5 @@ Christopher decides. Open ideas: the ancient alien site ("something was unearthe
 - `?play=freenew`: new free play game (everything unlocked).
 - `?play=new`: new campaign.
 - `&at=door`, `&at=cavern`, `&at=d8`, `&at=drip`, `&at=d9`, `&at=lake`, `&at=d10`: start next to door D-7, in the crystal cavern, at door D-8, in the stalactite cavern, at door D-9, on the lake's beach, or at door D-10 under water.
-- `&at=pool`, `&at=geo`: start in the giant crystal cavern's pool, or on its floor beside the pool.
+- `&at=ledge`, `&at=pool`, `&at=geo`: start on the giant crystal cavern's balcony, in its pool, or on its floor beside the pool.
 - `&geoq=lo` or `&geoq=hi`: force the phone or laptop version of the giant cavern (normally picked automatically: touch screens get the lighter one).

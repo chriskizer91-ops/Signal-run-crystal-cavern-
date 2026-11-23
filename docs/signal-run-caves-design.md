@@ -1,6 +1,6 @@
 # Signal Run — Caves & Mine Expansion (design plan)
 
-Status (23 Nov 2026): **the four stacked caverns are built.** Current game file: signal-run-v12-giant-crystal-cavern.html (also `game/signal-run.html` in the GitHub repo `chriskizer91-ops/Signal-run-crystal-cavern-`). See `claude/signal-run-engine-handoff.md` for how the built parts work.
+Status (23 Nov 2026): **the four stacked caverns are built.** Current game file: signal-run-v13-dry-tunnel.html (also `game/signal-run.html` in the GitHub repo `chriskizer91-ops/Signal-run-crystal-cavern-`). See `claude/signal-run-engine-handoff.md` for how the built parts work.
 
 ## Built so far
 - **v4: Level 1.**
@@ -81,6 +81,12 @@ Christopher, after seeing the crystal cavern: "We absolutely have to have an add
 - The swim from the beach to the pool is about 56 s under water: inside the 75 s suit with ~20 s to spare. A **spare tank** on the dive station's rack doubles the air (campaign; free play has it).
 - Titans are solid: you can land and stand on them.
 - Phones get a lighter version (8 crystal lights instead of 16, no glowing mist, a thinner lining, 3 steps inside the crystals instead of 6).
+
+**Changed in v13: a dry tunnel past D-10** (Christopher ran out of air in v12's 140 m flooded tunnel and chose "dry tunnel past D-10"):
+- The tunnel is flooded only up to the lake's own level. Past D-10 it climbs, so you swim about 12 s after the door, wade out, and walk up a dry, glassy tunnel lit by a faint pulsing light from above.
+- It ends at a **balcony** high in the cavern's west wall, 38 m above the water. The reveal happens as you step out: the cavern is dim, then the first ring of the pulse comes across it toward you and wakes it.
+- Whole dive without the spare tank: 32 s under water out of 75 s; the air never drops below 55%.
+- The pool is still there, with its half-drowned titans, but nothing leads into it from below now.
 
 **Flying (v10):** no more sliding after letting go, slower and steadier in caves, and **hover** when you let go of JET (DIVE to go down).
 

@@ -1,5 +1,5 @@
 # The giant crystal cavern by numbers (campaign): D-10 locked, the coupling on the lake floor, the spare tank,
-# the dive through D-10 and the bore into the crystal pool, the reveal, standing on a titan.
+# the dive to D-10 and up the tunnel past it onto the balcony (no spare tank), the reveal, standing on a titan.
 import asyncio, os
 from playwright.async_api import async_playwright
 HERE = os.path.dirname(os.path.abspath(__file__)); GAME = os.path.abspath(os.path.join(HERE, '..', 'game', 'signal-run.html'))
@@ -27,21 +27,21 @@ async def main():
         print('3. surfaced, air refills:', r['air'], '->', await pg.evaluate('+__bench.LAKER.air.toFixed(0)'))
         await pg.evaluate("(()=>{const B=__bench,s=B.state,R=B.LAKER.rack; s.px=R.p[0]+1.2; s.pz=R.p[2]+1.2; s.py=B.CV.floorAt(s.px,R.p[1]+3,s.pz); s.vx=s.vy=s.vz=0; s.grounded=true;})()")
         await pg.evaluate(SIM + "(5,{})"); print('4. at the tank rack: spare tank', await pg.evaluate('__bench.cave.tank'), '|', await pg.evaluate("document.getElementById('toast').textContent"))
-        # the full dive: from the beach, down the old route to D-10, wait for it to open, through the bore, up into the crystal pool
-        await pg.evaluate("__bench.caveTeleport('lake'); __bench.LAKER.air=100;")
-        R = await pg.evaluate("__bench.ROUTES ? 1 : 0")
+        # the full dive, WITHOUT the spare tank (worst case): beach -> down the old route to D-10 -> wait for it -> up the tunnel past it, out of the water, to the balcony
+        await pg.evaluate("__bench.caveTeleport('lake'); __bench.LAKER.air=100; __bench.cave.tank=false;")
         wp = """(()=>{const B=__bench, W=B.CV.LAKE.water, D=B.DOORS.find(d=>d.name==='D-10'), r=B.STAKES.filter(k=>k.route==='D-10').map(k=>[k.p[0],k.p[1]+1.6,k.p[2]]); return [[r[0][0],W-1.5,r[0][2]], ...r, [D.x-3,D.y+1.6,D.z,1.5]]; })()"""
         wps = await pg.evaluate(wp)
         r1 = await pg.evaluate(f"__swim({wps}, 120)")
-        print('5. beach -> D-10 (', len(wps), 'marks):', r1, '| door open', await pg.evaluate(f"+{D10}.open.toFixed(2)"))
-        r2 = await pg.evaluate(f"__swim([[{D10}.x-3,{D10}.y+1.6,{D10}.z,1]], 6, B=>{D10}.open>=0.99)"); await pg.evaluate(SIM + "(10,{})")
+        print('5. beach -> D-10 (no spare tank):', r1, '| door open', await pg.evaluate(f"+{D10}.open.toFixed(2)"))
+        r2 = await pg.evaluate(f"__swim([[{D10}.x-3,{D10}.y+1.6,{D10}.z,0.3]], 6, B=>{D10}.open>=0.99)"); await pg.evaluate(SIM + "(10,{})")
         print('6. waited at D-10 for it to open:', r2, '| open', await pg.evaluate(f"+{D10}.open.toFixed(2)"), '|', await pg.evaluate("document.getElementById('toast').textContent"))
-        bore = """(()=>{const B=__bench, Bo=B.CV.LAKE.bore, G=B.CV.GEO, W=B.CV.LAKE.water, D=B.DOORS.find(d=>d.name==='D-10'); return Bo.filter(q=>q[0]>D.x+2).map(q=>[q[0],q[1]-0.6,q[2],2]).concat([[G.pool[0],W-1.0,G.pool[1],1.2],[G.pool[0]-1,W+1.5,G.pool[1],0.6]]); })()"""
-        wps2 = await pg.evaluate(bore)
+        up = """(()=>{const B=__bench; return B.STAKES.filter(k=>k.route==='GEO').map(k=>[k.p[0],k.p[1]+1.0,k.p[2],1.6]); })()"""
+        wps2 = await pg.evaluate(up)
+        await pg.evaluate("(()=>{window.__airMin=100; window.__outAt=null; const B=__bench, f=B.update; B.update=(dt)=>{f(dt); __airMin=Math.min(__airMin,B.LAKER.air); if(__outAt===null && !B.inWater(B.state.px,B.state.py+1.6,B.state.pz)) __outAt=[B.state.px-B.CV.SX,B.state.py,B.state.pz-B.CV.SZ].map(v=>+v.toFixed(1));}; })()")
         r3 = await pg.evaluate(f"__swim({wps2}, 120, B=>B.GEOR.seen)")
         await pg.evaluate(SIM + "(10,{})")
-        print('7. D-10 -> through the bore -> surfaced in the crystal pool:', r3, '| revealed', await pg.evaluate('__bench.GEOR.seen'), '|', await pg.evaluate("document.getElementById('toast').textContent"))
-        print('   total time under water', round(r1['underwater'] + r2['underwater'] + r3['underwater'], 1), 's; air left with the spare tank', r3['air'], '% (150 s tank); without it the suit holds 75 s')
+        print('7. D-10 -> up the tunnel -> out onto the balcony:', r3, '| head out of the water at (local)', await pg.evaluate('__outAt'), '| revealed', await pg.evaluate('__bench.GEOR.seen'), '|', await pg.evaluate("document.getElementById('toast').textContent"))
+        print('   total time under water', round(r1['underwater'] + r2['underwater'] + r3['underwater'], 1), 's of the 75 s suit; lowest air', await pg.evaluate('+__airMin.toFixed(0)'), '%; standing on the balcony at', r3['pos'], 'grounded', await pg.evaluate('__bench.state.grounded'))
         # titans: land on one, and get pushed out of one
         land = await pg.evaluate("""(()=>{const B=__bench,s=B.state,T=B.GEOR.titans.filter(t=>t.kind==='floor'&&t.ax[1]>0.85).sort((a,b)=>a.L-b.L)[0]; const top=[T.p[0]+T.ax[0]*T.L*0.5, T.p[1]+T.ax[1]*T.L*0.5, T.p[2]+T.ax[2]*T.L*0.5];
           s.px=T.p[0]+T.ax[0]*T.L*0.72; s.pz=T.p[2]+T.ax[2]*T.L*0.72; s.py=T.p[1]+T.ax[1]*T.L*1.05; s.vx=s.vy=s.vz=0; s.grounded=false; s.hover=false; for(let i=0;i<150;i++) B.update(0.033);

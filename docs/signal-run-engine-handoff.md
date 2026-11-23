@@ -1,6 +1,6 @@
 # Signal Run — engine & state handoff (read this first in any new session)
 
-Status as of 23 Nov 2026: **v12 (signal-run-v12-giant-crystal-cavern.html, ~1.1 MB)** is current.
+Status as of 23 Nov 2026: **v13 (signal-run-v13-dry-tunnel.html, ~1.1 MB)** is current.
 
 **Everything lives in the GitHub repo `chriskizer91-ops/Signal-run-crystal-cavern-`:** the game (`game/signal-run.html` plus every older version), the CaveLib mirror, patch scripts, all model modules and model tools, agent briefs, tests, these docs and screenshots. Start there in a new session, and read its `CLAUDE.md`. It is one self-contained HTML file: WebGL 2, no images; every texture, mesh and sound is generated in code.
 - Design plans: `claude/signal-run-caves-design.md`.
@@ -74,6 +74,7 @@ It started as a rendering benchmark: 147M triangles at full detail, plus a "10M 
   - The surface is pixel-identical to v9.
 - **v11: the flooded cavern** behind D-9 (details in its own section below). The surface is pixel-identical to v10.
 - **v12: the giant crystal cavern** behind D-10 (details in its own section below): see-through titan crystals, the crystals' light on everything, the pulse and the reveal. The surface is pixel-identical to v11.
+- **v13: a new way into the giant crystal cavern**: past D-10 the tunnel climbs out of the water to a balcony high in the cavern's wall (details in its own section). The surface is pixel-identical to v12.
 
 ## Map facts (metres; y is up)
 - World 3072 × 3072 (48 × 48 tiles of 64 m). Canyon floor ≈ 95, lowest terrain 87.5, highest ≈ 632.
@@ -381,7 +382,7 @@ The finale: a giant geode behind D-10, reached by swimming the bore and coming u
   - `GEO`, kind 13 (AMP 1.5): centre (2044, −330, 1471), radii 130 × 105 × 120. `geoK(x,y,z)` is the normalised ellipsoid distance (< 1 inside).
   - `geoFloor()`: 6.5 m terraces rising from the water's edge (+1.4 m) toward the walls, with noise. The ceiling has a broad dome term.
   - **The pool**: centre (1999, 1471), radius 19, same water level as the lake (−421.5). Its bowl goes from −418.5 at the rim to −439 in the middle.
-  - **The bore** now carries on past D-10: (1802 → 1876, −449.2), dips to −456 at 1912, rises to −447 at 1982, then turns straight up at (1997–1999) into the middle of the pool. About 140 m from D-10 to the pool.
+  - *(v12 only; replaced in v13, see below)* **The bore** carried on past D-10: (1802 → 1876, −449.2), dipped to −456 at 1912, rose to −447 at 1982, then turned straight up at (1997–1999) into the middle of the pool. About 140 m from D-10 to the pool.
   - `CAVE_AREA` reaches x 2224. The node check found no floating rock inside the cavern.
   - Exports: `CV.GEO` (x, y, z, rx, ry, rz, pool [x, z, r]), `geoFloor`, `geoK`.
 - **Models** (`geode` module, Opus 5.5 sub-agent, brief `assets/briefs/GEODE_BRIEF.md`):
@@ -413,7 +414,7 @@ The finale: a giant geode behind D-10, reached by swimming the bore and coming u
 - **Water:**
   - The pool is clear. Murk density goes from 0.115 to 0.022 as the camera comes into the cavern (`GEOR.clearK`).
   - `LAKE_FS` has a geode branch: lit from below by the drowned titans; from underneath, a window to the cavern with a mirror outside it.
-  - In the bore past D-10 the murk glows teal toward the rise (`uGS.z`), pulsing: the "light at the end of the tunnel".
+  - *(v12 only)* In the bore past D-10 the murk glowed teal toward the rise. v13 replaced it with the light down the dry tunnel.
 - **Play:**
   - D-10 now opens: free play, or the campaign with its coupling. The coupling lies on the lake floor 16.5 m down at local (318, −438, −7). The door toast adds "Far down the bore, a light is pulsing."
   - The spare tank (`cave.tank`, saved) comes from walking up to the dive station's rack. Air lasts 150 s instead of 75; free play always has it.
@@ -424,7 +425,7 @@ The finale: a giant geode behind D-10, reached by swimming the bore and coming u
 - **Rock gap fix (all caverns):** wherever a close-up chunk is drawn, its rough copy is drawn 0.15 m behind it (`uSink` in `CAVE_VS`). This fills the hairline gaps where close-up and rough chunks meet, which showed against the bright geode walls.
 - **Numbers (headless, 960 × 540):**
   - Triangles: surfacing in the pool 1.42M (lining 0.60M), across the cavern 1.72M, from high above 0.99M, under the pool 2.0M. Phone setting, surfacing: 1.07M (lining 0.25M). 340–570 draw calls.
-  - The dive (`tests/geo_play.py`, campaign, swimming with boost):
+  - The dive in v12 (`tests/geo_play.py`, campaign, swimming with boost; see v13 for the new numbers):
     - The coupling: 8.6 s down.
     - Beach to D-10: 20.9 s.
     - D-10 to surfacing in the pool: 35.7 s.
@@ -432,6 +433,39 @@ The finale: a giant geode behind D-10, reached by swimming the bore and coming u
   - Dropped onto a titan: you stand on it 29 m above the rock. Started inside one: pushed out within 0.5 s.
   - The surface is pixel-identical to v11.
 - **Teleports:** `&at=pool`, `&at=geo`. Phone or laptop version: `&geoq=lo|hi`. Tests: `tests/geo1.py` (views), `tests/geo_play.py` (numbers), `tests/geo_err.py` (load).
+
+## The way in, rebuilt (v13)
+Christopher couldn't get through v12's flooded tunnel on one breath. He chose "dry tunnel past D-10". The tunnel is now flooded only up to the lake's own level, as real water would be.
+- **Geometry (CaveLib):**
+  - `BORE` (the lake end) runs (1802 → 1850, −449.2, 1471), through D-10 at 1844.
+  - `TUN` then climbs at 24–36°: (1850, −449.2, 1471) → (1868, −438, 1454) → (1884, −424, 1438) → (1902, −412, 1426) → (1920, −399, 1424) → (1934, −387, 1434) → (1942, −381, 1446).
+  - Both are kind 12, radius 2.8. The old run down to the pool is gone; the pool is now just a pool.
+  - `LEDGE`: a flat balcony, top −383.8, radius 11, centred at (1946, 1447). It is a raise in `geoFloor` with a 3.4 m-per-metre cliff around it, about 24 m above the floor below and 38 m above the water.
+  - Exports `CV.GEO.tunnel` (the whole polyline, from the lake to the balcony) and `CV.GEO.ledge`.
+  - Checked in Node:
+    - The tunnel is 188 m long; about 55 m past the door is fully under water.
+    - The steepest floor rise is 0.79 m per metre, so all of it is walkable.
+    - No holes through to the lake. The balcony is flat out to 8 m, −387 at 12 m, −408 at 18 m.
+- **Water:** `inWater` uses `tunnelD()` (the distance to the tunnel's middle line) below the water level, instead of v11's box.
+  - A small water surface (`GEO_SURF`, radius 7.5) is drawn where the climbing tunnel comes up through −421.5.
+  - Looking down into water now fogs anything below −421.5 whenever the camera is above it (`haze()`); everything that deep is under water.
+- **Light down the tunnel:** `uGT` / `geoTun()` is a light just outside the tunnel's end (`GEO_MOUTH`). It lights the tunnel's glassy walls (and props, faintly) and pulses with the signal.
+  - Strength 1.2 × (0.35 + 0.65 × wake) × pulse.
+  - On plain rock it is kept low (0.35), so the balcony isn't washed out.
+- **Rings:** the bore's half-metre rings are now counted from D-10 (`length(w − (1844, −450, 1471))`), so they run round the tunnel however it turns.
+- **Draw zone 4** is also used whenever the camera is in the tunnel past D-10 (`GEOR.tun`), and the giant cavern's lights stay on there.
+- **Reveal:** fires when your head is well inside the cavern (`geoK` < 0.935): two or three steps out onto the balcony. The first ring of the pulse comes across the cavern toward you.
+- **Keeping the balcony clear:** no titan within 30 m of it, and no big crystal clusters within 4.5 m of the tunnel or on the balcony (the small crystal carpet still grows there).
+- **Trail:** `ROUTES.GEO` is 15 stakes every 10 m from D-10 up the tunnel, plus one on the balcony.
+- **Door toast:** "…Beyond it, the bore climbs up out of the water, toward a faint light."
+- **Numbers** (`tests/geo_play.py`, campaign, **without** the spare tank):
+  - Beach to D-10: 20.9 s.
+  - D-10 to head out of the water: 11.8 s.
+  - D-10 to standing on the balcony: 16.7 s.
+  - **32.0 s under water in all, out of 75 s; air never went below 55%.**
+  - Triangles: in the dry tunnel 1.76M, at the tunnel's end 1.97M, on the balcony 1.83M.
+  - The surface is pixel-identical to v12.
+- **Teleport** `&at=ledge`. Test views: `tests/geo1.py tunwet tunup mouth ledgedim ledge`.
 
 ## Controls
 - Keyboard: WASD move, Space jetpack, Shift boost, C dive, drag to look, wheel to zoom, Esc menu, R back to the lookout, N sound, I details.
@@ -442,7 +476,7 @@ The finale: a giant geode behind D-10, reached by swimming the bore and coming u
   - `&at=door` (in the station facing the deep door; `crystal` is an alias), `&at=cavern` (on the landing ledge in the cavern)
   - `?play=free` (free play, continue), `?play=freenew` (new free play)
   - `&at=d8`, `&at=d9` (in front of those doors), `&at=drip` (the stalactite cavern landing)
-  - `&at=lake` (the beach), `&at=d10` (in the bore), `&at=pool` (the giant cavern's pool), `&at=geo` (its floor)
+  - `&at=lake` (the beach), `&at=d10` (in the bore), `&at=ledge` (the giant cavern's balcony), `&at=pool` (its pool), `&at=geo` (its floor)
   - `&geoq=lo|hi` (phone or laptop version of the giant cavern), `&geok=0.14` (its light strength)
   - `&battery=fast`, `?noworker`, `?bench`, `?mode=explore`
   - `&cavedbg=N`: debug views of the rock shader. 1 daylight/kind, 2 face term, 3 normals, 4 ambient only, 5 albedo, 6 exposure, 7 colour + specular, 8 headlamp only, 9 vein glow.
