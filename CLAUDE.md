@@ -40,10 +40,10 @@ The same three docs also live in the claude.ai Project "Build" as `claude/*.md`.
   - set `__bench.game.paused = true` (physics stops, rendering continues)
   - call `__bench.cavePrebuild(330)`
   - wait 15–30 s
-- `__bench` exposes `state, stats, cam, game, cave, line, CV, CAVR, DRIPR, LAKER, DOORS, PARTS, FLOODS, STAKES, inWater, logShow, caveTeleport, update, cavePrebuild`.
+- `__bench` exposes `state, stats, cam, game, cave, line, CV, CAVR, DRIPR, LAKER, GEOR, GEOQ, DOORS, PARTS, FLOODS, STAKES, inWater, logShow, caveTeleport, update, cavePrebuild`.
 - Useful URL options:
   - `?play=new | freenew | free`
-  - `&at=mine | cave | door | cavern | d8 | drip | d9 | lake | d10`
+  - `&at=mine | cave | door | cavern | d8 | drip | d9 | lake | d10 | pool | geo`, and `&geoq=lo|hi` (phone or laptop version of the giant cavern)
   - `&cavedbg=N` (rock shader debug views)
   - `__bench.CAVR.off = {crys:1, life:1, …}` hides parts to find a visual bug
 - Before delivering, always compare the surface start view against the previous version: `python3 tests/surface_compare.py <previous version file name>`. It has stayed 100% identical since v7.
