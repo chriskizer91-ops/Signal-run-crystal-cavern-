@@ -47,6 +47,8 @@ The same three docs also live in the claude.ai Project "Build" as `claude/*.md`.
   - `&cavedbg=N` (rock shader debug views)
   - `__bench.CAVR.off = {crys:1, life:1, …}` hides parts to find a visual bug
 - Before delivering, always compare the surface start view against the previous version: `python3 tests/surface_compare.py <previous version file name>`. It has stayed 100% identical since v7.
+- For a change that should not alter the picture anywhere, use the stricter fixed-clock check from v15: `tests/v15_snap.py` for the old and the new file, then `tests/v15_cmp.py` (8 places, surface and caverns, pixel for pixel).
+- After any change to code that runs every frame, run `tests/v15_posecheck.py` and `tests/v15_jsbench.py`. The game's own work per frame should stay flat over a minute (about 2 ms in the test). v14 had a list that grew every frame and slowed the game down the longer it ran: never add keys to an object inside a `for … in` loop over that same object.
 - `tests/flight.py` measures how flying feels (climb, hover, top speed, slide, dive) in old against new.
 - Tests write screenshots into the folder they run from. Run them from `tests/`; PNGs there are git-ignored.
 
@@ -58,6 +60,7 @@ The same three docs also live in the claude.ai Project "Build" as `claude/*.md`.
   - v12: the giant crystal cavern behind D-10 (see-through titan crystals, crystal light on everything, glowing mist, clear pool, the pulse and the reveal, a phone tier). D-10's coupling is on the lake floor; a spare tank doubles air. Models `assets/modules/geode.js`.
   - v13: past D-10 the tunnel climbs out of the water to a balcony high in the giant cavern's wall (about 12 s of swimming after the door, not 36 s). Runtime in `src/runtime/geode_runtime.js`, patch `src/patches/v13_dry_tunnel.py` (builds v13 from v11; it replaces the v12 patch).
   - v14: the ancient site beyond the giant cavern (black stone halls, 5 artifacts, answer-the-signal puzzle, the hologram and its star chart). Runtime `src/runtime/site_runtime.js`, patch `src/patches/v14_ancient_site.py` (builds from v13), models `assets/modules/ancient.js`.
+  - v15: efficiency and experience pass, no new content, pixel-identical to v14. The slowdown-over-time bug is fixed, cave rock streams by distance (`ROUGH_R`, `ROUGH_FREE`), the caverns' set-up is deferred behind the menu (`lateInit`, `finishInit`), the game saves and restores where you stood (`game.place`, `resumePlace`), and the surface marker points at the old mine after 7 dishes (Christopher confirmed he wants it). Patch `src/patches/v15_efficiency.py` (builds from v14), tests `tests/v15_*.py`. Details in the handoff doc's v15 section.
   - Campaign and Free play modes; couplings for every deeper door in the campaign.
   - Christopher confirmed the giant cavern runs smoothly on the Pixel 7a and the MSI laptop.
 - **Next:** Christopher decides. Open: what the hologram's star system is, and what answering the signal leads to.

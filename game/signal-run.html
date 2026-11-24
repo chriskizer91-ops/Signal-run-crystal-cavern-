@@ -1982,7 +1982,7 @@ function computePose() {            // rigid parts on a small skeleton: walk cyc
     const th = mulAll(body, tr(sd * 0.098, 0.93, 0), rotZ(sd * (0.03 + 0.1 * a)), rotX(thighA)), sh = mulAll(th, tr(0, -0.435, 0), rotX(kneeA));
     pose['th' + k] = th; pose['sh' + k] = sh; pose['b' + k] = mulAll(sh, tr(0, -0.415, 0), rotX(-kneeA * 0.35 * (1 - a) + 0.45 * a));
   }
-  for (const k in pose) pose[k + '32'] = new Float32Array(pose[k]);
+  for (const k in pose) { if (k.endsWith('32')) continue; const q = k + '32'; (pose[q] || (pose[q] = new Float32Array(16))).set(pose[k]); }   // v15: was a new copy of every entry, copies included, every frame
 }
 function drawCharacter(u, level, bucket) {
   for (const cm of charMeshes) { const mesh = cm.lv[level]; gl.bindVertexArray(mesh.vao); for (const at of cm.p.at) { gl.uniformMatrix4fv(u, false, pose[at + '32']); stats[bucket] += drawElems(mesh.count, gl.UNSIGNED_INT, 0); } }
@@ -2058,7 +2058,7 @@ addEventListener('keydown', e => {
   keys[e.code] = true;
   if (e.code === 'Escape' || e.code === 'KeyP') { if (game.inMode) showMenu($('menu').hidden); return; }
   if (game.paused) return;
-  if (e.code === 'KeyR') resetView(); else if (e.code === 'KeyT') cycleOverlay(); else if (e.code === 'KeyI') toggleDetails(); else if (e.code === 'KeyN') { game.muted = !game.muted; toast(game.muted ? 'Sound off' : 'Sound on', 2); }
+  if (e.code === 'KeyR') { if (state.play && cave.under && state.time - game.rAsk > 4) { game.rAsk = state.time; toast('Press R again to go back up to the lookout.', 4); } else { game.rAsk = -99; resetView(); } } else if (e.code === 'KeyT') cycleOverlay(); else if (e.code === 'KeyI') toggleDetails(); else if (e.code === 'KeyN') { game.muted = !game.muted; toast(game.muted ? 'Sound off' : 'Sound on', 2); }
   else if (!state.play) { if (e.code === 'KeyM') setMode(1 - state.mode); else if (e.code === 'Digit1') setMode(0); else if (e.code === 'Digit2') setMode(1); }
   if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault();
 });
@@ -2115,7 +2115,7 @@ function cycleOverlay() { state.overlay = (state.overlay + 1) % 3; $('bOverlay')
 function toggleDetails() { state.details = !state.details; $('details').hidden = !state.details; }
 function setMode(m) { state.mode = m; $('mExplore').classList.toggle('on', m === 0); $('m10').classList.toggle('on', m === 1); }
 $('logBtn').onclick = () => logShow(0); $('siteBtn').onclick = () => siteAct(); $('logPrev').onclick = () => logShow(Math.max(0, LAKER.read - 1)); $('logNext').onclick = () => logShow(Math.min(LOG.length - 1, LAKER.read + 1)); $('logClose').onclick = () => logShow(-1);
-$('mPlay').onclick = () => startPlay(false, false); $('mFree').onclick = () => startPlay(false, true); $('mNew').onclick = () => startPlay(true, false); $('mBench').onclick = () => { game.inMode = 'bench'; startBench(); }; $('mContinue').onclick = () => showMenu(false); $('gMenu').onclick = () => showMenu(true); $('bMenu').onclick = () => showMenu(true);
+$('mPlay').onclick = () => startPlay(false, false); $('mFree').onclick = () => startPlay(false, true); $('mNew').onclick = () => startPlay(true, false); $('mBench').onclick = () => { if (game.loaded && game.inMode === 'play') saveGame(); game.inMode = 'bench'; startBench(); }; $('mContinue').onclick = () => showMenu(false); $('gMenu').onclick = () => showMenu(true); $('bMenu').onclick = () => showMenu(true);
 $('mExplore').onclick = () => setMode(0); $('m10').onclick = () => setMode(1); $('bReset').onclick = resetView; $('bOverlay').onclick = cycleOverlay; $('bInfo').onclick = toggleDetails; $('bCheck').onclick = () => { $('checkOut').textContent = selfCheck().lines.join('\n'); };
 for (const b of document.querySelectorAll('button')) { b.addEventListener('keydown', e => { if (e.code === 'Space' || e.code === 'Enter') e.preventDefault(); }); b.addEventListener('keyup', e => { if (e.code === 'Space') e.preventDefault(); }); b.addEventListener('click', () => b.blur()); }
 
@@ -12200,7 +12200,7 @@ function placeAssets() {
 /* ---------- SIGNAL RUN: the game layered on the benchmark world ---------- */
 const SAVE_KEYS = { campaign: 'canyon-signal-run-v1', free: 'canyon-signal-run-free-v1' };   // campaign keeps the old key, so old saves carry on
 const saveKey = () => game.free ? SAVE_KEYS.free : SAVE_KEYS.campaign;
-const game = { paused: true, fuel: 100, tank: 100, vmaxBoost: 130, fallCap: -12, carrying: 0, online: 0, t: 0, done: false, doneAt: 0, trial: null, best: {}, muted: false, hudT: 0, lastStep: 0 };
+const game = { place: [0, 0, 0, 0, 0, 0, 0], placeOk: false, savedAt: 0, rAsk: -99, paused: true, fuel: 100, tank: 100, vmaxBoost: 130, fallCap: -12, carrying: 0, online: 0, t: 0, done: false, doneAt: 0, trial: null, best: {}, muted: false, hudT: 0, lastStep: 0 };
 const colliders = [], dishes = [], cells = [], courses = [], DISH_ORDER = [1, 2, 3, 4, 5, 6, 0];
 let ring, crystal, beam, bush, plantOff = null, plantCnt = null, plantTotal = 0, gameTris = 0;
 
@@ -12337,16 +12337,27 @@ function audioUpdate() {
   snd.wind.g.gain.setTargetAtTime(live * Math.min(0.32, (state.grounded ? 0.03 : 0.05) + sp / 330), t, 0.2); snd.wind.fl.frequency.setTargetAtTime(420 + sp * 9, t, 0.2);
 }
 /* --- saving (falls back to memory if the browser blocks storage) --- */
-function saveGame() { try { localStorage.setItem(saveKey(), JSON.stringify({ got: cells.map(c => c.got), online: game.online, carrying: game.carrying, best: game.best, done: game.done, cave: caveSave() })); } catch (err) { /* in-memory only */ } }
+function saveGame() { try { localStorage.setItem(saveKey(), JSON.stringify({ got: cells.map(c => c.got), online: game.online, carrying: game.carrying, best: game.best, done: game.done, place: game.placeOk ? game.place.map(v => Math.round(v * 1000) / 1000) : null, cave: caveSave() })); } catch (err) { /* in-memory only */ } }
 function loadGame() {
   let s = null; try { s = JSON.parse(localStorage.getItem(saveKey()) || 'null'); } catch (err) { s = null; }
   if (!s || !Array.isArray(s.got)) return false;
   cells.forEach((c, i) => { c.got = !!s.got[i]; }); game.online = Math.min(7, s.online | 0); game.carrying = s.carrying | 0; game.best = s.best || {}; game.done = !!s.done; caveLoad(s.cave);
+  game.placeOk = Array.isArray(s.place) && s.place.length === 7 && s.place.every(v => typeof v === 'number' && isFinite(v)); if (game.placeOk) for (let i = 0; i < 7; i++) game.place[i] = s.place[i];
   dishes.forEach(d => { d.on = false; }); for (let i = 0; i < game.online; i++) dishes[DISH_ORDER[i]].on = true; applyUpgrades(true); return true;
 }
-function newGame() { cells.forEach(c => { c.got = false; }); dishes.forEach(d => { d.on = false; d.k = 0; d.m = false; }); game.online = 0; game.carrying = 0; game.done = false; game.trial = null; caveReset(); if (game.free) cave.spares = 3; applyUpgrades(true); game.fuel = game.tank; resetView(); saveGame(); }
+function newGame() { game.placeOk = false; cells.forEach(c => { c.got = false; }); dishes.forEach(d => { d.on = false; d.k = 0; d.m = false; }); game.online = 0; game.carrying = 0; game.done = false; game.trial = null; caveReset(); if (game.free) cave.spares = 3; applyUpgrades(true); game.fuel = game.tank; resetView(); saveGame(); }
 function applyUpgrades(quiet) {
   const n = game.free ? 7 : game.online; game.tank = n >= 2 ? 160 : 100; game.vmaxBoost = n >= 4 ? 175 : 130; game.fallCap = n >= 6 ? -6.5 : -12;
+}
+// v15: put the explorer back where they last stood (saved with the game), if that spot still makes sense
+function resumePlace() {
+  const P = game.place; if (!game.placeOk) return false;
+  const x = P[0], y = P[1], z = P[2];
+  if (!(x > 2 && x < WORLD - 2 && z > 2 && z < WORLD - 2 && y > -1000 && y < 1800)) return false;
+  if (caveUnder(x, z, y)) { const f = CV.floorAt(x, y + 0.4, z, true); if (!(f > -1e8 && f < 1e8) || CV.sdf(x, y + 1.25, z) > 0) return false; }   // never wake up inside rock or over nothing
+  state.px = x; state.py = y; state.pz = z; state.yaw = P[3]; state.pitch = Math.max(-0.35, Math.min(1.52, P[4])); state.dist = Math.max(1.3, Math.min(1800, P[5])); state.heading = P[6];
+  state.vx = state.vy = state.vz = 0; state.grounded = true; state.hover = false;
+  return true;
 }
 /* --- on-screen bits --- */
 let toastUntil = 0;
@@ -12356,21 +12367,27 @@ function objective() {
   if (game.trial) { const r = courses[game.trial.c].rings[game.trial.i]; return { p: r.p, label: 'ring ' + (game.trial.i + 1) + '/' + courses[game.trial.c].rings.length }; }
   if (game.carrying > 0) return { p: [OBS[0], dishes[0].y + 4, OBS[1]], label: 'observatory' };
   let best = null, bd = 1e18; for (const c of cells) { if (c.got) continue; const d = (c.x - state.px) * (c.x - state.px) + (c.z - state.pz) * (c.z - state.pz); if (d < bd) { bd = d; best = c; } }
-  return best ? { p: [best.x, best.y, best.z], label: 'power cell' } : null;
+  if (best) return { p: [best.x, best.y, best.z], label: 'power cell' };
+  if (game.online >= 7 && !(DOORS[0].open > 0)) return { p: [CV.SX, CV.TOP + 1.5, CV.SZ], label: 'old mine' };   // v15: the way on, until the deep door (D-7) has been opened
+  return null;
 }
+const hudLast = { fw: '', fc: null, tw: '', gs: null, us: null, ml: '', mtop: '', mt: null, fog: '' };
 function gameHud() {
-  $('fuelBar').style.width = (100 * game.fuel / game.tank).toFixed(1) + '%'; $('fuelBar').className = game.fuel < game.tank * 0.2 ? 'low' : '';
-  $('fuel').style.width = (game.tank * 1.5) + 'px';
-  $('gstat').textContent = game.trial ? courses[game.trial.c].name + '  ' + fmtTime(game.t - game.trial.t0) : 'Dishes ' + game.online + '/7' + (game.carrying ? '  ·  carrying ' + game.carrying : '');
+  const HL = hudLast; let hv = (100 * game.fuel / game.tank).toFixed(1) + '%';      // v15: write to the page only when a readout changes
+  if (hv !== HL.fw) { HL.fw = hv; $('fuelBar').style.width = hv; } hv = game.fuel < game.tank * 0.2 ? 'low' : ''; if (hv !== HL.fc) { HL.fc = hv; $('fuelBar').className = hv; }
+  hv = (game.tank * 1.5) + 'px'; if (hv !== HL.tw) { HL.tw = hv; $('fuel').style.width = hv; }
+  hv = game.trial ? courses[game.trial.c].name + '  ' + fmtTime(game.t - game.trial.t0) : 'Dishes ' + game.online + '/7' + (game.carrying ? '  ·  carrying ' + game.carrying : '');
+  if (hv !== HL.gs) { HL.gs = hv; $('gstat').textContent = hv; }
   const ob = objective(), mk = $('marker');
-  const us = $('ustat'); us.hidden = !cave.under;
-  if (cave.under) us.textContent = (cave.dead ? 'Light dead' : 'Light ' + Math.ceil(cave.batt) + '%') + (cave.spares ? ' +' + cave.spares : '') + (line.reel ? ' · Line ' + Math.round(line.left) + ' m' : '') + (CAVR.humid > 80 ? ' · Humidity ' + Math.round(CAVR.humid) + '%' : '') + (LAKER.air < 99.5 || inWater(state.px, state.py + 1.6, state.pz) ? ' · Air ' + Math.round(LAKER.air) + '%' : '') + (SITER.inSiteP && !siteState().solved ? ' · Artifacts ' + siteState().r.filter(v => v > 0).length + '/5' : '');
-  if (!ob || cave.under) { mk.hidden = true; return; }
+  const us = $('ustat'); if (us.hidden !== !cave.under) us.hidden = !cave.under;
+  if (cave.under) hv = (cave.dead ? 'Light dead' : 'Light ' + Math.ceil(cave.batt) + '%') + (cave.spares ? ' +' + cave.spares : '') + (line.reel ? ' · Line ' + Math.round(line.left) + ' m' : '') + (CAVR.humid > 80 ? ' · Humidity ' + Math.round(CAVR.humid) + '%' : '') + (LAKER.air < 99.5 || inWater(state.px, state.py + 1.6, state.pz) ? ' · Air ' + Math.round(LAKER.air) + '%' : '') + (SITER.inSiteP && !siteState().solved ? ' · Artifacts ' + siteState().r.filter(v => v > 0).length + '/5' : '');
+  if (cave.under && hv !== HL.us) { HL.us = hv; us.textContent = hv; }
+  if (!ob || cave.under) { if (!mk.hidden) mk.hidden = true; return; }
   const m = cam.vp, x = ob.p[0], y = ob.p[1], z = ob.p[2]; let cx = m[0] * x + m[4] * y + m[8] * z + m[12], cy = m[1] * x + m[5] * y + m[9] * z + m[13]; const cw = m[3] * x + m[7] * y + m[11] * z + m[15];
   let nx = cx / Math.abs(cw), ny = cy / Math.abs(cw); if (cw < 0) { nx = -nx; ny = -ny; const k = 0.9 / Math.max(Math.abs(nx), Math.abs(ny), 1e-6); nx *= k; ny *= k; }
   nx = Math.max(-0.92, Math.min(0.92, nx)); ny = Math.max(-0.84, Math.min(0.8, ny));
-  mk.hidden = false; mk.style.left = ((nx * 0.5 + 0.5) * 100).toFixed(2) + '%'; mk.style.top = ((0.5 - ny * 0.5) * 100).toFixed(2) + '%';
-  $('markerTxt').textContent = ob.label + ' · ' + Math.round(Math.hypot(x - state.px, y - state.py, z - state.pz)) + ' m';
+  if (mk.hidden) mk.hidden = false; hv = ((nx * 0.5 + 0.5) * 100).toFixed(2) + '%'; if (hv !== HL.ml) { HL.ml = hv; mk.style.left = hv; } hv = ((0.5 - ny * 0.5) * 100).toFixed(2) + '%'; if (hv !== HL.mtop) { HL.mtop = hv; mk.style.top = hv; }
+  hv = ob.label + ' · ' + Math.round(Math.hypot(x - state.px, y - state.py, z - state.pz)) + ' m'; if (hv !== HL.mt) { HL.mt = hv; $('markerTxt').textContent = hv; }
 }
 /* --- rules, once per frame --- */
 function gameUpdate(dt, prev) {
@@ -12443,8 +12460,8 @@ const CAVE_CH = CV.CH, HOLE = 2.0, BATT_SECS = params.get('battery') === 'fast' 
 const cave = {
   under: false, camUnder: false, surface: true, visible: false, sky: true, ceil: 1e9,
   flash: 0, pday: 0, expo: 1.0, flP: [0, 0, 0], flD: [0, 0, -1],
-  batt: 100, spares: 0, dead: false, darkWalk: 0, passing: false, picked: [false, false, false, false],
-  ch: [], byKey: new Map(), ready: [], workers: [], mode: 'workers', fixed: null, lineMesh: null, lineDirty: false, lineT: 0
+  batt: 100, spares: 0, dead: false, darkWalk: 0, passing: false, picked: [false, false, false, false], parts: [],
+  ch: [], byKey: new Map(), ready: [], workers: [], jobs: 0, bytes: 0, mode: 'workers', fixed: null, lineMesh: null, lineDirty: false, lineT: 0
 };
 const line = { pts: [], left: 0, reel: 0, active: false, last: -1, segStart: 0, segLen: 0, warn: 0 };
 const PICKS = [{ kind: 'reel', at: CV.floorNear(3.5, -54, 2.5) }, { kind: 'batt', at: CV.floorNear(66, -54, -70) }, { kind: 'batt', at: CV.floorNear(172, -66, -150) }, { kind: 'batt', at: CV.floorNear(392, -66, 112) }];
@@ -13397,32 +13414,44 @@ function caveGpu(buf, idx) {
   gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 32, 12);
   gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2, 2, gl.FLOAT, false, 32, 24);
   const ib = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, idx, gl.STATIC_DRAW);
-  gl.bindVertexArray(null); return { vao, vb, ib, count: idx.length, tris: idx.length / 3 };
+  gl.bindVertexArray(null); const bytes = buf.byteLength + idx.byteLength; cave.bytes += bytes; return { vao, vb, ib, count: idx.length, tris: idx.length / 3, bytes };
 }
 function cavePrebuild(maxD) { const E = cam.eye; let n = 0; for (const c of cave.ch) { const d = Math.hypot(c.x0 + 12 - E[0], c.y0 + 12 - E[1], c.z0 + 12 - E[2]); if (d > maxD || c.m[1]) continue; const r = CV.meshChunk(c.i, c.j, c.k, 1); c.m[1] = r.tris ? caveGpu(r.buf, r.idx) : { count: 0, tris: 0 }; n++; } return n; }
-function caveFree(m) { if (m.vao) { gl.deleteVertexArray(m.vao); gl.deleteBuffer(m.vb); gl.deleteBuffer(m.ib); } }
+function caveFree(m) { if (m.vao) { gl.deleteVertexArray(m.vao); gl.deleteBuffer(m.vb); gl.deleteBuffer(m.ib); cave.bytes -= m.bytes || 0; } }
+// v15: rough rock is drawn out to 330 m. It is built a little beyond that and let go of well beyond it, so the game
+// no longer meshes and holds every cavern at once (that was about 40 s of background work and 107 MB at every start).
+const ROUGH_R = 420, ROUGH_FREE = 560;
+const caveBest = { s: new Float64Array(8), c: new Array(8).fill(null), l: new Int8Array(8), n: 0 };
 function caveStream() {
   for (let n = 0, t0 = performance.now(); n < 8 && cave.ready.length && performance.now() - t0 < 6; n++) {
     const r = cave.ready.shift(), c = cave.byKey.get(r.key); c.pend[r.lod] = false;
     if (!c.m[r.lod]) c.m[r.lod] = r.tris ? caveGpu(r.buf, r.idx) : { count: 0, tris: 0 };
   }
-  const E = cam.eye, want = [];
+  // v15: only as many pieces are picked as the workers can take right now (nearest first), with no list to build or sort
+  const E = cam.eye, B = caveBest, vis = cave.visible; let live = 0, slots = 0;
+  for (const w of cave.workers) if (!w.dead) { live++; if (w.busy < 2) slots += 2 - w.busy; }
+  if (!live) { if (cave.mode !== 'main thread') { cave.mode = 'main thread'; for (const c of cave.ch) c.pend = [false, false]; } slots = 1; }   // no workers allowed: rough meshes only, one per frame
+  if (slots > B.s.length) slots = B.s.length;
+  B.n = 0;
   for (const c of cave.ch) {
     const dx = Math.max(c.x0 - E[0], 0, E[0] - c.x0 - CAVE_CH), dy = Math.max(c.y0 - E[1], 0, E[1] - c.y0 - CAVE_CH), dz = Math.max(c.z0 - E[2], 0, E[2] - c.z0 - CAVE_CH);
     c.d = Math.hypot(dx, dy, dz);
-    if (cave.visible && c.d < LOD0_R && !c.m[0] && !c.pend[0]) want.push([c.d - 1000, 0, c]);
-    if (!c.m[1] && !c.pend[1]) want.push([cave.visible && c.d < 330 ? c.d : 1e5 + c.d, 1, c]);   // the whole level in rough form, nearest first
+    if (!slots) continue;
+    let sc, lod;
+    if (live && vis && c.d < LOD0_R && !c.m[0] && !c.pend[0]) { sc = c.d - 1000; lod = 0; }   // close-up rock first
+    else if (c.d < ROUGH_R && !c.m[1] && !c.pend[1]) { sc = c.d; lod = 1; }                    // then rough rock, nearest first
+    else continue;
+    let k = B.n; if (k === slots) { if (sc >= B.s[k - 1]) continue; k--; } else B.n++;
+    while (k > 0 && B.s[k - 1] > sc) { B.s[k] = B.s[k - 1]; B.c[k] = B.c[k - 1]; B.l[k] = B.l[k - 1]; k--; }
+    B.s[k] = sc; B.c[k] = c; B.l[k] = lod;
   }
-  want.sort((a, b) => a[0] - b[0]);
-  const live = cave.workers.filter(w => !w.dead);
-  if (live.length) {
-    let q = 0;
-    for (const w of live) while (w.busy < 2 && q < want.length) { const [, lod, c] = want[q++]; c.pend[lod] = true; w.busy++; w.postMessage({ key: c.key, lod, i: c.i, j: c.j, k: c.k }); }
-  } else {                                     // no workers allowed: rough meshes only, one per frame
-    if (cave.mode !== 'main thread') { cave.mode = 'main thread'; for (const c of cave.ch) c.pend = [false, false]; }
-    const it = want.find(w => w[1] === 1); if (it) { const c = it[2], r = CV.meshChunk(c.i, c.j, c.k, 1); c.m[1] = r.tris ? caveGpu(r.buf, r.idx) : { count: 0, tris: 0 }; }
+  if (live) { let q = 0; for (const w of cave.workers) { if (w.dead) continue; while (w.busy < 2 && q < B.n) { const c = B.c[q], lod = B.l[q]; q++; c.pend[lod] = true; w.busy++; cave.jobs++; w.postMessage({ key: c.key, lod, i: c.i, j: c.j, k: c.k }); } } }
+  else if (B.n) { const c = B.c[0], r = CV.meshChunk(c.i, c.j, c.k, 1); cave.jobs++; c.m[1] = r.tris ? caveGpu(r.buf, r.idx) : { count: 0, tris: 0 }; }
+  for (let q = 0; q < B.n; q++) B.c[q] = null;
+  if (frameNo % 30 === 0) for (const c of cave.ch) {
+    if (c.m[0] && c.d > LOD0_R + 40) { caveFree(c.m[0]); c.m[0] = null; }
+    if (c.m[1] && c.m[1].vao && c.d > ROUGH_FREE) { caveFree(c.m[1]); c.m[1] = null; }   // far behind you: give the memory back (it is rebuilt if you return)
   }
-  if (frameNo % 30 === 0) for (const c of cave.ch) if (c.m[0] && c.d > LOD0_R + 40) { caveFree(c.m[0]); c.m[0] = null; }
 }
 
 /* ---------- the fixed pieces: timbered shaft, ladder, mine timbers and rails ---------- */
@@ -13598,7 +13627,7 @@ function caveUpdate(dt) {
   }
   lineUpdate();
   cavernUpdate(dt);
-  if (cave.under && state.time - (cave.savedAt || 0) > 5) { cave.savedAt = state.time; saveGame(); }   // keep the laid line safe
+  if (state.play && state.time - (cave.savedAt || 0) > (cave.under ? 5 : 10)) { cave.savedAt = state.time; saveGame(); }   // keep the laid line safe (v15: and, on the surface too, where you are)
   cave.pday = CV.inShaft(px, pz, 0.3) && py > CV.SHB - 2 ? CV.dayK(py + 1) * 0.8 : 0;
 }
 // where the camera is decides what gets drawn
@@ -13655,8 +13684,8 @@ function drawCave() {
   for (const c of cave.ch) {
     const top = c.y0 + CAVE_CH;
     if (zone === 0 ? top < -136 : zone === 1 ? (c.y0 > -110 && !nearCol(c, D7)) || (top < -235 && !nearCol(c, D8)) : zone === 2 ? (c.y0 > -230 && !nearCol(c, D8)) || (top < -355 && !nearCol(c, D9)) : zone === 3 ? (c.y0 > -350 && !nearCol(c, D9)) || (c.x0 > GX && c.y0 > -432) : zone === 4 ? c.x0 + CAVE_CH < CV.SX + 380 || c.y0 > -200 || (c.x0 > CV.SX + 728 && top < -445 && !nearSh(c)) : c.x0 + CAVE_CH < CV.SX + 720 || (c.y0 > -446 && !nearSh(c))) continue;
-    if (CAVR.off.rock || c.d > 330 || !classify(P, c.x0, c.y0, c.z0, c.x0 + CAVE_CH, c.y0 + CAVE_CH, c.z0 + CAVE_CH, 0)) continue;
-    const m = (c.d < LOD0_R && c.m[0]) || c.m[1] || c.m[0]; if (!m || !m.count) continue;
+    if (CAVR.off.rock || c.d > 330) continue;
+    const m = (c.d < LOD0_R && c.m[0]) || c.m[1] || c.m[0]; if (!m || !m.count || !classify(P, c.x0, c.y0, c.z0, c.x0 + CAVE_CH, c.y0 + CAVE_CH, c.z0 + CAVE_CH, 0)) continue;
     gl.bindVertexArray(m.vao); stats.cave += drawElems(m.count, gl.UNSIGNED_INT, 0);
     if (m === c.m[0] && c.m[1] && c.m[1].count) under.push(c.m[1]);
   }
@@ -13850,7 +13879,7 @@ function cavernUpdate(dt) {
   const inC = cave.under && cavInside(state.px, state.py + 1, state.pz), inD = cave.under && CV.dripK(state.px, state.py + 1, state.pz) < 1.02, target = inC ? 97 : inD ? 99 : cave.under ? 64 : 22;
   CAVR.humid += (target - CAVR.humid) * Math.min(1, dt * 0.35);
   CAVR.fog += ((inC ? 0.62 : inD ? 0.5 : 0) - CAVR.fog) * Math.min(1, dt * 0.25);
-  const v = $('visor'); if (v) v.style.opacity = CAVR.fog.toFixed(3);
+  const vo = CAVR.fog.toFixed(3); if (vo !== hudLast.fog) { hudLast.fog = vo; const v = $('visor'); if (v) v.style.opacity = vo; }
   if (inD && !DRIPR.seen) { DRIPR.seen = true; toast('Humidity 99%. Water drips all around you, into still pools.', 7); tone([262, 330, 392], 2.2, 'sine', 0.1, 0.45); }
   if (inC && !CAVR.seen) { CAVR.seen = true; toast('Humidity 97%. Your visor is fogging at the edges.', 7); tone([330, 495, 660, 990], 1.8, 'sine', 0.13, 0.32); }
 }
@@ -13858,13 +13887,15 @@ function cavernUpdate(dt) {
 /* --- menu / mode switching --- */
 function showMenu(on) { game.paused = on; $('menu').hidden = !on; if (on) { const inPlay = game.inMode === 'play'; $('mContinue').hidden = !game.inMode; $('mContinue').textContent = inPlay ? (game.free ? 'Continue free play' : 'Continue campaign') : 'Continue'; $('mPlay').hidden = inPlay && !game.free; $('mFree').hidden = inPlay && !!game.free; for (const k in keys) keys[k] = false; touchReset(); } audioUpdate(); }
 function startPlay(fresh, free) {
+  finishInit(); const wasBench = game.inMode === 'bench';
   free = free === undefined ? !!game.free : !!free;
   if (free !== !!game.free) { if (game.loaded && game.inMode === 'play') saveGame(); game.free = free; game.loaded = false; DOORS.forEach(d => { d.open = 0; d.moving = false; }); }
   game.inMode = 'play'; state.play = true; document.body.classList.add('play'); audioInit(); setMode(0);
-  if (fresh || !game.loaded) { game.loaded = true; if (fresh || !loadGame()) newGame(); else { game.fuel = game.tank; } if (game.online === 0 && !game.carrying && cells.every(c => !c.got)) toast(game.free ? 'Free play: everything is unlocked, including the deep door in the old mine.' : 'The array is dark. Find 7 power cells — follow the blue light beams.', 9); resetView(); }
+  if (fresh || !game.loaded) { game.loaded = true; if (fresh || !loadGame()) newGame(); else { game.fuel = game.tank; } if (game.online === 0 && !game.carrying && cells.every(c => !c.got)) toast(game.free ? 'Free play: everything is unlocked, including the deep door in the old mine.' : 'The array is dark. Find 7 power cells — follow the blue light beams.', 9); resetView(); if (!fresh && resumePlace() && Math.hypot(state.px - BENCH.x, state.pz - BENCH.z) > 30) toast('Picking up where you left off.', 4); }
+  else if (wasBench) resumePlace();
   showMenu(false);
 }
-function startBench() { state.play = false; document.body.classList.remove('play'); game.trial = null; $('marker').hidden = true; $('toast').classList.remove('show'); dishes.forEach(d => { d.k = 1; d.m = false; }); setMode(1); resetView(); showMenu(false); }
+function startBench() { finishInit(); if (game.loaded && game.inMode === 'play') saveGame(); state.play = false; document.body.classList.remove('play'); game.trial = null; $('marker').hidden = true; $('toast').classList.remove('show'); dishes.forEach(d => { d.k = 1; d.m = false; }); setMode(1); resetView(); showMenu(false); }
 
 
 /* ---------- update ---------- */
@@ -13924,6 +13955,7 @@ function update(dt) {
     state.airK = ease(state.airK, state.grounded ? 0 : 1, 7); state.gait = ease(state.gait, state.grounded ? Math.min(1, hs / 6) : 0, 9); if (state.grounded && hs > 0.3) state.walk += dt * (3 + hs * 0.85);
     state.thrust = ease(state.thrust, swim ? 0 : jet ? 1 : state.grounded ? 0 : (keys.Space && !hasFuel) ? 0.12 : drop ? 0.08 : state.hover && hasFuel ? 0.55 : 0.38, 10); state.hspeed = ease(state.hspeed, hs, 6);
     if (cave.under) { geoPush(); sitePush(); cave.ceil = CV.ceilAt(state.px, state.py, state.pz); }
+    if (play && state.grounded && !swim) { const P = game.place; P[0] = state.px; P[1] = state.py; P[2] = state.pz; P[3] = state.yaw; P[4] = state.pitch; P[5] = state.dist; P[6] = state.heading; game.placeOk = true; }   // v15: the last place you stood, kept with the save
     caveUpdate(dt);
     if (play) gameUpdate(dt, prev);
   }
@@ -13950,7 +13982,7 @@ function update(dt) {
 /* ---------- frame ---------- */
 const LOD_COL = [[1.0, 0.32, 0.12], [1.0, 0.80, 0.18], [0.35, 0.85, 0.38], [0.22, 0.74, 0.95], [0.50, 0.50, 0.98]];
 const LOD_DIST = [0, 160, 420, 1100], LOD_PLAY = [85, 210, 480, 900], LOD_PLAY_FB = [40, 190, 480, 900];
-let vis = [], hiCand = [];
+let vis = [], hiCand = []; const visPool = [];
 function setCommon(p) {
   gl.useProgram(p.p);
   if (p.u.uVP) gl.uniformMatrix4fv(p.u.uVP, false, cam.vp32);
@@ -13976,13 +14008,13 @@ function render() {
   const P = cam.planes, ex = cam.eye[0], ey = cam.eye[1], ez = cam.eye[2], m10 = state.mode === 1 && !state.play;
   const LD = state.play ? (workers.some(w => !w.dead) ? LOD_PLAY : LOD_PLAY_FB) : LOD_DIST;
   vis.length = 0; hiCand.length = 0;
-  for (let t = 0; t < NT; t++) {
+  for (let t = 0; t < (cave.surface ? NT : 0); t++) {     // v15: deep underground none of the surface is drawn, so none of it is sorted out
     const x0 = (t % GRID) * TILE, z0 = ((t / GRID) | 0) * TILE, x1 = x0 + TILE, z1 = z0 + TILE, y0 = cMin[t], y1 = cMax[t];
     const cls = classify(P, x0, y0, z0, x1, y1, z1, EPS_IN);
     if (!cls) continue;
     const dx = ex < x0 ? x0 - ex : ex > x1 ? ex - x1 : 0, dz = ez < z0 ? z0 - ez : ez > z1 ? ez - z1 : 0, dy = ey < y0 ? y0 - ey : ey > y1 ? ey - y1 : 0;
     const d2 = dx * dx + dy * dy + dz * dz, d = Math.sqrt(d2);
-    const e = { t, d2, want: d < LD[0] ? 0 : d < LD[1] ? 1 : d < LD[2] ? 2 : d < LD[3] ? 3 : 4, sel: 0 };
+    const e = visPool[t] || (visPool[t] = { t, d2: 0, want: 0, sel: 0, counted: false }); e.d2 = d2; e.want = d < LD[0] ? 0 : d < LD[1] ? 1 : d < LD[2] ? 2 : d < LD[3] ? 3 : 4; e.sel = 0; e.counted = false;   // v15: reused, not made new every frame
     vis.push(e);
     if (m10) {
       // candidate for the 10M set: wholly inside by safe bounds, and by exact bounds once the mesh has been seen
@@ -13999,10 +14031,11 @@ function render() {
   }
   vis.sort((a, b) => a.d2 - b.d2);
 
-  computePose(); charShadowPass();
+  computePose();
+  chK = cave.under ? 0 : 0.85 * Math.max(0, 1 - (state.py - terrainFloor(state.px, state.pz)) / 260);
+  if (chK > 0) charShadowPass();           // v15: skipped underground and high in the air, where nothing reads it
   const useFx = state.play && fx.ok && fxSetup(canvas.width, canvas.height);
   gl.bindFramebuffer(gl.FRAMEBUFFER, useFx ? fx.ms : null);
-  chK = cave.under ? 0 : 0.85 * Math.max(0, 1 - (state.py - terrainFloor(state.px, state.pz)) / 260);
   caveStream();
   gl.viewport(0, 0, canvas.width, canvas.height);
   if (cave.surface) gl.clearColor(FOG[0], FOG[1], FOG[2], 0); else gl.clearColor(0, 0, 0, 0);
@@ -14172,7 +14205,7 @@ function hud(dt, cpu) {
       'Tile edge skirts          ' + fmt(stats.skirts) + '\n' +
       'Landmarks                 ' + fmt(stats.props) + '\n' +
       'Plants / birds & beacons  ' + fmt(stats.plants) + ' / ' + fmt(stats.fx) + '\n' +
-      'Caves                     ' + fmt(stats.cave) + ' (' + cave.ch.filter(c => c.m[0] && c.m[0].count).length + ' close-up, ' + cave.ch.filter(c => c.m[1]).length + ' of ' + cave.ch.length + ' rough pieces, ' + cave.mode + ')\n' +
+      'Caves                     ' + fmt(stats.cave) + ' (' + cave.ch.filter(c => c.m[0] && c.m[0].count).length + ' close-up, ' + cave.ch.filter(c => c.m[1]).length + ' of ' + cave.ch.length + ' rough pieces, ' + (cave.bytes / 1048576).toFixed(0) + ' MB, ' + cave.mode + ')\n' +
       'Character (+ its shadow)  ' + fmt(stats.chr) + ' + ' + fmt(stats.shadow) + '\n' +
       'Water / sky               ' + fmt(stats.water) + ' / ' + fmt(stats.sky) + '\n' +
       'Draw calls                ' + stats.calls + '\n' +
@@ -14250,6 +14283,9 @@ function startFineLight() {
     w.postMessage({ W, H, sx, sz, sun: SUN });
   } catch (err) { lightInfo = 'coarse (no worker)'; }
 }
+// v15: set-up that is only needed once you go underground. It is finished behind the menu, or at once if you start before it is done.
+const lateInit = [() => cavernInit(), () => geoInit(), () => siteInit(), () => doorInit(), () => dripInit(), () => lakeInit()];
+function finishInit() { while (lateInit.length) lateInit.shift()(); }
 function start() {
   const bs = shared[BASE], W = GRID * bs.nx + 1, H = GRID * bs.nz + 1, hg = new Float32Array(W * H), baseData = new Array(NT);
   let row = 0;
@@ -14265,10 +14301,19 @@ function start() {
       }
       row++;
     }
-    $('loadBar').style.width = (row / GRID * 100) + '%';
+    $('loadBar').style.width = (row / GRID * 45) + '%';
     if (row < GRID) { setTimeout(chunk, 0); return; }
-    setLight(bakeLight(hg, W, H, CX * LODS[BASE], CZ * LODS[BASE], SUN, WORLD, false), W, H, CX * LODS[BASE], CZ * LODS[BASE], 'coarse');
-    buildBlocks(baseData); buildProps(); buildCharacter(); buildGame(); placeAssets(); caveInit(); cavernInit(); geoInit(); siteInit(); doorInit(); dripInit(); lakeInit(); buildPlants(); if (!params.has('coarselight')) startFineLight();
+    // v15: the rest of the set-up runs a step at a time so the bar keeps moving. The caverns' furnishings (crystals, dripstone,
+    // the lake, the giant cavern, the ancient site, the doors) wait behind the menu unless the game starts straight into play.
+    const direct = params.has('play') || params.has('bench') || params.has('mode') || params.has('at');
+    const steps = [() => { setLight(bakeLight(hg, W, H, CX * LODS[BASE], CZ * LODS[BASE], SUN, WORLD, false), W, H, CX * LODS[BASE], CZ * LODS[BASE], 'coarse'); buildBlocks(baseData); buildProps(); }, buildCharacter, () => { buildGame(); placeAssets(); }, caveInit];
+    if (direct) while (lateInit.length) steps.push(lateInit.shift());
+    steps.push(buildPlants);
+    const nSteps = steps.length; if (steps.length) { const next = () => { steps.shift()(); $('loadBar').style.width = (45 + 55 * (nSteps - steps.length) / nSteps) + '%'; setTimeout(steps.length ? next : ready, 0); }; setTimeout(next, 0); }
+    return;
+  })();
+  function ready() {
+    if (!params.has('coarselight')) startFineLight();
     world = worldTotals();
     $('cWorld').textContent = fmt(world.total);
     $('cWorld').title = fmt(world.terrain) + ' terrain + ' + fmt(world.land) + ' landmarks + ' + fmt(world.wat + world.chr) + ' water & character';
@@ -14278,12 +14323,18 @@ function start() {
     $('loading').hidden = true; window.__loadMs = Math.round(performance.now());
     if (params.has('play')) { const pv = params.get('play'); game.free = pv === 'free' || pv === 'freenew'; startPlay(pv === 'new' || pv === 'freenew', game.free); } else if (params.has('bench') || params.has('mode')) { game.inMode = 'bench'; startBench(); if (params.get('mode') === 'explore') setMode(0); } else showMenu(true);
     { const at = params.get('at'); if (at === 'mine') caveTeleport('top'); else if (at === 'cave') caveTeleport('station'); else if (['crystal', 'door', 'cavern', 'd8', 'd9', 'drip', 'lake', 'd10', 'pool', 'geo', 'ledge', 'portal', 'site', 'chamber'].includes(at)) caveTeleport(at); }
-    setTimeout(() => $('hint').classList.add('fade'), 9000);
+    setTimeout(() => { $('hint').classList.add('fade'); setTimeout(() => { $('hint').hidden = true; }, 1700); }, 9000);
     last = performance.now(); requestAnimationFrame(loop);
-  })();
+    if (lateInit.length) { const idle = () => { if (!lateInit.length) return; lateInit.shift()(); if (lateInit.length) requestAnimationFrame(() => setTimeout(idle, 30)); }; setTimeout(idle, 150); }   // behind the menu, one piece between frames
+  }
 }
+document.addEventListener('visibilitychange', () => {      // v15
+  if (document.hidden) { if (state.play && game.loaded && game.inMode === 'play') saveGame(); if (snd.ctx && snd.ctx.state === 'running') snd.ctx.suspend(); }
+  else if (snd.ctx && snd.ctx.state === 'suspended') snd.ctx.resume();
+});
+addEventListener('pagehide', () => { if (state.play && game.loaded && game.inMode === 'play') saveGame(); });
 canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); $('banner').hidden = false; $('banner').textContent = 'The graphics context was lost (the GPU ran out of memory or was reset). Reload the page to restart.'; });
-window.__bench = { DOOR, DOORS, PARTS, FLOODS, STAKES, DRIPR, LAKER, GEOR, GEOQ, SITER, siteState, siteAct, inWater, logShow, state, stats, cam, sel, selfCheck, setMode, resetView, cycleOverlay, toggleDetails, shared, cache, pending, T, get perf() { return hudPerf; }, get gpu() { return gpuName; }, get gpuMs() { return gpuMs; }, get world() { return world; }, get evictions() { return evictions; }, placedLog, props, place, K, game, cells, dishes, courses, colliders, floorAt, startPlay, startBench, showMenu, get plantTotal() { return plantTotal; }, cave, line, CV, caveTeleport, update, CAVR, cavePrebuild, get workerMode() { return workerMode; }, get light() { return lightInfo; }, pose, get charTris() { return [charFullTris, charLowTris]; }, groundAt, MAX_FULL, N_FULL, TRIM_LOD, N_SEL, keys };
+window.__bench = { version: 'v15', lateInit, finishInit, resumePlace, saveGame, loadGame, objective, ROUGH_R, ROUGH_FREE, DOOR, DOORS, PARTS, FLOODS, STAKES, DRIPR, LAKER, GEOR, GEOQ, SITER, siteState, siteAct, inWater, logShow, state, stats, cam, sel, selfCheck, setMode, resetView, cycleOverlay, toggleDetails, shared, cache, pending, T, get perf() { return hudPerf; }, get gpu() { return gpuName; }, get gpuMs() { return gpuMs; }, get world() { return world; }, get evictions() { return evictions; }, placedLog, props, place, K, game, cells, dishes, courses, colliders, floorAt, startPlay, startBench, showMenu, get plantTotal() { return plantTotal; }, cave, line, CV, caveTeleport, update, CAVR, cavePrebuild, get workerMode() { return workerMode; }, get light() { return lightInfo; }, pose, get charTris() { return [charFullTris, charLowTris]; }, groundAt, MAX_FULL, N_FULL, TRIM_LOD, N_SEL, keys };
 start();
 })();
 

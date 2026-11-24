@@ -1,6 +1,6 @@
 # Signal Run — Caves & Mine Expansion (design plan)
 
-Status (23 Nov 2026): **the four stacked caverns and the ancient site are built.** Current game file: signal-run-v14-ancient-site.html (also `game/signal-run.html` in the GitHub repo `chriskizer91-ops/Signal-run-crystal-cavern-`). See `claude/signal-run-engine-handoff.md` for how the built parts work.
+Status (24 Nov 2026): **the four stacked caverns and the ancient site are built.** v15 is an efficiency and experience pass over v14 with nothing new in the world. Current game file: signal-run-v15-efficiency.html (also `game/signal-run.html` in the GitHub repo `chriskizer91-ops/Signal-run-crystal-cavern-`). See `claude/signal-run-engine-handoff.md` for how the built parts work.
 
 ## Built so far
 - **v4: Level 1.**
@@ -63,6 +63,7 @@ Christopher, after seeing the crystal cavern: "We absolutely have to have an add
 **Finding the way (v10, Christopher's choice):**
 - **Glowing route stakes** left by the research team run from each landing to that cavern's exit door, with a light pulse travelling toward the door.
 - No on-screen marker and no flashing beacon (he chose the in-world trail only).
+- On the surface only (v15, confirmed by Christopher on 24 Nov): once all 7 dishes are online, the existing surface marker points at the old mine until D-7 has been opened.
 
 **Built in v11, the flooded cavern:**
 - D-9 opens onto a 70 m drop to the beach of a black lake.

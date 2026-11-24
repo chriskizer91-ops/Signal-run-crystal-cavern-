@@ -6,17 +6,17 @@ It started as a canyon rendering benchmark: 147 million triangles of terrain, a 
 - **Surface:** the radio array is dark. Find 7 power cells and fly them back with your jetpack.
 - **Underground:** an old mine shaft leads down into caves. You have a headlamp with a battery and a glowing guideline so you can find your way out. Below that, a series of giant caverns are stacked deeper and deeper, joined by sealed doors and drop shafts.
 
-**Play it:** open [`game/signal-run.html`](game/signal-run.html) (v14) (download it, then open the file in your browser).
+**Play it:** open [`game/signal-run.html`](game/signal-run.html) (v15) (download it, then open the file in your browser).
 
 ## Where things are
 
 | Folder | What's in it |
 |---|---|
-| `game/signal-run.html` | **The game.** The current version (v14). This one file is the real source. |
-| `game/versions/` | Every version, from the original v2 up to v14, so nothing is lost. |
+| `game/signal-run.html` | **The game.** The current version (v15). This one file is the real source. |
+| `game/versions/` | Every version, from the original v2 up to v15, so nothing is lost. |
 | `src/cavelib.js` | The cave system's code (shapes of all tunnels and caverns, floors, physics). An exact copy of the part inside the game, kept separately so it can be tested on its own. |
 | `src/runtime/` | The code for the caves and each cavern (crystal, stalactite, flooded, giant crystal) as it was written before being added to the game. |
-| `src/patches/` | The scripts that turned each version into the next (v4 caves, v7 crystal cavern, v8 door and modes, v9 stalactite cavern, v10 flight and trails, v11 flooded cavern, v12 giant crystal cavern, v13 dry tunnel, v14 ancient site). |
+| `src/patches/` | The scripts that turned each version into the next (v4 caves, v7 crystal cavern, v8 door and modes, v9 stalactite cavern, v10 flight and trails, v11 flooded cavern, v12 giant crystal cavern, v13 dry tunnel, v14 ancient site, v15 efficiency pass). |
 | `assets/modules/` | **Every 3D model**, one file per group: vehicles, camp, outpost buildings, marina, plants, power lines, bridge, crystals, glowing cave life, the survey camp, the sealed doors, the work lights and parts, the dripstone, the fish, the dive station, the giant crystals and crystal carpet (`geode`), and the ancient site's stone pieces, artifacts and hologram (`ancient`). |
 | `assets/modules/originals/` | The surface models as they were before the far-future reskin. |
 | `assets/previews/` | Pictures of each model. |
@@ -66,6 +66,14 @@ It started as a canyon rendering benchmark: 147 million triangles of terrain, a 
   - In the final chamber you set them in five sockets. The chamber then plays a pattern on five floor plates, and you answer it by walking the plates in the same order (it traces a five-pointed star).
   - Then the hologram of one of the builders rises over the dais and speaks. Your suit's AI only partly translates it, but works out from the star chart it shows that it is talking about one particular star system.
   - You can climb the dais, the pillars are solid, and flying back up the shaft takes about 9 s.
+- **v15:** an efficiency and experience pass. Nothing new in the world, and it looks exactly the same (screenshots of v14 and v15 match pixel for pixel in 8 places: [`screenshots/v15-same-picture-as-v14.png`](screenshots/v15-same-picture-as-v14.png)).
+  - **The game no longer slows down the longer it runs.** In v14 a hidden list grew every frame; after a minute the game's own work per frame had gone from about 10 ms to 46 ms. In v15 it stays at about 2 ms.
+  - Cave rock is built only near you (within 420 m) and let go of when far behind. Before, every cavern was built at every start: 40 s of background work and 107 MB, even if you never left the surface.
+  - The menu appears sooner (2.8 s against 4.5 s in the test), and the loading bar keeps moving.
+  - **The game remembers where you stood.** Reloading puts you back at the last place you were standing, not at the lookout.
+  - Once all 7 dishes are online, the surface marker points at the old mine until the deep door has been opened.
+  - Deep underground, R asks for a second press before taking you back to the lookout. Sound stops when you leave the tab or app.
+  - Fixed: Benchmark mode froze if you entered the mine before starting a game, and could write a blank game over the campaign save.
 
 ## What's next
 Christopher decides. Open questions the site raises: what is that star system, and what happens now that you've answered?

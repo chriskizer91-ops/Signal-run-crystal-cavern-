@@ -1,6 +1,6 @@
 # Signal Run — engine & state handoff (read this first in any new session)
 
-Status as of 23 Nov 2026: **v14 (signal-run-v14-ancient-site.html, ~1.18 MB)** is current.
+Status as of 24 Nov 2026: **v15 (signal-run-v15-efficiency.html, ~1.18 MB)** is current. v15 is v14 made faster and kinder to play; nothing was added to the world.
 
 **Everything lives in the GitHub repo `chriskizer91-ops/Signal-run-crystal-cavern-`:** the game (`game/signal-run.html` plus every older version), the CaveLib mirror, patch scripts, all model modules and model tools, agent briefs, tests, these docs and screenshots. Start there in a new session, and read its `CLAUDE.md`. It is one self-contained HTML file: WebGL 2, no images; every texture, mesh and sound is generated in code.
 - Design plans: `claude/signal-run-caves-design.md`.
@@ -76,6 +76,7 @@ It started as a rendering benchmark: 147M triangles at full detail, plus a "10M 
 - **v12: the giant crystal cavern** behind D-10 (details in its own section below): see-through titan crystals, the crystals' light on everything, the pulse and the reveal. The surface is pixel-identical to v11.
 - **v13: a new way into the giant crystal cavern**: past D-10 the tunnel climbs out of the water to a balcony high in the cavern's wall (details in its own section). The surface is pixel-identical to v12.
 - **v14: the ancient site** beyond the giant cavern (details in its own section). Christopher confirmed the giant cavern runs smoothly on the Pixel 7a and the MSI laptop. The surface is pixel-identical to v13.
+- **v15: efficiency and experience pass** (details in its own section). The game no longer slows down the longer it runs, cave rock is built only near you, loading reaches the menu sooner, and the game remembers where you stood. Pixel-identical to v14 in 8 places, surface and underground.
 
 ## Map facts (metres; y is up)
 - World 3072 × 3072 (48 × 48 tiles of 64 m). Canyon floor ≈ 95, lowest terrain 87.5, highest ≈ 632.
@@ -130,6 +131,7 @@ It started as a rendering benchmark: 147M triangles at full detail, plus a "10M 
    - `cave`, `line`, `CV`, `caveTeleport`
    - `CAVR`, `cavePrebuild`
    - `placedLog`, `plantTotal`
+   - v15: `version`, `lateInit`, `finishInit`, `resumePlace`, `saveGame`, `loadGame`, `objective`, `ROUGH_R`, `ROUGH_FREE`
 
 ## Asset workflow (how the v5 reskin and the v7 cavern kits were made; reuse it for new models)
 1. Cut each `ASSET_DEFS` module out into its own file as `window.MODDEF = { fn: … };`, along with the `AssetKit` source. For a new kit, start from an empty module.
@@ -206,7 +208,7 @@ These tools lived in the temporary workspace and are easy to recreate from this 
 - `cfg.rim` holds ground heights around the shaft opening, so open air above the ground counts as air in the distance field.
 - **Meshing**:
   - Surface nets in 24 m chunks. LOD0 = 0.2 m cells within 26 m of the camera; LOD1 = 0.6 m.
-  - Rough chunks prebuild in the background. With the cavern there are 828 rough chunks out to 330 m. Close-up chunks are built on demand and freed beyond about 66 m.
+  - Rough chunks build in the background, nearest first, within 420 m of the camera, and are freed beyond 560 m (v15; before that every rough chunk in the game was built at start and kept). Close-up chunks are built on demand and freed beyond about 66 m.
   - Runs in 1–3 workers (`cave.workers`), with a main-thread fallback for rough meshes only.
   - Vertex = position, normal, daylight, kind. Daylight is baked per vertex by sphere-tracing toward the shaft bottom (75 m reach), so light only reaches what can see the shaft.
   - Chunks draw out to 330 m (it was 180 m before the cavern).
@@ -228,7 +230,7 @@ These tools lived in the temporary workspace and are easy to recreate from this 
 - **Battery**: 15 minutes per battery (`?battery=fast` = 45 s). Spares swap in automatically. The light flickers below 15%. The supply crate refills it on the surface.
 - **Light dead with no line within 5 m**: after 200 m of walking you pass out, wake at the shaft and get a fresh battery.
 - Pickups (`PICKS`): the reel at the station; batteries at the north crosscut end, the grotto end and the east chamber.
-- The game saves to localStorage key `canyon-signal-run-v1` (including `cave`: battery, spares, picked items, reel, line points), every 5 s underground and on events.
+- The game saves to localStorage key `canyon-signal-run-v1` (including `cave`: battery, spares, picked items, reel, line points; and from v15 `place`, where you last stood), every 5 s underground, every 10 s on the surface (v15), when the tab is hidden (v15) and on events.
 
 ## The crystal cavern (v7)
 **Getting there (v8):** through the deep door in the station's south wall, along a 10 m drift, then off the lip into a smooth vertical tube. You fall 124 m and come out through the cavern roof onto the landing ledge at −179.8. All numbers below were measured at the v7 position; v8 shifts heights by +90.
@@ -279,7 +281,7 @@ These tools lived in the temporary workspace and are easy to recreate from this 
 - **Modes:**
   - `game.free` flag.
   - `SAVE_KEYS`: campaign keeps `canyon-signal-run-v1`, so old saves carry on; free play uses `canyon-signal-run-free-v1`.
-  - `startPlay(fresh, free)` saves the current mode before switching, loads the other save, then `resetView()`.
+  - `startPlay(fresh, free)` saves the current mode before switching, loads the other save, then `resetView()` and, from v15, `resumePlace()`.
   - Free play gets all upgrades (`applyUpgrades` uses n = 7), 3 spare batteries on a new game, and no upgrade toasts.
   - Menu: Continue (named for the mode) · Campaign · Free play · New campaign · Benchmark, plus a one-line explanation.
 - **Draw rules (performance):**
@@ -528,8 +530,59 @@ Christopher's choices: beyond the giant cavern; black stone with glowing lines; 
   - Triangles: about 0.4–0.65M in the site. The surface is pixel-identical to v13.
 - **Teleports:** `&at=portal`, `&at=site`, `&at=chamber`.
 
+## The efficiency and experience pass (v15)
+Christopher asked for a review of v14 for efficiency and experience improvements. Nothing was removed and nothing looks different: fixed-clock screenshots of v14 and v15 are identical pixel for pixel in 8 places (lookout, mine top, Level 1 station, crystal cavern, stalactite cavern, lake beach, giant cavern balcony, final chamber). The patch script is `src/patches/v15_efficiency.py` (exact text swaps on v14, each checked to match once; `python3 src/patches/v15_efficiency.py game/versions/signal-run-v14-ancient-site.html game/signal-run.html` rebuilds v15 byte for byte). v15 was pushed to the repo on 24 Nov.
+
+**The big one: the game got slower the longer it ran.** `computePose()` ended with `for (const k in pose) pose[k + '32'] = new Float32Array(pose[k])`. That loop also walked the copies it had made the frame before, so the pose list grew by 15 entries every frame, forever (38,400 entries after 2,557 frames), and every entry was copied again each frame.
+- Measured with drawing switched off (`tests/v15_posecheck.py`): v14's script time went from 9.9 ms per frame after 5 s to 45.8 ms after 60 s, and the frame rate fell from 60 to 21 a second. After 100 s it was 72 ms and 13 a second.
+- v15 keeps exactly 30 entries (15 poses and their 15 copies, made once and refilled): 1.6–1.9 ms per frame and a steady 60 a second.
+- **Rule for the future:** never add keys to an object inside a `for … in` loop over that same object.
+
+**Cave rock is built where you are, not everywhere at once** (`caveStream`):
+- v14 meshed all 3,519 rough pieces at every start, even if you never left the surface: 40.3 s of background work (one core, measured by meshing every piece) and 107.1 MB of rock held from then on. 2,346 of those pieces are empty.
+- v15 builds rough pieces only within `ROUGH_R` = 420 m of the camera (they are drawn out to 330 m) and frees them beyond `ROUGH_FREE` = 560 m. Empty pieces stay marked as known-empty, so they are not meshed twice. Standing at the lookout for 40 s: 0 pieces built, 1.6 MB held (the fixed shaft and mine timbers).
+- The picker no longer builds and sorts a list of every missing piece each frame. It keeps only as many candidates as the workers can take (`caveBest`, at most 8), nearest first, close-up pieces before rough ones, exactly the old order.
+- `cave.jobs` counts pieces handed to workers; `cave.bytes` is the rock memory held (shown in Details as MB).
+- Live check (`tests/v15_stream.py`, drawing off): teleported cold to the crystal cavern, then the final chamber, then back. Every piece in view arrived each time, nothing was held beyond 560 m, and the rock held was 65–81 MB including close-up pieces. So deep underground the saving is modest; on the surface it is nearly all of it.
+- **When adding a cavern:** nothing to do. The cost no longer grows with the number of caverns.
+
+**Smaller per-frame savings:**
+- Deep underground (`cave.surface` false) the surface's 2,304 tiles are no longer sorted out every frame, and the tile records are reused (`visPool`) instead of made new each frame.
+- The explorer's sun-shadow pass (`charShadowPass`) is skipped when nothing reads it (`chK` = 0: underground, or more than 260 m above the ground). Underground that is 24,704 triangles and 19 draw calls fewer per frame.
+- `drawCave` checks that a piece has rock before the on-screen test.
+- The HUD writes to the page only when a readout changes (`hudLast`). Page layouts per frame went from 1.0 to 0.0.
+- The controls hint is removed from the page after it fades.
+- Script time per frame with drawing switched off (`tests/v15_jsbench.py`, test machine): surface 11.0 ms in the first 20 s and 72.5 ms after 100 s in v14, against 2.4 and 2.1 ms in v15. Crystal cavern: 10.8 and 72.6 ms, against 1.8 and 1.2 ms.
+
+**Loading:**
+- The bar now keeps moving through the whole set-up (the tiles are the first 45%), instead of sitting full while the rest ran.
+- The caverns' furnishings (`cavernInit`, `geoInit`, `siteInit`, `doorInit`, `dripInit`, `lakeInit`) are in `lateInit`. From the menu they run behind the menu, one between frames. `startPlay` and `startBench` call `finishInit()` first, so play never starts without them. With `?play`, `?bench`, `?mode` or `&at=` in the address they run during loading, in the old order.
+- Menu on screen (headless, average of 3): 4.5 s in v14, 2.8 s in v15. Everything laid out underground is identical afterwards (`tests/v15_initeq.py`: instance counts, titan positions, doors, couplings, stakes, world total).
+
+**Experience:**
+- **The game remembers where you stood.** `game.place` holds the last spot where you were standing (not flying or swimming), with the camera. It is saved with the game as `place`, every 5 s underground, every 10 s on the surface, and when the tab or app is hidden or closed. `resumePlace()` puts you back on Continue / Campaign / Free play, with a toast "Picking up where you left off." v14 always restarted at the lookout, however deep you were.
+  - A saved place inside rock or over nothing is refused, and you start at the lookout. v14 saves (no `place`) load as before.
+  - New campaign still starts at the lookout. Going to Benchmark and back returns you to your place.
+- **Marker to the mine:** once all 7 dishes are online and until D-7 has been opened, the surface marker reads "old mine · N m" and points at the shaft. Before, the marker simply vanished at that point. This is surface only; underground still has only the in-world trail, as Christopher chose. Christopher confirmed he wants it kept (24 Nov). It is one line in `objective()`.
+- **R deep underground asks first:** "Press R again to go back up to the lookout." On the surface R is immediate, as before.
+- **Sound stops when the tab or app is hidden** (the wind loop kept hissing in the background) and comes back with it.
+- **Two fixes found on the way:** Benchmark mode froze the game the moment you entered the mine if no game had been started (`cave.parts` did not exist yet), and in Benchmark mode underground the 5-second save could write a blank game over the campaign save. Both are fixed.
+
+**Tests** (`tests/v15_*.py`, Playwright with headless Chrome; run from `tests/`, passing the game file to check; output goes to `tests/out/`):
+- `v15_snap.py <file> <tag> [places]`: fixed-clock screenshots. It replaces `requestAnimationFrame` so frames are stepped by hand, seeds `Math.random`, calls `cavePrebuild(330)`, waits until every piece in view has arrived, sets `state.time` = 500 and hides the toast. `v15_cmp.py <places>` then compares the `v14` and `v15` tags pixel by pixel. The 8 places take about 25 minutes per version here. This is a stricter check than `surface_compare.py` and covers the caverns too; use it for any change that should not alter the picture.
+- `v15_jsbench.py`, `v15_posecheck.py`: script time per frame with the draw calls replaced by empty functions, so frames run at full speed. Run these after any change to the per-frame code; a number that climbs over a minute means something is piling up.
+- `v15_func.py`, `v15_func2.py`, `v15_func3.py`: resume, bad place, old save, Benchmark round trip, the marker, R, the menu tapped during set-up, saves, phone layout.
+- `v15_roughcost.py`, `v15_stream.py`, `v15_initeq.py`, `v15_benchug.py`.
+- Screenshots: `screenshots/v15-same-picture-as-v14.png`, `screenshots/v15-phone-old-mine-marker.png`.
+
+**Looked at and left alone (ideas for later):**
+- The canvas is created with its own smoothing (`antialias: true`), but in the game the picture is drawn off-screen with its own 4× smoothing and only copied to the canvas, so the canvas's smoothing does nothing there. Turning it off would need Benchmark mode to draw through the off-screen path too.
+- While the menu or a log card is open, the picture is still drawn at full frame rate.
+- A full-screen button for the phone (in the menu, not on the play screen).
+- `update()` takes one physics step of up to 0.25 s after a long frame.
+
 ## Controls
-- Keyboard: WASD move, Space jetpack, Shift boost, C dive, drag to look, wheel to zoom, Esc menu, R back to the lookout, N sound, I details.
+- Keyboard: WASD move, Space jetpack, Shift boost, C dive, drag to look, wheel to zoom, Esc menu, R back to the lookout (underground it asks for a second press, v15), N sound, I details.
 - Phone: as in v3.
 - URL options:
   - `?play`, `?play=new`
