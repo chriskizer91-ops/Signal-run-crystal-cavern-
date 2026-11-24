@@ -7,7 +7,7 @@ function CaveLib(cfg) {
   const CH = 24, YCUT = -24, SHW = 1.9, SHB = -50;               // chunk size, nothing meshed above YCUT, shaft half-width and bottom
   const STATION = { x: SX, y: -53, z: SZ, hx: 6.5, hy: 3, hz: 5.5, floor: -56 };
   const LIGHT = [SX, SHB - 1.5, SZ];
-  const AMP = [1.15, 0.3, 0.03, 1.35, 0.25, 2.3, 1.2, 0.3, 1.7, 0.6, 0, 1.6, 0, 1.5];   // 13: the giant crystal cavern   // 11: the flooded cavern, 12: the smooth bore (not natural)   // 8: stalactite hall, 9: its fluted columns   // + smooth natural tube (the door drop: no ledges to snag on)   // + crystal cavern, rock columns                    // rock roughness by kind: natural tunnel, mine drift, shaft, natural room, mine room
+  const AMP = [1.15, 0.3, 0.03, 1.35, 0.25, 2.3, 1.2, 0.3, 1.7, 0.6, 0, 1.6, 0, 1.5, 0, 0];   // 14, 15: the ancient site's cut stone (boxes, eight-sided rooms)   // 13: the giant crystal cavern   // 11: the flooded cavern, 12: the smooth bore (not natural)   // 8: stalactite hall, 9: its fluted columns   // + smooth natural tube (the door drop: no ledges to snag on)   // + crystal cavern, rock columns                    // rock roughness by kind: natural tunnel, mine drift, shaft, natural room, mine room
   const AMPMAX = 2.9;
   const RIM = cfg.rim || null;                                   // ground heights around the shaft opening: above them is open air
   function rimH(x, z) {
@@ -159,6 +159,18 @@ function CaveLib(cfg) {
   }
   const GX = SX + GEO.c[0], GY = GEO.c[1], GZ = SZ + GEO.c[2], GRX = GEO.r[0], GRY = GEO.r[1], GRZ = GEO.r[2], GPX = SX + GEO.pool[0], GPZ = SZ + GEO.pool[1], GPR = GEO.pool[2], GLX = SX + LEDGE[0], GLZ = SZ + LEDGE[2];
   S.push([13, pathId++, GX, GY, GZ, GRX, GRY, GRZ, 0, 0, 0]);
+  // the ancient site: through the giant cavern's east wall a second bore runs on, then drops straight down into halls of cut black stone
+  const BORE2 = [[680, -399.2, -15], [742, -399.2, -15], [742, -470, -15]];
+  { const id = pathId++; for (let i = 0; i < BORE2.length - 1; i++) { const a = L(BORE2[i]), b = L(BORE2[i + 1]); S.push([12, id, a[0], a[1], a[2], b[0], b[1], b[2], BORER, BORER, 0]); } }
+  const SITE = { floor: -479, vest: [742, -15, 7], hall: [808, -15, 38, 10, 26], rooms: [[788, -0.5], [824, -0.5], [788, -29.5], [824, -29.5]], door: [850, -15], chamber: [878, -15, 24, 34] };
+  { const id = pathId++, F = SITE.floor, box = (cx, cy, cz, hx, hy, hz, r) => S.push([14, id, SX + cx, cy, SZ + cz, hx, hy, hz, r, 0, 0]);
+    S.push([15, id, SX + 742, F + 5, SZ - 15, 7, 5, 7, 0.6, 0, 0]);           // the round room the shaft drops into
+    box(759, F + 3.5, -15, 11, 3.5, 2.5, 0.4);                                 // a passage
+    box(808, F + 13, -15, 38, 13, 10, 1.0);                                    // the hall of monoliths
+    for (const r of SITE.rooms) box(r[0], F + 4.5, r[1], 5, 4.5, 5.5, 0.5);    // four side rooms
+    box(850, F + 6, -15, 6, 6, 4, 0.4);                                        // the doorway
+    S.push([15, id, SX + 878, F + 17, SZ - 15, 24, 17, 24, 1.5, 0, 0]);        // the final chamber
+  }
   // its floor: a plain just above the water around the pool on the west side, rising east in great terraces, then steep to the walls
   function geoFloor(x, z) {
     const u = (x - GX) / GRX, v = (z - GZ) / GRZ, t = sqrt(u * u + v * v) + vn(x * 0.02, 9.1, z * 0.02, 71) * 0.1;
@@ -189,7 +201,7 @@ function CaveLib(cfg) {
     const o = i * 11, k = SG[o];
     if (k === 2) return [SG[o + 2] - SHW, SHB - 1, SG[o + 4] - SHW, SG[o + 2] + SHW, TOP + 50, SG[o + 4] + SHW];
     if (k === 5 || k === 8 || k === 11 || k === 13) return [SG[o + 2] - SG[o + 5] - 6, SG[o + 3] - SG[o + 6] - 8, SG[o + 4] - SG[o + 7] - 6, SG[o + 2] + SG[o + 5] + 6, SG[o + 3] + SG[o + 6] + 6, SG[o + 4] + SG[o + 7] + 6];
-    if (k === 3 || k === 4) return [SG[o + 2] - SG[o + 5], SG[o + 3] - SG[o + 6], SG[o + 4] - SG[o + 7], SG[o + 2] + SG[o + 5], SG[o + 3] + SG[o + 6], SG[o + 4] + SG[o + 7]];
+    if (k === 3 || k === 4 || k === 14 || k === 15) return [SG[o + 2] - SG[o + 5], SG[o + 3] - SG[o + 6], SG[o + 4] - SG[o + 7], SG[o + 2] + SG[o + 5], SG[o + 3] + SG[o + 6], SG[o + 4] + SG[o + 7]];
     if (k === 1) { const e = 3.8; return [min(SG[o + 2], SG[o + 5]) - e, min(SG[o + 3], SG[o + 6]) - 0.5, min(SG[o + 4], SG[o + 7]) - e, max(SG[o + 2], SG[o + 5]) + e, max(SG[o + 3], SG[o + 6]) + 4.5, max(SG[o + 4], SG[o + 7]) + e]; }
     const r = max(SG[o + 8], SG[o + 9]); return [min(SG[o + 2], SG[o + 5]) - r, min(SG[o + 3], SG[o + 6]) - r, min(SG[o + 4], SG[o + 7]) - r, max(SG[o + 2], SG[o + 5]) + r, max(SG[o + 3], SG[o + 6]) + r, max(SG[o + 4], SG[o + 7]) + r];
   }
@@ -258,6 +270,10 @@ function CaveLib(cfg) {
       gFloor = fl; const d = (sqrt(qx * qx + qy * qy + qz * qz) - 1) * RY, df = (fl - y) * 0.3;
       return d > df ? d : df;
     }
+    if (k === 15) {                              // an eight-sided room with flat floor and ceiling
+      const R = SG[o + 5], H = SG[o + 6], rr = SG[o + 8], dx = abs(x - ax), dz = abs(z - az), oc = max(max(dx, dz), (dx + dz) * 0.70710678) - R + rr, qy = abs(y - ay) - H + rr;
+      gFloor = ay - H; const ox = oc > 0 ? oc : 0, oy = qy > 0 ? qy : 0; return sqrt(ox * ox + oy * oy) + min(max(oc, qy), 0) - rr;
+    }
     const rr = SG[o + 8], qx = abs(x - ax) - SG[o + 5] + rr, qy = abs(y - ay) - SG[o + 6] + rr, qz = abs(z - az) - SG[o + 7] + rr;
     gFloor = ay - SG[o + 6];
     return sqrt((qx > 0 ? qx * qx : 0) + (qy > 0 ? qy * qy : 0) + (qz > 0 ? qz * qz : 0)) + min(max(qx, qy, qz), 0) - rr;
@@ -301,7 +317,7 @@ function CaveLib(cfg) {
     const b = base(x, y, z); let a = AMP[gKind]; const lim = AMPMAX + 0.6;
     if (b > lim || b < -lim) return b;
     if (gKind === 5 || gKind === 6) { x -= COFF[0]; y -= COFF[1]; z -= COFF[2]; }   // the cavern keeps the rock it was designed with
-    if (gKind === 12) return b;                                                                // the bore is perfectly smooth
+    if (gKind === 12 || gKind >= 14) return b;                                                 // the bore and the ancient site are perfectly smooth
     if (gKind === 13) { if (y < gFl + 2.2) a = 0.12; else return b + a * fbm(x * 0.5, y * 0.5, z * 0.5) + 0.35 * fbm(x * 1.4, y * 1.4, z * 1.4); }
     if (gKind === 11) { if (y < gFl + 2.2) a = 0.15; else return b + a * fbm(x * 0.6, y * 0.6, z * 0.6) + 0.4 * fbm(x * 1.3, y * 0.5, z * 1.3); }
     if (gKind === 8) { if (y < gFl + 2.2) a = 0.1; else return b + a * fbm(x * 0.6, y * 0.6, z * 0.6) + 0.55 * fbm(x * 0.9, y * 0.12, z * 0.9) + 0.35 * fbm(x * 1.7, y * 1.7, z * 1.7); }   // flowstone ribs run down the walls
@@ -377,7 +393,7 @@ function CaveLib(cfg) {
     let minY = 1e9, maxY = -1e9;
     for (let v = 0; v < nv; v++) {
       const x = V[v * 6], y = V[v * 6 + 1], z = V[v * 6 + 2], nx = V[v * 6 + 3], ny = V[v * 6 + 4], nz = V[v * 6 + 5];
-      base(x, y, z); const kind = gKind === 1 || gKind === 4 ? 1 : gKind === 2 ? 0.5 : gKind === 12 ? 4 : 0;
+      base(x, y, z); const kind = gKind === 1 || gKind === 4 ? 1 : gKind === 2 ? 0.5 : gKind === 12 ? 4 : gKind >= 14 ? 5 : 0;
       buf.set([x, y, z, nx, ny, nz, dayAt(x, y, z, nx, ny, nz), kind], v * 8);
       if (y < minY) minY = y; if (y > maxY) maxY = y;
     }
@@ -416,6 +432,7 @@ function CaveLib(cfg) {
     DOORS: DOORDEF.map(d => ({ name: d.name, x: SX + d.at[0], z: SZ + d.at[2], floor: d.at[1], dir: d.dir })), DOOR: { x: SX + DOORDEF[0].at[0], z: SZ + DOORDEF[0].at[2], floor: DOORDEF[0].at[1] },
     DRIP: { x: DX, y: DY, z: DZ, rx: DRX, ry: DRY, rz: DRZ, drop: [SX + 120, SZ - 15], step: DSTEP }, dripFloor, dripWater, dripK, DCOLW,
     LAKE: { x: LX, y: LY, z: LZ, rx: LRX, ry: LRY, rz: LRZ, water: WATER, drop: [SX + 289, SZ - 15], bore: BORE.map(p => [SX + p[0], p[1], SZ + p[2]]), boreR: BORER }, lakeFloor, lakeK,
-    GEO: { x: GX, y: GY, z: GZ, rx: GRX, ry: GRY, rz: GRZ, pool: [GPX, GPZ, GPR], tunnel: TUBE.map(p => [SX + p[0], p[1], SZ + p[2]]), ledge: [GLX, LEDGE[1], GLZ, LEDGE[3]] }, geoFloor, geoK };
+    GEO: { x: GX, y: GY, z: GZ, rx: GRX, ry: GRY, rz: GRZ, pool: [GPX, GPZ, GPR], tunnel: TUBE.map(p => [SX + p[0], p[1], SZ + p[2]]), ledge: [GLX, LEDGE[1], GLZ, LEDGE[3]] }, geoFloor, geoK,
+    SITE: { floor: SITE.floor, bore: BORE2.map(p => [SX + p[0], p[1], SZ + p[2]]), vest: [SX + SITE.vest[0], SZ + SITE.vest[1], SITE.vest[2]], hall: [SX + SITE.hall[0], SZ + SITE.hall[1], SITE.hall[2], SITE.hall[3], SITE.hall[4]], rooms: SITE.rooms.map(r => [SX + r[0], SZ + r[1]]), door: [SX + SITE.door[0], SZ + SITE.door[1]], chamber: [SX + SITE.chamber[0], SZ + SITE.chamber[1], SITE.chamber[2], SITE.chamber[3]] } };
 }
 if (typeof module !== 'undefined') module.exports = CaveLib;

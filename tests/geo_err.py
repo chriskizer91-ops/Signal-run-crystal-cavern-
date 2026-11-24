@@ -6,7 +6,7 @@ async def main():
         b = await p.chromium.launch(executable_path='/usr/bin/google-chrome', args=['--use-angle=swiftshader','--enable-unsafe-swiftshader','--ignore-gpu-blocklist'])
         pg = await b.new_page(viewport={'width':640,'height':360}); errs=[]
         pg.on('pageerror', lambda e: errs.append('ERR '+str(e)+' '+str(e.stack)[:900])); pg.on('console', lambda m: errs.append(m.type+' '+m.text[:600]) if m.type in ('error','warning') else None)
-        await pg.goto('file://' + GAME + '?play=freenew&at=pool'); 
+        await pg.goto('file://' + GAME + '?play=freenew&at=' + os.environ.get('AT','pool')); 
         try: await pg.wait_for_function('window.__loadMs', timeout=240000)
         except Exception as e: print('no load', e)
         await pg.wait_for_timeout(5000)

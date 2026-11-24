@@ -52,7 +52,7 @@
   body.preview #hud { top: 52px; } body.preview #menu { display: none; } [hidden] { display: none !important; }
   #ustat { font: 600 13px system-ui, sans-serif; color: #ffd98a; text-shadow: 0 1px 3px rgba(0, 0, 0, .9); }
   #visor { position: fixed; inset: 0; pointer-events: none; opacity: 0; z-index: 2; background: radial-gradient(ellipse at center, rgba(200,230,235,0) 50%, rgba(190,222,228,.16) 70%, rgba(212,234,238,.5) 92%, rgba(225,240,242,.72) 100%); }
-  #logBtn { position: fixed; left: 50%; bottom: 112px; transform: translateX(-50%); z-index: 5; padding: 9px 18px; border-radius: 10px; background: rgba(13, 17, 23, .85); border: 1px solid rgba(150, 240, 220, .5); color: #bff5e8; font: 600 14px system-ui, sans-serif; }
+  #logBtn, #siteBtn { position: fixed; left: 50%; bottom: 112px; transform: translateX(-50%); z-index: 5; padding: 9px 18px; border-radius: 10px; background: rgba(13, 17, 23, .85); border: 1px solid rgba(150, 240, 220, .5); color: #bff5e8; font: 600 14px system-ui, sans-serif; }
   #logCard { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 7; width: min(520px, 88vw); padding: 20px 22px 14px; background: rgba(6, 14, 14, .93); border: 1px solid rgba(150, 240, 220, .35); border-radius: 12px; color: #cfeee6; font: 15px/1.5 ui-monospace, Menlo, monospace; box-shadow: 0 0 40px rgba(60, 200, 180, .15); }
   #logTitle { font-weight: 700; color: #8ff0d8; margin-bottom: 10px; letter-spacing: .04em; }
   #logText { white-space: pre-wrap; min-height: 130px; }
@@ -104,6 +104,7 @@
 <div id="marker" hidden><i></i><span id="markerTxt"></span></div>
 <div id="toast"></div>
 <button id="logBtn" hidden>Read the dive log</button>
+<button id="siteBtn" hidden>Scan the artifact</button>
 <div id="logCard" hidden><div id="logTitle"></div><div id="logText"></div><div class="lrow"><span id="logPage"></span><button id="logPrev">‹ Back</button><button id="logNext">Next ›</button><button id="logClose">Close</button></div></div>
 <div id="fade"></div>
 <div id="visor"></div>
@@ -515,7 +516,7 @@ function CaveLib(cfg) {
   const CH = 24, YCUT = -24, SHW = 1.9, SHB = -50;               // chunk size, nothing meshed above YCUT, shaft half-width and bottom
   const STATION = { x: SX, y: -53, z: SZ, hx: 6.5, hy: 3, hz: 5.5, floor: -56 };
   const LIGHT = [SX, SHB - 1.5, SZ];
-  const AMP = [1.15, 0.3, 0.03, 1.35, 0.25, 2.3, 1.2, 0.3, 1.7, 0.6, 0, 1.6, 0, 1.5];   // 13: the giant crystal cavern   // 11: the flooded cavern, 12: the smooth bore (not natural)   // 8: stalactite hall, 9: its fluted columns   // + smooth natural tube (the door drop: no ledges to snag on)   // + crystal cavern, rock columns                    // rock roughness by kind: natural tunnel, mine drift, shaft, natural room, mine room
+  const AMP = [1.15, 0.3, 0.03, 1.35, 0.25, 2.3, 1.2, 0.3, 1.7, 0.6, 0, 1.6, 0, 1.5, 0, 0];   // 14, 15: the ancient site's cut stone (boxes, eight-sided rooms)   // 13: the giant crystal cavern   // 11: the flooded cavern, 12: the smooth bore (not natural)   // 8: stalactite hall, 9: its fluted columns   // + smooth natural tube (the door drop: no ledges to snag on)   // + crystal cavern, rock columns                    // rock roughness by kind: natural tunnel, mine drift, shaft, natural room, mine room
   const AMPMAX = 2.9;
   const RIM = cfg.rim || null;                                   // ground heights around the shaft opening: above them is open air
   function rimH(x, z) {
@@ -667,6 +668,18 @@ function CaveLib(cfg) {
   }
   const GX = SX + GEO.c[0], GY = GEO.c[1], GZ = SZ + GEO.c[2], GRX = GEO.r[0], GRY = GEO.r[1], GRZ = GEO.r[2], GPX = SX + GEO.pool[0], GPZ = SZ + GEO.pool[1], GPR = GEO.pool[2], GLX = SX + LEDGE[0], GLZ = SZ + LEDGE[2];
   S.push([13, pathId++, GX, GY, GZ, GRX, GRY, GRZ, 0, 0, 0]);
+  // the ancient site: through the giant cavern's east wall a second bore runs on, then drops straight down into halls of cut black stone
+  const BORE2 = [[680, -399.2, -15], [742, -399.2, -15], [742, -470, -15]];
+  { const id = pathId++; for (let i = 0; i < BORE2.length - 1; i++) { const a = L(BORE2[i]), b = L(BORE2[i + 1]); S.push([12, id, a[0], a[1], a[2], b[0], b[1], b[2], BORER, BORER, 0]); } }
+  const SITE = { floor: -479, vest: [742, -15, 7], hall: [808, -15, 38, 10, 26], rooms: [[788, -0.5], [824, -0.5], [788, -29.5], [824, -29.5]], door: [850, -15], chamber: [878, -15, 24, 34] };
+  { const id = pathId++, F = SITE.floor, box = (cx, cy, cz, hx, hy, hz, r) => S.push([14, id, SX + cx, cy, SZ + cz, hx, hy, hz, r, 0, 0]);
+    S.push([15, id, SX + 742, F + 5, SZ - 15, 7, 5, 7, 0.6, 0, 0]);           // the round room the shaft drops into
+    box(759, F + 3.5, -15, 11, 3.5, 2.5, 0.4);                                 // a passage
+    box(808, F + 13, -15, 38, 13, 10, 1.0);                                    // the hall of monoliths
+    for (const r of SITE.rooms) box(r[0], F + 4.5, r[1], 5, 4.5, 5.5, 0.5);    // four side rooms
+    box(850, F + 6, -15, 6, 6, 4, 0.4);                                        // the doorway
+    S.push([15, id, SX + 878, F + 17, SZ - 15, 24, 17, 24, 1.5, 0, 0]);        // the final chamber
+  }
   // its floor: a plain just above the water around the pool on the west side, rising east in great terraces, then steep to the walls
   function geoFloor(x, z) {
     const u = (x - GX) / GRX, v = (z - GZ) / GRZ, t = sqrt(u * u + v * v) + vn(x * 0.02, 9.1, z * 0.02, 71) * 0.1;
@@ -697,7 +710,7 @@ function CaveLib(cfg) {
     const o = i * 11, k = SG[o];
     if (k === 2) return [SG[o + 2] - SHW, SHB - 1, SG[o + 4] - SHW, SG[o + 2] + SHW, TOP + 50, SG[o + 4] + SHW];
     if (k === 5 || k === 8 || k === 11 || k === 13) return [SG[o + 2] - SG[o + 5] - 6, SG[o + 3] - SG[o + 6] - 8, SG[o + 4] - SG[o + 7] - 6, SG[o + 2] + SG[o + 5] + 6, SG[o + 3] + SG[o + 6] + 6, SG[o + 4] + SG[o + 7] + 6];
-    if (k === 3 || k === 4) return [SG[o + 2] - SG[o + 5], SG[o + 3] - SG[o + 6], SG[o + 4] - SG[o + 7], SG[o + 2] + SG[o + 5], SG[o + 3] + SG[o + 6], SG[o + 4] + SG[o + 7]];
+    if (k === 3 || k === 4 || k === 14 || k === 15) return [SG[o + 2] - SG[o + 5], SG[o + 3] - SG[o + 6], SG[o + 4] - SG[o + 7], SG[o + 2] + SG[o + 5], SG[o + 3] + SG[o + 6], SG[o + 4] + SG[o + 7]];
     if (k === 1) { const e = 3.8; return [min(SG[o + 2], SG[o + 5]) - e, min(SG[o + 3], SG[o + 6]) - 0.5, min(SG[o + 4], SG[o + 7]) - e, max(SG[o + 2], SG[o + 5]) + e, max(SG[o + 3], SG[o + 6]) + 4.5, max(SG[o + 4], SG[o + 7]) + e]; }
     const r = max(SG[o + 8], SG[o + 9]); return [min(SG[o + 2], SG[o + 5]) - r, min(SG[o + 3], SG[o + 6]) - r, min(SG[o + 4], SG[o + 7]) - r, max(SG[o + 2], SG[o + 5]) + r, max(SG[o + 3], SG[o + 6]) + r, max(SG[o + 4], SG[o + 7]) + r];
   }
@@ -766,6 +779,10 @@ function CaveLib(cfg) {
       gFloor = fl; const d = (sqrt(qx * qx + qy * qy + qz * qz) - 1) * RY, df = (fl - y) * 0.3;
       return d > df ? d : df;
     }
+    if (k === 15) {                              // an eight-sided room with flat floor and ceiling
+      const R = SG[o + 5], H = SG[o + 6], rr = SG[o + 8], dx = abs(x - ax), dz = abs(z - az), oc = max(max(dx, dz), (dx + dz) * 0.70710678) - R + rr, qy = abs(y - ay) - H + rr;
+      gFloor = ay - H; const ox = oc > 0 ? oc : 0, oy = qy > 0 ? qy : 0; return sqrt(ox * ox + oy * oy) + min(max(oc, qy), 0) - rr;
+    }
     const rr = SG[o + 8], qx = abs(x - ax) - SG[o + 5] + rr, qy = abs(y - ay) - SG[o + 6] + rr, qz = abs(z - az) - SG[o + 7] + rr;
     gFloor = ay - SG[o + 6];
     return sqrt((qx > 0 ? qx * qx : 0) + (qy > 0 ? qy * qy : 0) + (qz > 0 ? qz * qz : 0)) + min(max(qx, qy, qz), 0) - rr;
@@ -809,7 +826,7 @@ function CaveLib(cfg) {
     const b = base(x, y, z); let a = AMP[gKind]; const lim = AMPMAX + 0.6;
     if (b > lim || b < -lim) return b;
     if (gKind === 5 || gKind === 6) { x -= COFF[0]; y -= COFF[1]; z -= COFF[2]; }   // the cavern keeps the rock it was designed with
-    if (gKind === 12) return b;                                                                // the bore is perfectly smooth
+    if (gKind === 12 || gKind >= 14) return b;                                                 // the bore and the ancient site are perfectly smooth
     if (gKind === 13) { if (y < gFl + 2.2) a = 0.12; else return b + a * fbm(x * 0.5, y * 0.5, z * 0.5) + 0.35 * fbm(x * 1.4, y * 1.4, z * 1.4); }
     if (gKind === 11) { if (y < gFl + 2.2) a = 0.15; else return b + a * fbm(x * 0.6, y * 0.6, z * 0.6) + 0.4 * fbm(x * 1.3, y * 0.5, z * 1.3); }
     if (gKind === 8) { if (y < gFl + 2.2) a = 0.1; else return b + a * fbm(x * 0.6, y * 0.6, z * 0.6) + 0.55 * fbm(x * 0.9, y * 0.12, z * 0.9) + 0.35 * fbm(x * 1.7, y * 1.7, z * 1.7); }   // flowstone ribs run down the walls
@@ -885,7 +902,7 @@ function CaveLib(cfg) {
     let minY = 1e9, maxY = -1e9;
     for (let v = 0; v < nv; v++) {
       const x = V[v * 6], y = V[v * 6 + 1], z = V[v * 6 + 2], nx = V[v * 6 + 3], ny = V[v * 6 + 4], nz = V[v * 6 + 5];
-      base(x, y, z); const kind = gKind === 1 || gKind === 4 ? 1 : gKind === 2 ? 0.5 : gKind === 12 ? 4 : 0;
+      base(x, y, z); const kind = gKind === 1 || gKind === 4 ? 1 : gKind === 2 ? 0.5 : gKind === 12 ? 4 : gKind >= 14 ? 5 : 0;
       buf.set([x, y, z, nx, ny, nz, dayAt(x, y, z, nx, ny, nz), kind], v * 8);
       if (y < minY) minY = y; if (y > maxY) maxY = y;
     }
@@ -924,7 +941,8 @@ function CaveLib(cfg) {
     DOORS: DOORDEF.map(d => ({ name: d.name, x: SX + d.at[0], z: SZ + d.at[2], floor: d.at[1], dir: d.dir })), DOOR: { x: SX + DOORDEF[0].at[0], z: SZ + DOORDEF[0].at[2], floor: DOORDEF[0].at[1] },
     DRIP: { x: DX, y: DY, z: DZ, rx: DRX, ry: DRY, rz: DRZ, drop: [SX + 120, SZ - 15], step: DSTEP }, dripFloor, dripWater, dripK, DCOLW,
     LAKE: { x: LX, y: LY, z: LZ, rx: LRX, ry: LRY, rz: LRZ, water: WATER, drop: [SX + 289, SZ - 15], bore: BORE.map(p => [SX + p[0], p[1], SZ + p[2]]), boreR: BORER }, lakeFloor, lakeK,
-    GEO: { x: GX, y: GY, z: GZ, rx: GRX, ry: GRY, rz: GRZ, pool: [GPX, GPZ, GPR], tunnel: TUBE.map(p => [SX + p[0], p[1], SZ + p[2]]), ledge: [GLX, LEDGE[1], GLZ, LEDGE[3]] }, geoFloor, geoK };
+    GEO: { x: GX, y: GY, z: GZ, rx: GRX, ry: GRY, rz: GRZ, pool: [GPX, GPZ, GPR], tunnel: TUBE.map(p => [SX + p[0], p[1], SZ + p[2]]), ledge: [GLX, LEDGE[1], GLZ, LEDGE[3]] }, geoFloor, geoK,
+    SITE: { floor: SITE.floor, bore: BORE2.map(p => [SX + p[0], p[1], SZ + p[2]]), vest: [SX + SITE.vest[0], SZ + SITE.vest[1], SITE.vest[2]], hall: [SX + SITE.hall[0], SZ + SITE.hall[1], SITE.hall[2], SITE.hall[3], SITE.hall[4]], rooms: SITE.rooms.map(r => [SX + r[0], SZ + r[1]]), door: [SX + SITE.door[0], SZ + SITE.door[1]], chamber: [SX + SITE.chamber[0], SZ + SITE.chamber[1], SITE.chamber[2], SITE.chamber[3]] } };
 }
 
 (function () {
@@ -1035,6 +1053,7 @@ uniform vec3 uCam, uSun, uFog; uniform sampler2D uSh; uniform vec4 uDam; // dam 
 uniform vec4 uShMap; uniform highp sampler2DShadow uChS; uniform mat4 uChM; uniform float uChK, uT;
 uniform vec4 uUG, uLd, uHole, uCav, uDrp, uFdP, uFdD, uLke, uUW; uniform vec3 uFlP, uFlD, uCavR, uDrpR, uLkeR;   // underground: x on/off, y headlamp, z daylight here, w exposure; shaft light; ground hole
 uniform vec4 uGeo, uGQ, uGS, uGT, uGL[32]; uniform vec3 uGeoR;   // the giant crystal cavern: where, light count / mist / pool, pulse time / woken, the light down its tunnel, 16 crystal lights
+uniform vec4 uSite, uSiteH;   // the ancient site: final chamber's centre, floor height, power; the hologram's light
 const float WL=${WL.toFixed(1)}, RL=${RL.toFixed(1)}, WORLD=${WORLD.toFixed(1)};
 float hash11(float p){ p=fract(p*0.1031); p*=p+33.33; p*=p+p; return fract(p); }
 float hash21(vec2 p){ vec3 q=fract(vec3(p.xyx)*0.1031); q+=dot(q,q.yzx+33.33); return fract((q.x+q.y)*q.z); }
@@ -1063,12 +1082,32 @@ vec3 geoIso(vec3 w){ vec3 s=vec3(0.); int N=int(uGQ.x);   // the same light, fro
   return s; }
 vec3 geoTun(vec3 w, vec3 n){ if(uGT.w<=0.) return vec3(0.); vec3 L=uGT.xyz-w; float d2=dot(L,L);   // light spilling down the tunnel from the giant cavern
   return vec3(0.35,0.72,0.95)*uGT.w*(max(dot(n,L)*inversesqrt(d2+1e-4),0.)*0.8+0.2)*(260./(260.+d2)); }
+float siteMask(vec3 w){ return step(uSite.x-150.,w.x)*step(w.y,uSite.y+45.)*step(abs(w.z-uSite.z),60.)*step(0.001,uSite.w); }   // 1 in the ancient site
+float sitePulse(vec3 w){ float d=length(w.xz-uSite.xz); return 0.7+0.3*sin(d*0.35+uT*2.2)+0.5*pow(max(0.,sin(d*0.09+uT*0.9)),16.); }   // waves running in toward the final chamber
+vec3 siteLight(vec3 w, vec3 n){ if(uSiteH.w<=0.) return vec3(0.); vec3 L=uSiteH.xyz-w; float d2=dot(L,L); return vec3(0.45,0.8,1.)*uSiteH.w*(max(dot(n,L)*inversesqrt(d2+1e-4),0.)*0.8+0.2)*(500./(500.+d2)); }
+vec3 siteAmb(vec3 w){ return vec3(0.025,0.04,0.055)*uSite.w*siteMask(w); }
+vec2 siteLines(vec3 w, vec3 n){   // the glowing channels and glyphs cut into the builders' stone: (bright core, soft halo)
+  float h=w.y-uSite.y; vec2 q=w.xz-uSite.xz; float d=length(q), fw=length(fwidth(w))*1.2+1e-4;
+  vec2 tg=normalize(vec2(-n.z,n.x)+vec2(1e-4)); float u=dot(w.xz,tg)/0.55, flatw=1.-smoothstep(0.015,0.06,length(fwidth(n)));   // no glyphs on rounded corners, where they'd turn to static
+  float a=atan(q.y,q.x), sp=mod(a-3.14159,1.25664)-0.62832, ds=abs(sp)*d, e=1e3;
+  if(n.y>0.7){
+    if(d<23.){ e=min(min(abs(d-6.4),abs(d-10.)),min(abs(d-17.),abs(d-21.5))); if(d>6.4&&d<15.) e=min(e,ds); }   // rings round the dais, spokes to the sockets
+    else if(w.x<uSite.x-23.) e=abs(abs(w.z-uSite.z)-4.);                                                    // two channels down the hall, toward the chamber
+  } else if(abs(n.y)<0.3){
+    e=min(abs(h-1.95),abs(h-2.95));                                                                       // a band of glyphs at eye height
+    float fv=(h-2.15)/0.6;
+    if(fv>0.&&fv<1.){ float g=hash11(floor(u)*7.31+3.), sg; vec2 p=vec2(fract(u),fv)-0.5;
+      sg = g<0.2 ? abs(p.x) : g<0.4 ? abs(length(p)-0.28) : g<0.55 ? min(abs(p.y),abs(p.x)) : g<0.7 ? max(length(p)-0.07,0.) : g<0.85 ? min(abs(p.x-0.18),abs(p.x+0.18)) : abs(length(p-vec2(0.,-0.3))-0.42);
+      e=min(e,mix(1e3,sg*0.55,flatw)); }
+  }
+  return vec2(1.-smoothstep(0.018,0.018+fw,e), exp(-max(e-0.018,0.)*9.)); }
 vec3 geoMist(vec3 w, float d){ if(uGQ.y<0.5||uGQ.x<0.5) return vec3(0.); vec3 v=(w-uCam)/max(d,1e-3); float D=min(d,120.), j=hash21(gl_FragCoord.xy*0.37)-0.5; vec3 s=vec3(0.);   // the air glows near the titans
   for(int i=0;i<3;i++){ vec3 p=uCam+v*D*(float(i)+0.5+j*0.8)/3.; s+=geoIso(p)*geoK(p); }
   return s*D*0.0013; }
 vec3 haze(vec3 c, vec3 w){ float d=length(w-uCam); c=mix(c, vec3(0.012,0.05,0.06), (1.-exp(-d*0.0065))*cavK(w)*0.85); c=mix(c, vec3(0.010,0.026,0.029), (1.-exp(-d*0.0085))*drpK(w)*0.85);
   c=mix(c, vec3(0.004,0.008,0.009), (1.-exp(-d*0.008))*lkK(w)*0.8);
   float gk=geoK(w); if(gk>0.){ c=mix(c, vec3(0.006,0.007,0.018), (1.-exp(-d*0.0042))*gk*0.7); if(uUW.x<0.5) c+=geoMist(w,d); }
+  float smk=siteMask(w); if(smk>0.) c=mix(c, vec3(0.004,0.006,0.009), (1.-exp(-d*0.007))*0.8*smk);   // the site's still, dark air
   if(uUW.x>0.5){ vec3 v=(w-uCam)/max(d,1e-3), q=uCam+v*min(d,5.); float cs=dot(normalize(q-uFlP),uFlD);   // under water: murk, and the lamp's beam glowing in it
     vec3 murk=vec3(0.004,0.017,0.016)+vec3(0.06,0.11,0.10)*smoothstep(0.82,0.97,cs)*uUG.y*(1.-exp(-min(d,9.)*0.3));
     float gc=geoK(uCam); if(gc>0.) murk=mix(murk, murk*0.5+vec3(0.006,0.03,0.035)*geoWake(uCam)+geoIso(uCam+v*min(d,6.))*0.02, gc);   // the crystal pool glows
@@ -1096,7 +1135,7 @@ vec3 shade(vec3 alb, vec3 n, vec3 w, float ao){
   amb+=vec3(0.55,0.36,0.22)*0.10*(1.-lm.b)*(1.-0.5*n.y);          // warm light bounced off canyon walls
   vec3 r=alb*(sun+amb);
   if(uUG.x>0.){ vec3 dv=w-uLd.xyz; float day=max(uUG.z, uLd.w/(1.+dot(dv,dv)/42.));
-    r=mix(r, alb*(flashL(w,n)+floodL(w,n)+vec3(0.9,0.95,1.05)*day*2.2+0.01+cavAmb(w)*2.6+drpAmb(w,n)*2.6+geoLight(w,n)*1.3+geoTun(w,n)*0.6)*uUG.w, uUG.x); }
+    r=mix(r, alb*(flashL(w,n)+floodL(w,n)+vec3(0.9,0.95,1.05)*day*2.2+0.01+cavAmb(w)*2.6+drpAmb(w,n)*2.6+geoLight(w,n)*1.3+geoTun(w,n)*0.6+(siteLight(w,n)*1.2+siteAmb(w)*2.)*siteMask(w))*uUG.w, uUG.x); }
   return r;
 }
 vec3 fogit(vec3 c, vec3 w){ vec3 v=w-uCam; float d=length(v); float hm=(w.y+uCam.y)*0.5;
@@ -1362,7 +1401,8 @@ void main(){
     ag=mix(ag, vec3(0.46,0.30,0.52), smoothstep(0.7,0.9,vnoise3(w*0.045+4.))*0.4);
     ag*=0.8+0.4*vnoise3(w*0.9)*mix(0.6,alb,0.5);
     col=mix(col, ag, gk); }
-  if(k>3.5){ float g=abs(fract(length(w-vec3(1844.,-450.,1471.))*2.)-0.5); col=vec3(0.05,0.055,0.06)*mix(1.,0.35,smoothstep(0.43,0.48,g)); }   // the bore's rings, every half metre along it (counted from D-10)
+  if(k>3.5){ float g=abs(fract((w.x>2100.?(abs(w.x-2186.)<4.5&&abs(w.z-1471.)<4.5&&w.y<-401.?w.y:w.x):length(w-vec3(1844.,-450.,1471.)))*2.)-0.5); col=vec3(0.05,0.055,0.06)*mix(1.,0.35,smoothstep(0.43,0.48,g)); }   // the bore's rings, every half metre along it (counted from D-10)
+  if(k>4.5) col=vec3(0.032,0.034,0.04)*(0.9+0.2*vnoise3(w*0.7));   // the builders' black stone
   col=pow(col,vec3(1.6));
   vec3 L=uFlP-w; vec3 l=normalize(L);
   vec3 fl=flashL(w,n)+floodL(w,n);
@@ -1373,6 +1413,9 @@ void main(){
   c+=col*cavAmb(w)*2.4*face*face+col*drpAmb(w,n)*2.;
   if(gk>0.){ vec3 gl0=geoLight(w,n); c+=col*(gl0*1.25+vec3(0.05,0.065,0.13)*gk*geoWake(w)); c+=gl0*pow(max(dot(n,normalize(normalize(uGeo.xyz-w)+v)),0.),24.)*0.04; }
   if(uGT.w>0.){ vec3 gt=geoTun(w,n); c+=col*gt*(k>3.5?2.5:0.35)+gt*pow(max(dot(n,normalize(normalize(uGT.xyz-w)+v)),0.),40.)*(k>3.5?0.6:0.08); }
+  float sgl=0.;
+  if(uSite.w>0.){ float sm=siteMask(w); if(sm>0.){ c+=col*(siteLight(w,n)*2.2+siteAmb(w)*3.);
+    if(k>4.5){ vec2 ln=siteLines(w,n); c+=(vec3(0.55,0.9,1.)*ln.x+vec3(0.06,0.32,0.9)*ln.y*0.3)*uSite.w*sitePulse(w)*1.15; sgl=ln.x*uSite.w*0.3; } } }
   // thin glowing mineral veins, only in some stretches of wall
   float vq=vnoise3(w*0.13+vec3(0.,vnoise3(w*0.05)*2.,0.))-0.5, vw=fwidth(vq);
   float vq2=vnoise3(w*0.37+vec3(vnoise3(w*0.11)*1.5,0.,0.)+11.)-0.5, vw2=fwidth(vq2);
@@ -1381,7 +1424,7 @@ void main(){
   vec3 mc=mix(vec3(0.12,0.8,0.85),vec3(0.5,0.28,0.95),vnoise3(w*0.02+3.));
   float em=m*ck*(0.8+0.2*sin(uT*0.4+w.x*0.03+w.z*0.02))*0.7; c+=mc*em;
   c=haze(c,w);
-  o=vec4(tone(c*uUG.w),clamp(em*0.45,0.,1.));
+  o=vec4(tone(c*uUG.w),clamp(em*0.45+sgl,0.,1.));
   if(CDBG==1) o=vec4(vD.x,vD.y,0.,0.); else if(CDBG==2) o=vec4(vec3(face*0.5),0.); else if(CDBG==3) o=vec4(normalize(vN)*0.5+0.5,0.); else if(CDBG==4) o=vec4(tone(col*cavAmb(w)*2.4*face*face*uUG.w),0.); else if(CDBG==5) o=vec4(col,0.); else if(CDBG==8) o=vec4(tone(col*(fl+0.0012)*uUG.w),0.); else if(CDBG==9) o=vec4(vec3(em*3.),0.); else if(CDBG==6) o=vec4(vec3(uUG.w*0.1),0.); else if(CDBG==7) o=vec4(tone(c*uUG.w)*vec3(1.,0.,0.)+vec3(0.,sp,0.),0.);
 }`;
 const KIT_VS = `#version 300 es
@@ -1596,6 +1639,52 @@ void main(){ vec3 p=aA.xyz+aB.xyz*aA.w*0.3; gl_Position=uVP*vec4(p,1.); float d=
 const GEOPT_FS = `#version 300 es
 precision highp float; in vec3 vCol; out vec4 o;
 void main(){ vec2 q=gl_PointCoord*2.-1.; float r=dot(q,q); if(r>1.) discard; float a=1.-r; o=vec4(vCol*a, clamp(dot(vCol,vec3(0.3))*a,0.,1.)); }`;
+const ANC_FS = `#version 300 es
+precision highp float;
+in vec3 vW; in vec3 vN; in vec4 vC; uniform vec4 uAnc; out vec4 o;
+${GLSL_COMMON}
+void main(){ vec3 n=normalize(vN), v=normalize(uCam-vW); if(dot(n,v)<0.) n=-n;
+  vec3 col=vC.rgb*vC.rgb; float g=vC.a;
+  vec3 c=shade(col,n,vW,0.9);
+  vec3 Lh=normalize(uFlP-vW); c+=vec3(0.9,0.95,1.)*pow(max(dot(n,normalize(Lh+v)),0.),90.)*uUG.y*0.35*(1.-g);   // polished stone
+  float pw=uAnc.x*sitePulse(vW)+uAnc.y;
+  c=haze(c,vW)+mix(vec3(0.3,0.75,1.),vec3(1.,0.8,0.42),uAnc.z)*g*pw*1.6;                                       // the inlays glow, and their light carries through the haze
+  o=vec4(tone(c*uUG.w), clamp(g*pw*0.6,0.,1.)); }`;
+const HOLO_VS = `#version 300 es
+layout(location=0) in vec3 aP; layout(location=1) in vec3 aN; layout(location=2) in vec4 aC;
+uniform mat4 uVP, uM; uniform vec4 uHolo; out vec3 vW; out vec3 vN; out vec4 vC; out vec3 vL;
+void main(){ vec3 p=aP; p.x+=uHolo.w*0.08*sin(p.y*23.+uHolo.z*40.); vec4 w=uM*vec4(p,1.); vW=w.xyz; vN=mat3(uM)*aN; vC=aC; vL=aP; gl_Position=uVP*w; }`;
+const HOLO_FS = `#version 300 es
+precision highp float;
+in vec3 vW; in vec3 vN; in vec4 vC; in vec3 vL; uniform vec4 uHolo; uniform vec3 uCam; out vec4 o;
+float h1(float n){ return fract(sin(n)*43758.5453); }
+void main(){ vec3 n=normalize(vN), v=normalize(uCam-vW); float fr=pow(1.-abs(dot(n,v)),2.), t=uHolo.z, spk=uHolo.y;
+  float rise=smoothstep(uHolo.x*7.5-0.6, uHolo.x*7.5, vL.y); if(rise>0.99) discard;   // it builds itself from the bottom up
+  float scan=0.72+0.28*sin(vW.y*38.-t*7.), band=smoothstep(0.,0.25,0.25-abs(fract(vW.y*0.12-t*0.25)-0.5))*0.9, fl=0.88+0.12*h1(floor(t*24.));
+  vec3 base=vec3(0.35,0.72,1.), gold=vec3(1.,0.82,0.45);
+  vec3 c=base*(0.10*vC.a+fr*(0.6+0.9*vC.r))+base*vC.g*0.55+gold*vC.b*(0.35+0.9*spk*(0.5+0.5*sin(t*9.+vL.y*3.)));
+  c*=scan*fl*(1.+band)*(1.-rise)*smoothstep(-0.2,0.8,vL.y);
+  o=vec4(c*1.2, clamp(dot(c,vec3(0.3))*0.8,0.,1.)); }`;
+const STAR_VS = `#version 300 es
+layout(location=0) in vec4 aP; uniform mat4 uVP; uniform float uPx; uniform vec4 uChart, uChartB; out vec3 vC;
+void main(){ float c=cos(uChartB.w), s=sin(uChartB.w); vec3 q=vec3(aP.x*c-aP.z*s, aP.y, aP.x*s+aP.z*c);   // the chart turns slowly
+  gl_Position=uVP*vec4(uChart.xyz+q*uChart.w,1.);
+  bool hl=aP.w>0.99&&aP.w<1.5, ring=aP.w>1.5; float tw=0.6+0.4*sin(uChartB.y*3.+aP.w*91.);
+  float sz=ring?3.2:hl?(10.+3.*sin(uChartB.y*4.)):1.2+2.6*fract(aP.w*13.);
+  gl_PointSize=sz*uPx*(0.7+0.3*min(uChart.w/8.,1.)*2.);
+  vec3 col=(hl||ring)?vec3(1.,0.82,0.45):mix(vec3(0.55,0.8,1.),vec3(0.9,0.95,1.),fract(aP.w*7.));
+  float a=ring?uChartB.z*(0.6+0.4*sin(uChartB.y*5.)):hl?mix(0.8,2.4,uChartB.z):tw*(0.35+0.65*fract(aP.w*5.));
+  vC=col*a*uChartB.x; }`;
+const STAR_FS = `#version 300 es
+precision highp float; in vec3 vC; out vec4 o;
+void main(){ vec2 q=gl_PointCoord*2.-1.; float r=dot(q,q); if(r>1.) discard; o=vec4(vC*(1.-r), clamp(dot(vC,vec3(0.3))*(1.-r),0.,1.)); }`;
+const MOTE_VS = `#version 300 es
+layout(location=0) in vec4 aP; uniform mat4 uVP; uniform float uT, uPx; uniform vec4 uBase; out float vA;
+void main(){ float h=fract(aP.y+uT*0.12*(0.6+aP.w)); vec3 p=uBase.xyz+vec3(aP.x*(1.-h*0.4), 0.3+h*7.5, aP.z*(1.-h*0.4));
+  gl_Position=uVP*vec4(p,1.); gl_PointSize=(2.+2.*aP.w)*uPx; vA=uBase.w*sin(h*3.1416)*(0.5+0.5*aP.w); }`;
+const MOTE_FS = `#version 300 es
+precision highp float; in float vA; out vec4 o;
+void main(){ vec2 q=gl_PointCoord*2.-1.; float r=dot(q,q); if(r>1.) discard; vec3 c=vec3(0.45,0.8,1.)*vA*(1.-r); o=vec4(c, clamp(vA*0.4*(1.-r),0.,1.)); }`;
 const LINE_VS = `#version 300 es
 layout(location=0) in vec3 aP; layout(location=1) in float aK; uniform mat4 uVP; out vec3 vW; out float vK;
 void main(){ vW=aP; vK=aK; gl_Position=uVP*vec4(aP,1.); }`;
@@ -1613,7 +1702,7 @@ function prog(vs, fs) {
   for (let i = 0; i < n; i++) { const nm = gl.getActiveUniform(p, i).name; u[nm] = gl.getUniformLocation(p, nm); }
   return { p, u };
 }
-const pTerr = prog(TERR_VS, TERR_FS), pProp = prog(PROP_VS, PROP_FS), pSky = prog(SKY_VS, SKY_FS), pWater = prog(WATER_VS, WATER_FS), pDepth = prog(DEPTH_VS, DEPTH_FS), pFlame = prog(FLAME_VS, FLAME_FS), pGen = prog(SKY_VS, GEN_FS), pPlant = prog(PLANT_VS, PROP_FS), pGlow = prog(GLOW_VS, GLOW_FS), pPost = prog(SKY_VS, POST_FS), pCave = prog(CAVE_VS, CAVE_FS), pLine = prog(LINE_VS, LINE_FS), pCrys = prog(KIT_VS, CRYS_FS), pLife = prog(KIT_VS, LIFE_FS), pPool = prog(POOL_VS, POOL_FS), pSpore = prog(SPORE_VS, SPORE_FS), pDrip = prog(KIT_VS, DRIP_FS), pRim = prog(POOL_VS, RIM_FS), pWorm = prog(WORM_VS, WORM_FS), pLake = prog(POOL_VS, LAKE_FS), pFish = prog(FISH_VS, FISH_FS), pSilt = prog(SILT_VS, SILT_FS), pTitan = prog(TITAN_VS, TITAN_FS), pGeoPt = prog(GEOPT_VS, GEOPT_FS);
+const pTerr = prog(TERR_VS, TERR_FS), pProp = prog(PROP_VS, PROP_FS), pSky = prog(SKY_VS, SKY_FS), pWater = prog(WATER_VS, WATER_FS), pDepth = prog(DEPTH_VS, DEPTH_FS), pFlame = prog(FLAME_VS, FLAME_FS), pGen = prog(SKY_VS, GEN_FS), pPlant = prog(PLANT_VS, PROP_FS), pGlow = prog(GLOW_VS, GLOW_FS), pPost = prog(SKY_VS, POST_FS), pCave = prog(CAVE_VS, CAVE_FS), pLine = prog(LINE_VS, LINE_FS), pCrys = prog(KIT_VS, CRYS_FS), pLife = prog(KIT_VS, LIFE_FS), pPool = prog(POOL_VS, POOL_FS), pSpore = prog(SPORE_VS, SPORE_FS), pDrip = prog(KIT_VS, DRIP_FS), pRim = prog(POOL_VS, RIM_FS), pWorm = prog(WORM_VS, WORM_FS), pLake = prog(POOL_VS, LAKE_FS), pFish = prog(FISH_VS, FISH_FS), pSilt = prog(SILT_VS, SILT_FS), pTitan = prog(TITAN_VS, TITAN_FS), pGeoPt = prog(GEOPT_VS, GEOPT_FS), pAnc = prog(PROP_VS, ANC_FS), pHolo = prog(HOLO_VS, HOLO_FS), pStar = prog(STAR_VS, STAR_FS), pMote = prog(MOTE_VS, MOTE_FS);
 const SUN = norm([0.56, 0.5, 0.66]), FOG = [0.74, 0.80, 0.87];
 
 /* ---------- per-frame counters: every draw call goes through these ---------- */
@@ -1962,6 +2051,8 @@ const keys = {};
 addEventListener('keydown', e => {
   if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault();
   if (e.repeat) return;
+  if (typeof SITER !== 'undefined' && SITER.card >= 0) { if (e.code === 'Escape' || e.code === 'KeyE' || e.code === 'Enter') logShow(-1); return; }
+  if (e.code === 'KeyE' && !$('siteBtn').hidden) { siteAct(); return; }
   if (typeof LAKER !== 'undefined' && LAKER.read >= 0) { if (e.code === 'Escape' || e.code === 'KeyE') logShow(-1); else if (e.code === 'ArrowRight' || e.code === 'KeyD') logShow(Math.min(LOG.length - 1, LAKER.read + 1)); else if (e.code === 'ArrowLeft' || e.code === 'KeyA') logShow(Math.max(0, LAKER.read - 1)); return; }
   if (e.code === 'KeyE' && !$('logBtn').hidden) { logShow(0); return; }
   keys[e.code] = true;
@@ -2023,7 +2114,7 @@ const OVER = ['off', 'tiles', 'wireframe'];
 function cycleOverlay() { state.overlay = (state.overlay + 1) % 3; $('bOverlay').firstChild.textContent = 'Overlay: ' + OVER[state.overlay] + ' '; $('legend').hidden = state.overlay === 0; }
 function toggleDetails() { state.details = !state.details; $('details').hidden = !state.details; }
 function setMode(m) { state.mode = m; $('mExplore').classList.toggle('on', m === 0); $('m10').classList.toggle('on', m === 1); }
-$('logBtn').onclick = () => logShow(0); $('logPrev').onclick = () => logShow(Math.max(0, LAKER.read - 1)); $('logNext').onclick = () => logShow(Math.min(LOG.length - 1, LAKER.read + 1)); $('logClose').onclick = () => logShow(-1);
+$('logBtn').onclick = () => logShow(0); $('siteBtn').onclick = () => siteAct(); $('logPrev').onclick = () => logShow(Math.max(0, LAKER.read - 1)); $('logNext').onclick = () => logShow(Math.min(LOG.length - 1, LAKER.read + 1)); $('logClose').onclick = () => logShow(-1);
 $('mPlay').onclick = () => startPlay(false, false); $('mFree').onclick = () => startPlay(false, true); $('mNew').onclick = () => startPlay(true, false); $('mBench').onclick = () => { game.inMode = 'bench'; startBench(); }; $('mContinue').onclick = () => showMenu(false); $('gMenu').onclick = () => showMenu(true); $('bMenu').onclick = () => showMenu(true);
 $('mExplore').onclick = () => setMode(0); $('m10').onclick = () => setMode(1); $('bReset').onclick = resetView; $('bOverlay').onclick = cycleOverlay; $('bInfo').onclick = toggleDetails; $('bCheck').onclick = () => { $('checkOut').textContent = selfCheck().lines.join('\n'); };
 for (const b of document.querySelectorAll('button')) { b.addEventListener('keydown', e => { if (e.code === 'Space' || e.code === 'Enter') e.preventDefault(); }); b.addEventListener('keyup', e => { if (e.code === 'Space') e.preventDefault(); }); b.addEventListener('click', () => b.blur()); }
@@ -11369,6 +11460,677 @@ const ASSET_DEFS = {
       { name: 'druse_cluster', budget: 900, build: druseCluster, colliders: [] }
     ]
   };
+}) },
+  "ancient": { fn: (function (K) {
+  // The ancient site (Signal Run, beyond the giant crystal cavern). Halls cut millions of years ago by a non-human people:
+  // near-black, glass-smooth stone in perfect geometry, with thin glowing channels, rings and rows of small glyphs inlaid.
+  // Colour convention (all items except 'entity'): rgb = base colour (stone [0.055, 0.055, 0.065], accents up to 0.12-0.14),
+  // a = glow (0 plain stone, 1 glowing channel / glyph / ring, 0.5 faint secondary channel). Inlays are flat strips a few
+  // millimetres proud of the surface so they read crisply.
+  // 'entity' (the builder's hologram) uses r = rim emphasis, g = inner structure, b = glyph markings, a = density.
+  // Facing: every item's "front" is +z (pillar channel, tablet face, entity faces +z). portal_ring: axis +z, the bold
+  // inlays are on the -z face (the face seen from the cavern when the tunnel runs away along +z).
+  'use strict';
+  const { MB, tr, sc, rotX, rotY, rotZ, mulAll, rnd, cross, dot, norm, sub, add, scale, lerp } = K;
+  const PI = Math.PI, TAU = PI * 2;
+  const cl01 = x => Math.max(0, Math.min(1, x));
+
+  // ---------- palette ----------
+  const STONE = [0.055, 0.055, 0.065, 0], EDGE = [0.08, 0.08, 0.094, 0], ACC = [0.12, 0.12, 0.14, 0];
+  const GLOW = [0.10, 0.10, 0.118, 1], FAINT = [0.08, 0.08, 0.095, 0.5], CLEAR = [0.12, 0.12, 0.14, 0.5];
+
+  // ---------- low-level helpers ----------
+  // flat quad facing 'want' (winding fixed to match)
+  function fq(b, P, c, want) {
+    let n = norm(cross(sub(P[1], P[0]), sub(P[3], P[0])));
+    if (dot(n, want) < 0) { P = [P[0], P[3], P[2], P[1]]; n = scale(n, -1); }
+    const id = P.map(p => b.v(p[0], p[1], p[2], n[0], n[1], n[2], c)); b.quad(id[0], id[1], id[2], id[3]);
+  }
+  // flat convex polygon facing 'want' (fan)
+  function fpoly(b, P, c, want) {
+    let n = norm(cross(sub(P[1], P[0]), sub(P[2], P[0])));
+    if (dot(n, want) < 0) { P = [P[0]].concat(P.slice(1).reverse()); n = scale(n, -1); }
+    const id = P.map(p => b.v(p[0], p[1], p[2], n[0], n[1], n[2], c)); for (let i = 1; i < id.length - 1; i++) b.tri(id[0], id[i], id[i + 1]);
+  }
+  const B = (b, x0, x1, y0, y1, z0, z1, c) => b.box((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2, Math.abs(x1 - x0), Math.abs(y1 - y0), Math.abs(z1 - z0), c);
+  // regular n-gon outline [[x, z], ...]
+  const ngon = (n, R, rot) => { const o = []; for (let i = 0; i < n; i++) { const a = (rot || 0) + i * TAU / n; o.push([R * Math.cos(a), R * Math.sin(a)]); } return o; };
+  // rectangle with cut corners, centred on (cx, cz)
+  const cutRect = (hx, hz, c, cx, cz) => { cx = cx || 0; cz = cz || 0; return [[hx, hz - c], [hx - c, hz], [-hx + c, hz], [-hx, hz - c], [-hx, -hz + c], [-hx + c, -hz], [hx - c, -hz], [hx, -hz + c]].map(p => [p[0] + cx, p[1] + cz]); };
+  const rect4 = (hx, hz, cx, cz) => [[hx + (cx || 0), hz + (cz || 0)], [-hx + (cx || 0), hz + (cz || 0)], [-hx + (cx || 0), -hz + (cz || 0)], [hx + (cx || 0), -hz + (cz || 0)]];
+  const centroid = P => { let x = 0, z = 0; for (const p of P) { x += p[0] / P.length; z += p[1] / P.length; } return [x, z]; };
+  // convex outline offset inward by d
+  function inset(P, d) {
+    const n = P.length, [cx, cz] = centroid(P);
+    const L = P.map((a, i) => { const q = P[(i + 1) % n]; let nx = -(q[1] - a[1]), nz = q[0] - a[0]; const l = Math.hypot(nx, nz); nx /= l; nz /= l; if (nx * ((a[0] + q[0]) / 2 - cx) + nz * ((a[1] + q[1]) / 2 - cz) > 0) { nx = -nx; nz = -nz; } return { px: a[0] + nx * d, pz: a[1] + nz * d, dx: q[0] - a[0], dz: q[1] - a[1] }; });
+    return P.map((_, i) => { const A = L[(i - 1 + n) % n], Q = L[i], den = A.dx * Q.dz - A.dz * Q.dx; const s = ((Q.px - A.px) * Q.dz - (Q.pz - A.pz) * Q.dx) / den; return [A.px + A.dx * s, A.pz + A.dz * s]; });
+  }
+  // side walls between outline P0 at y0 and outline P1 at y1 (same vertex count)
+  function loft(b, P0, y0, P1, y1, c) {
+    const n = P0.length, [cx, cz] = centroid(P0);
+    for (let i = 0; i < n; i++) { const j = (i + 1) % n, mx = (P0[i][0] + P0[j][0]) / 2 - cx, mz = (P0[i][1] + P0[j][1]) / 2 - cz; fq(b, [[P0[i][0], y0, P0[i][1]], [P0[j][0], y0, P0[j][1]], [P1[j][0], y1, P1[j][1]], [P1[i][0], y1, P1[i][1]]], c, [mx, (y1 - y0) * 0.01 + (Math.hypot(P0[i][0] - cx, P0[i][1] - cz) - Math.hypot(P1[i][0] - cx, P1[i][1] - cz)), mz]); }
+  }
+  const cap = (b, P, y, c, up) => fpoly(b, P.map(p => [p[0], y, p[1]]), c, [0, up === false ? -1 : 1, 0]);
+  // upright prism from y0 to y1 with an optional chamfer ch round the top edge; returns the top outline
+  function tier(b, P, y0, y1, ch, cs, ct, bottom) {
+    if (ch > 0) { const Q = inset(P, ch); loft(b, P, y0, P, y1 - ch, cs); loft(b, P, y1 - ch, Q, y1, ct || cs); cap(b, Q, y1, ct || cs); if (bottom) cap(b, P, y0, cs, false); return Q; }
+    loft(b, P, y0, P, y1, cs); cap(b, P, y1, ct || cs); if (bottom) cap(b, P, y0, cs, false); return P;
+  }
+  // smooth path through control points (Catmull-Rom)
+  function smooth(P, n) {
+    if (n <= 1) return P.map(p => p.slice()); const out = [];
+    for (let i = 0; i < P.length - 1; i++) {
+      const p0 = P[Math.max(i - 1, 0)], p1 = P[i], p2 = P[i + 1], p3 = P[Math.min(i + 2, P.length - 1)];
+      for (let k = 0; k < n; k++) { const t = k / n, t2 = t * t, t3 = t2 * t; out.push([0, 1, 2].map(j => 0.5 * (2 * p1[j] + (-p0[j] + p2[j]) * t + (2 * p0[j] - 5 * p1[j] + 4 * p2[j] - p3[j]) * t2 + (-p0[j] + 3 * p1[j] - 3 * p2[j] + p3[j]) * t3))); }
+    }
+    out.push(P[P.length - 1].slice()); return out;
+  }
+  // free-form surface with winding that matches its normals. fn(u, v) -> [x, y, z]; col(u, v, p, n) -> colour or a colour.
+  // flip turns the normals (and winding) round.
+  function grid(b, nu, nv, fn, col, wrapU, flip, us, vs) {
+    const W = nu + 1, H = nv + 1, pts = new Array(W * H), U = i => us ? us[i] : i / nu, V = j => vs ? vs[j] : j / nv;
+    for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) pts[j * W + i] = fn(wrapU && i === nu ? U(0) : U(i), V(j));
+    const ids = new Array(W * H);
+    for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+      const il = wrapU ? (i === 0 ? nu - 1 : i - 1) : Math.max(i - 1, 0), ir = wrapU ? (i === nu ? 1 : i + 1) : Math.min(i + 1, nu);
+      const a = sub(pts[j * W + ir], pts[j * W + il]), c2 = sub(pts[Math.min(j + 1, nv) * W + i], pts[Math.max(j - 1, 0) * W + i]);
+      let n = cross(a, c2); if (Math.hypot(n[0], n[1], n[2]) < 1e-14) n = [0, 1, 0]; n = norm(n); if (flip) n = scale(n, -1);
+      const p = pts[j * W + i]; ids[j * W + i] = b.v(p[0], p[1], p[2], n[0], n[1], n[2], typeof col === 'function' ? col(U(i), V(j), p, n) : col);
+    }
+    // split each quad along its shorter diagonal (keeps twisted or sheared grids from showing a saw-toothed edge)
+    const P = b.P, L2 = (x, y) => (P[x * 3] - P[y * 3]) ** 2 + (P[x * 3 + 1] - P[y * 3 + 1]) ** 2 + (P[x * 3 + 2] - P[y * 3 + 2]) ** 2;
+    for (let j = 0; j < nv; j++) for (let i = 0; i < nu; i++) {
+      const a = ids[j * W + i], q = ids[j * W + i + 1], c = ids[(j + 1) * W + i + 1], d = ids[(j + 1) * W + i], alt = L2(q, d) < L2(a, c) * 0.98;
+      if (!flip) { if (alt) { b.tri(a, q, d); b.tri(q, c, d); } else b.quad(a, q, c, d); }
+      else { if (alt) { b.tri(a, d, q); b.tri(d, c, q); } else b.quad(a, d, c, q); }
+    }
+  }
+  // tube along a path with radius rf(t) (number or function) and colour col(t, k, p, n) (colour or function)
+  function tubeC(b, pts, rf, segs, col, phase) {
+    const n = pts.length; if (n < 2) return; const rings = []; let up = [0, 1, 0];
+    for (let i = 0; i < n; i++) {
+      const d = norm(sub(pts[Math.min(i + 1, n - 1)], pts[Math.max(i - 1, 0)])); if (Math.abs(dot(d, up)) > 0.95) up = Math.abs(d[0]) < 0.9 ? [1, 0, 0] : [0, 0, 1];
+      const s = norm(cross(d, up)), u = cross(s, d); up = u; const ring = [], t = i / (n - 1), rr = typeof rf === 'function' ? rf(t) : rf;
+      for (let k = 0; k <= segs; k++) { const a = (k / segs + (phase || 0)) * TAU, ca = Math.cos(a), sa = Math.sin(a), nn = [s[0] * ca + u[0] * sa, s[1] * ca + u[1] * sa, s[2] * ca + u[2] * sa], p = [pts[i][0] + nn[0] * rr, pts[i][1] + nn[1] * rr, pts[i][2] + nn[2] * rr]; ring.push(b.v(p[0], p[1], p[2], nn[0], nn[1], nn[2], typeof col === 'function' ? col(t, k / segs, p, nn) : col)); }
+      rings.push(ring);
+    }
+    for (let i = 0; i < n - 1; i++) for (let k = 0; k < segs; k++) b.quad(rings[i][k], rings[i + 1][k], rings[i + 1][k + 1], rings[i][k + 1]);
+  }
+
+  // ======================= glyphs =======================
+  // A glyph is a few primitives in a unit cell (-0.5..0.5): short strokes, dots (diamonds), rings and arcs.
+  // The builders' script: calm, geometric, never letters. kind picks the family; r is a seeded random.
+  function glyphPrims(r, kind) {
+    const P = [], S = (x0, y0, x1, y1) => P.push({ t: 's', x0, y0, x1, y1 }), D = (x, y, s) => P.push({ t: 'd', x, y, s: s || 0.17 });
+    const C = (x, y, rad) => P.push({ t: 'c', x, y, rad }), A = (x, y, rad, a0, a1) => P.push({ t: 'a', x, y, rad, a0, a1 });
+    const k = kind === undefined ? Math.floor(r() * 7) : kind, sg = r() < 0.5 ? -1 : 1;
+    if (k === 0) {            // stem with ticks
+      S(0, -0.45, 0, 0.45); const n = 1 + Math.floor(r() * 3);
+      for (let i = 0; i < n; i++) { const y = 0.3 - i * 0.3, s = (i % 2 ? -1 : 1) * sg; S(0, y, s * 0.36, y); }
+      if (r() < 0.6) D(-sg * 0.28, -0.32);
+    } else if (k === 1) {     // ring with a seed or a stem
+      C(0, 0.08, 0.28); if (r() < 0.5) D(0, 0.08, 0.15); else S(0, -0.2, 0, -0.47);
+    } else if (k === 2) {     // open arc with two dots
+      const o = Math.floor(r() * 4) * PI / 2; A(0, 0, 0.32, o + 0.6, o + TAU - 0.6);
+      D(Math.cos(o) * 0.05, Math.sin(o) * 0.05, 0.14); D(Math.cos(o) * 0.42, Math.sin(o) * 0.42, 0.12);
+    } else if (k === 3) {     // twin stems under a small ring
+      S(-0.17, -0.45, -0.17, 0.08); S(0.17, -0.45, 0.17, 0.08); C(0, 0.3, 0.13);
+    } else if (k === 4) {     // three dots over a bar
+      D(-0.3, 0.22); D(0, 0.4); D(0.3, 0.22); S(-0.38, -0.12, 0.38, -0.12); if (r() < 0.5) S(0, -0.12, 0, -0.45);
+    } else if (k === 5) {     // dome over a line
+      S(-0.42, -0.36, 0.42, -0.36); A(0, -0.36, 0.34, 0, PI); D(0, -0.1, 0.14);
+    } else {                  // offset strokes and a dot
+      S(-0.35, 0.3, 0.1, 0.3); S(-0.1, 0, 0.35, 0); S(-0.35, -0.3, 0.1, -0.3); D(sg * 0.32, sg * 0.3, 0.14);
+    }
+    return P;
+  }
+  // draw glyph primitives through map(x, y) -> world point (the offset off the surface is the map's job); want = normal
+  function glyph(b, prims, map, want, col, segs, w) {
+    w = w || 0.1; const wv = typeof want === 'function' ? want : () => want;
+    for (const p of prims) {
+      if (p.t === 's') {
+        const dx = p.x1 - p.x0, dy = p.y1 - p.y0, L = Math.hypot(dx, dy) || 1, ux = dx / L * w / 2, uy = dy / L * w / 2;
+        fq(b, [map(p.x0 - ux - uy, p.y0 - uy + ux), map(p.x0 - ux + uy, p.y0 - uy - ux), map(p.x1 + ux + uy, p.y1 + uy - ux), map(p.x1 + ux - uy, p.y1 + uy + ux)], col, wv(p.x0, p.y0));
+      } else if (p.t === 'd') {
+        const s = p.s / 2; fq(b, [map(p.x, p.y - s), map(p.x + s, p.y), map(p.x, p.y + s), map(p.x - s, p.y)], col, wv(p.x, p.y));
+      } else {
+        const a0 = p.t === 'c' ? 0 : p.a0, a1 = p.t === 'c' ? TAU : p.a1, n = Math.max(2, Math.round(segs * (a1 - a0) / TAU)), r0 = p.rad - w / 2, r1 = p.rad + w / 2;
+        for (let k = 0; k < n; k++) {
+          const ta = a0 + (a1 - a0) * k / n, tb = a0 + (a1 - a0) * (k + 1) / n, ca = Math.cos(ta), sa = Math.sin(ta), cb = Math.cos(tb), sb = Math.sin(tb);
+          fq(b, [map(p.x + r0 * ca, p.y + r0 * sa), map(p.x + r1 * ca, p.y + r1 * sa), map(p.x + r1 * cb, p.y + r1 * sb), map(p.x + r0 * cb, p.y + r0 * sb)], col, wv(p.x + p.rad * ca, p.y + p.rad * sa));
+        }
+      }
+    }
+  }
+  // map for a glyph cell on a plane: origin o, unit axes ux (right) and uy (up), cell centre (cx, cy), size s, offset off along n
+  const planeMap = (o, ux, uy, n, cx, cy, s, off) => (x, y) => { const a = cx + x * s, c = cy + y * s; return [o[0] + ux[0] * a + uy[0] * c + n[0] * off, o[1] + ux[1] * a + uy[1] * c + n[1] * off, o[2] + ux[2] * a + uy[2] * c + n[2] * off]; };
+  // flat strip on a plane between two points (in that plane), width w, offset off along n
+  function strip(b, p0, p1, w, n, off, col) {
+    const d = norm(sub(p1, p0)), s = scale(norm(cross(n, d)), w / 2), o = scale(n, off);
+    fq(b, [add(add(p0, s), o), add(sub(p0, s), o), add(sub(p1, s), o), add(add(p1, s), o)], col, n);
+  }
+
+  // ======================= Artifact 1: relic_lens =======================
+  // A thick black disc on edge in a small slotted foot. Glowing ring inlay on both faces, recessed clear-looking centre.
+  function relicLens(d) {
+    const b = new MB(), F = d > 0, CY = 0.29, R = 0.25, H = 0.06, HR = 0.034;
+    // foot: chamfered block with two cheeks that hold the disc
+    tier(b, F ? cutRect(0.17, 0.11, 0.035) : rect4(0.17, 0.11), 0, 0.06, F ? 0.01 : 0, STONE, EDGE);
+    for (const s of [-1, 1]) tier(b, F ? cutRect(0.12, 0.022, 0.008, 0, s * 0.088) : rect4(0.12, 0.022, 0, s * 0.088), 0.06, 0.15, F ? 0.008 : 0, STONE, EDGE);
+    if (F) {
+      strip(b, [-0.14, 0.03, 0.11], [0.14, 0.03, 0.11], 0.008, [0, 0, 1], 0.002, FAINT);
+      strip(b, [-0.14, 0.03, -0.11], [0.14, 0.03, -0.11], 0.008, [0, 0, -1], 0.002, FAINT);
+    }
+    // disc (lathe around local y, turned so its axis is +z)
+    b.push(mulAll(tr(0, CY, 0), rotX(PI / 2)));
+    const prof = F ? [
+      [0, -HR, CLEAR], [0.112, -HR, ACC], [0.128, -0.05, STONE], [0.165, -0.054, GLOW], [0.188, -0.0555, STONE], [0.226, -H, EDGE], [R, -0.042, STONE],
+      [R, -0.008, FAINT], [R, 0.008, STONE], [R, 0.042, EDGE], [0.226, H, STONE], [0.188, 0.0555, GLOW], [0.165, 0.054, STONE], [0.128, 0.05, ACC], [0.112, HR, CLEAR], [0, HR]
+    ] : [
+      [0, -HR, CLEAR], [0.12, -HR, STONE], [0.165, -0.054, GLOW], [0.2, -0.056, STONE], [R, -0.042, STONE], [R, 0.042, STONE], [0.2, 0.056, GLOW], [0.165, 0.054, STONE], [0.12, HR, CLEAR], [0, HR]
+    ];
+    b.lathe(prof, F ? 24 : 8, STONE);
+    b.pop();
+    return b;
+  }
+
+  // ======================= Artifact 2: relic_key =======================
+  // A slender six-sided rod (0.8 m) with a slow twist, lying on two stone rests. Glowing channels run along three of its
+  // faces, so they spiral round it.
+  function relicKey(d) {
+    const b = new MB(), F = d > 0, CY = 0.108, TW = TAU * 0.85;
+    // rests: chamfered block plus two sloped jaws forming a V (built in the z-y plane, extruded along x)
+    for (const X of [-0.24, 0.24]) {
+      tier(b, F ? cutRect(0.045, 0.075, 0.015, X, 0) : rect4(0.045, 0.075, X, 0), 0, 0.07, F ? 0.008 : 0, STONE, EDGE);
+      for (const s of [-1, 1]) {
+        const prof = [[s * 0.018, 0.07], [s * 0.07, 0.07], [s * 0.07, 0.112], [s * 0.052, 0.122]];   // (z, y)
+        const x0 = X - 0.035, x1 = X + 0.035, P3 = x => prof.map(([z, y]) => [x, y, z]);
+        const A = P3(x0), Q = P3(x1);
+        for (let i = 0; i < 4; i++) { const j = (i + 1) % 4, mz = (prof[i][0] + prof[j][0]) / 2 - s * 0.05, my = (prof[i][1] + prof[j][1]) / 2 - 0.095; fq(b, [A[i], A[j], Q[j], Q[i]], i === 3 ? ACC : STONE, [0, my, mz]); }
+        if (F) { fpoly(b, A, STONE, [-1, 0, 0]); fpoly(b, Q, STONE, [1, 0, 0]); }
+      }
+      if (F) strip(b, [X - 0.03, 0.035, 0.075], [X + 0.03, 0.035, 0.075], 0.006, [0, 0, 1], 0.002, FAINT);
+    }
+    // rod stations: [x, radius]; head collar at -x, pointed tip at +x
+    const R0 = 0.034;
+    const st = F ? [[-0.4, 0.0], [-0.398, 0.03], [-0.392, 0.046], [-0.36, 0.046], [-0.352, 0.036], [-0.34, R0]] : [[-0.4, 0.0], [-0.392, 0.046], [-0.36, 0.046], [-0.34, R0]];
+    const NS = F ? 22 : 5; for (let i = 1; i <= NS; i++) st.push([-0.34 + i * 0.64 / NS, R0]);
+    if (F) st.push([0.33, 0.04], [0.345, 0.04], [0.352, 0.03]); st.push([0.4, 0.0]);
+    const ang = x => x * TW / 0.8, P = (x, r, k, da) => { const a = ang(x) + k * TAU / 6 + (da || 0); return [x, CY + r * Math.cos(a), r * Math.sin(a)]; };
+    for (let i = 0; i < st.length - 1; i++) {
+      const [x0, r0] = st[i], [x1, r1] = st[i + 1], collar = (r0 > R0 + 0.001 || r1 > R0 + 0.001);
+      for (let k = 0; k < 6; k++) {
+        const mid = P((x0 + x1) / 2, 1, k + 0.5); const want = [r0 > r1 + 0.001 ? 0.5 : r1 > r0 + 0.001 ? -0.5 : 0, mid[1] - CY, mid[2]];
+        fq(b, [P(x0, r0, k), P(x0, r0, k + 1), P(x1, r1, k + 1), P(x1, r1, k)], collar && F ? EDGE : STONE, want);
+      }
+    }
+    // spiral channels along faces 0, 2, 4 of the shaft (flush strips 1.5 mm proud of the face centre)
+    const hw = F ? 0.11 : 0.16, x0 = -0.335, x1 = 0.325, NC = F ? 22 : 5;
+    for (let k = 0; k < 6; k += 2) for (let i = 0; i < NC; i++) {
+      const xa = x0 + (x1 - x0) * i / NC, xb = x0 + (x1 - x0) * (i + 1) / NC, rr = R0 * Math.cos(PI / 6) + 0.0015, rr2 = rr / Math.cos(hw * TAU / 6);
+      const m = P((xa + xb) / 2, 1, k + 0.5);
+      fq(b, [P(xa, rr2, k + 0.5, -hw * TAU / 6), P(xa, rr2, k + 0.5, hw * TAU / 6), P(xb, rr2, k + 0.5, hw * TAU / 6), P(xb, rr2, k + 0.5, -hw * TAU / 6)], GLOW, [0, m[1] - CY, m[2]]);
+    }
+    if (F) for (const x of [-0.37, 0.34]) for (let k = 0; k < 6; k++) {   // glowing notch on each collar face
+      const m = P(x, 1, k + 0.5), rr = (x < 0 ? 0.046 : 0.04) * Math.cos(PI / 6) + 0.0015;
+      fq(b, [P(x - 0.004, rr / Math.cos(0.3), k + 0.5, -0.3), P(x - 0.004, rr / Math.cos(0.3), k + 0.5, 0.3), P(x + 0.004, rr / Math.cos(0.3), k + 0.5, 0.3), P(x + 0.004, rr / Math.cos(0.3), k + 0.5, -0.3)], GLOW, [0, m[1] - CY, m[2]]);
+    }
+    return b;
+  }
+
+  // ======================= Artifact 3: relic_tablet =======================
+  // A 0.6 x 0.4 x 0.06 m slab with cut corners, leaning back on a small stand; its front (+z) is rows of glowing glyphs.
+  function relicTablet(d) {
+    const b = new MB(), F = d > 0, W = 0.3, Hh = 0.4, T = 0.03, LEAN = 0.2, r = rnd(5151);
+    // stand: base block with a lip in front and a sloped back prop
+    tier(b, cutRect(0.26, 0.1, F ? 0.03 : 0.0, 0, -0.01), 0, 0.04, F ? 0.008 : 0, STONE, EDGE);
+    B(b, -0.24, 0.24, 0.04, 0.075, 0.035, 0.06, STONE);
+    if (F) for (const s of [-1, 1]) {       // two raking props behind the slab
+      const x = s * 0.17, pr = [[x - 0.02, 0.04, -0.1], [x + 0.02, 0.04, -0.1], [x + 0.02, 0.04, -0.035], [x - 0.02, 0.04, -0.035]];
+      const top = [[x - 0.02, 0.2, -0.07], [x + 0.02, 0.2, -0.07]];
+      fq(b, [pr[0], pr[1], top[1], top[0]], STONE, [0, 0.5, -1]);
+      fpoly(b, [pr[0], pr[3], top[0]], STONE, [-1, 0, 0]); fpoly(b, [pr[1], pr[2], top[1]], STONE, [1, 0, 0]);
+    } else B(b, -0.2, 0.2, 0.04, 0.12, -0.09, -0.05, STONE);
+    if (F) strip(b, [-0.22, 0.02, 0.09], [0.22, 0.02, 0.09], 0.006, [0, 0, 1], 0.002, FAINT);
+    // slab, local frame: x across, y up the slab, z out of the face; leaning back by LEAN
+    b.push(mulAll(tr(0, 0.04, 0.0), rotX(-LEAN)));
+    b.push(rotX(PI / 2));          // so the tier helper's extrusion (local y) becomes +z and its outline (x, z) maps to (x, -y)
+    const out = cutRect(W, Hh / 2, F ? 0.045 : 0.03, 0, -Hh / 2);
+    tier(b, out, -T, T, F ? 0.008 : 0, STONE, STONE, true);
+    b.pop();
+    const n = [0, 0, 1], o = [0, 0, 0], FZ = T + 0.0015;
+    if (F) {
+      // border channel
+      const bx = W - 0.022, y0 = 0.022, y1 = Hh - 0.022, c = 0.03;
+      const pts = [[bx, y0 + c], [bx, y1 - c], [bx - c, y1], [-bx + c, y1], [-bx, y1 - c], [-bx, y0 + c], [-bx + c, y0], [bx - c, y0]];
+      for (let i = 0; i < 8; i++) { const a = pts[i], q = pts[(i + 1) % 8]; strip(b, [a[0], a[1], T], [q[0], q[1], T], 0.006, n, 0.0015, GLOW); }
+      // five rows of glyphs with faint baselines
+      const rows = 5, cols = 9, cw = 0.056, rh = 0.066, gs = 0.04;
+      for (let i = 0; i < rows; i++) {
+        const cy = Hh - 0.065 - i * rh;
+        strip(b, [-0.255, cy - 0.028, T], [0.255, cy - 0.028, T], 0.003, n, 0.0012, FAINT);
+        for (let j = 0; j < cols; j++) {
+          if ((i === 4 && j > 5)) continue;        // the last line ends early
+          const cx = -0.224 + j * cw; glyph(b, glyphPrims(r), planeMap(o, [1, 0, 0], [0, 1, 0], n, cx, cy, gs, FZ), n, GLOW, 8, 0.11);
+        }
+      }
+    } else {
+      for (let i = 0; i < 5; i++) { const cy = 0.335 - i * 0.066; for (let j = 0; j < 8; j++) if (!(i === 4 && j > 4)) strip(b, [-0.235 + j * 0.06, cy, T], [-0.205 + j * 0.06, cy, T], 0.03, n, 0.0015, (i + j) % 3 ? FAINT : GLOW); }
+    }
+    b.pop();
+    return b;
+  }
+
+  // ======================= Artifact 4: relic_sphere =======================
+  // A 0.45 m sphere of nested curved shell segments over a glowing core (the seams glow), held in a three-pronged cradle.
+  function relicSphere(d) {
+    const b = new MB(), F = d > 0, C = [0, 0.335, 0], R = 0.225;
+    // cradle base and prongs
+    tier(b, ngon(6, 0.16, PI / 6), 0, 0.05, F ? 0.01 : 0, STONE, EDGE);
+    if (F) { const Q = ngon(6, 0.108, PI / 6); for (let i = 0; i < 6; i++) { const a = Q[i], q = Q[(i + 1) % 6]; strip(b, [a[0], 0.05, a[1]], [q[0], 0.05, q[1]], 0.008, [0, 1, 0], 0.0015, GLOW); } }
+    const prong = [[0.07, 0.04], [0.13, 0.1], [0.19, 0.19], [0.232, 0.29], [0.232, 0.37], [0.205, 0.45], [0.175, 0.49]];
+    for (let k = 0; k < 3; k++) {
+      const a = PI / 2 + k * TAU / 3, P = smooth((F ? prong : [prong[0], prong[2], prong[4], prong[6]]).map(([rr, y]) => [rr * Math.cos(a), y, rr * Math.sin(a)]), F ? 2 : 1);
+      tubeC(b, P, t => (F ? 0.02 : 0.018) * (1 - 0.55 * t), 4, (t, kk) => (F && Math.abs(kk - 0.25) < 0.01) ? STONE : STONE, 0.125);
+      if (F) { const tip = P[P.length - 1]; b.sphere(tip[0], tip[1], tip[2], 0.012, 4, GLOW); }
+    }
+    // the ball, tilted
+    b.push(mulAll(tr(C[0], C[1], C[2]), rotZ(0.32), rotX(0.22)));
+    const sph = (rr, th, ph) => [rr * Math.sin(th) * Math.cos(ph), rr * Math.cos(th), rr * Math.sin(th) * Math.sin(ph)];
+    // glowing core (seen through the seams)
+    grid(b, F ? 12 : 6, F ? 6 : 3, (u, v) => sph(R * 0.93, PI * v, -TAU * u), GLOW, true);
+    // shell panels: polar caps and latitude bands, staggered like brickwork, alternating radius so they read as nested
+    const gap = F ? 0.055 : 0.08;
+    const bands = F ? [[0, 0.52, 1], [0.52, 1.18, 5], [1.18, 1.96, 6], [1.96, 2.62, 5], [2.62, PI, 1]] : [[0, 1.05, 1], [1.05, 2.09, 4], [2.09, PI, 1]];
+    bands.forEach(([t0, t1, n], bi) => {
+      for (let k = 0; k < n; k++) {
+        const rr = R * ((bi + k) % 2 ? 1.0 : 1.03), off = bi % 2 ? 0.5 : 0, p0 = (k + off) / n * TAU + gap / 2, p1 = (k + 1 + off) / n * TAU - gap / 2;
+        const th0 = t0 === 0 ? 0 : t0 + gap / 2, th1 = t1 >= PI - 1e-6 ? PI : t1 - gap / 2;
+        if (n === 1) grid(b, F ? 10 : 6, 1, (u, v) => sph(rr, th0 + (th1 - th0) * v, -TAU * u), t0 === 0 ? (F ? EDGE : STONE) : STONE, true);
+        else grid(b, F ? 3 : 2, F ? 2 : 1, (u, v) => sph(rr, th0 + (th1 - th0) * v, p0 + (p1 - p0) * (1 - u)), (bi + k) % 2 ? STONE : EDGE);
+      }
+    });
+    b.pop();
+    return b;
+  }
+
+  // ======================= Artifact 5: relic_seed =======================
+  // A twisted seed about 0.5 m tall: its cross-section is a nautilus spiral that steps back once per turn, and the step
+  // winds round and up the seed. The step's lip carries the glowing line.
+  function relicSeed(d) {
+    const b = new MB(), F = d > 0, TWIST = TAU * 1.1, K0 = 0.6;
+    tier(b, ngon(6, 0.085, 0), 0, 0.04, F ? 0.008 : 0, STONE, EDGE);
+    if (F) { const Q = ngon(12, 0.058, 0); for (let i = 0; i < 12; i++) { const a = Q[i], q = Q[(i + 1) % 12]; strip(b, [a[0], 0.04, a[1]], [q[0], 0.04, q[1]], 0.006, [0, 1, 0], 0.0015, GLOW); } }
+    const Y = v => 0.018 + 0.482 * v, Rv = v => 0.118 * Math.pow(Math.sin(PI * (0.09 + 0.91 * Math.pow(v, 0.72))), 0.78);
+    const pt = (u, v, k) => { const th = u * TAU + TWIST * v, rr = Rv(v) * (K0 + (1 - K0) * Math.pow(u, 0.9)) * (k || 1); return [rr * Math.cos(th), Y(v), rr * Math.sin(th)]; };
+    const nu = F ? 12 : 5, nv = F ? 26 : 11;
+    grid(b, nu, nv, (u, v) => pt(u, v), (u, v) => (F && Math.abs(u - 0.5) < 0.04) ? [0.07, 0.07, 0.083, 0] : STONE, false, true);
+    // the step face (closes the spiral) and the glowing lip strip
+    for (let j = 0; j < nv; j++) {
+      const v0 = j / nv, v1 = (j + 1) / nv, o0 = pt(1, v0), o1 = pt(1, v1), i0 = pt(0, v0), i1 = pt(0, v1);
+      const th = TWIST * (v0 + v1) / 2, want = [-Math.sin(th), 0, Math.cos(th)];
+      fq(b, [i0, o0, o1, i1], F ? ACC : GLOW, want);
+      if (F) {
+        const a0 = pt(0.945, v0, 1.022), a1 = pt(0.945, v1, 1.022), q0 = pt(1, v0, 1.022), q1 = pt(1, v1, 1.022), m = pt(1, (v0 + v1) / 2);
+        fpoly(b, [a0, q0, a1], GLOW, [m[0], 0, m[2]]); fpoly(b, [q0, q1, a1], GLOW, [m[0], 0, m[2]]);   // short diagonal: the strip is sheared by the twist
+        const e0 = lerp(i0, o0, 0.5), e1 = lerp(i1, o1, 0.5);   // and a thin glowing line down the middle of the step face
+        strip(b, e0, e1, 0.005, want, 0.003, GLOW);
+      }
+    }
+    return b;
+  }
+
+  // ======================= socket_pillar =======================
+  // Waist-high pedestal (seat at 1.1 m), 0.7 m wide, a shallow cradle on top. A glowing channel runs from the cradle down
+  // its front (+z) and 0.6 m out across the floor.
+  const PIL_SEAT = [0, 1.1, 0];
+  function socketPillar(d) {
+    const b = new MB(), F = d > 0, r = rnd(4242);
+    const base = cutRect(0.38, 0.38, 0.1), bodyB = cutRect(0.33, 0.33, 0.09), bodyT = cutRect(0.285, 0.285, 0.075), capP = cutRect(0.33, 0.33, 0.085);
+    tier(b, base, 0, 0.08, F ? 0.015 : 0, STONE, EDGE);
+    loft(b, bodyB, 0.08, bodyT, 1.02, STONE);
+    loft(b, bodyT, 1.02, capP, 1.04, EDGE);
+    tier(b, capP, 1.04, 1.1, F ? 0.012 : 0, STONE, STONE);
+    // cradle: raised lip with a glowing inner bevel round a lighter seat
+    const prof = F ? [[0.25, 1.1, STONE], [0.244, 1.132, STONE], [0.205, 1.137, STONE], [0.182, 1.124, GLOW], [0.174, 1.103, ACC], [0.17, 1.1005, ACC], [0, 1.1005]]
+      : [[0.25, 1.1, STONE], [0.21, 1.135, GLOW], [0.17, 1.1005, ACC], [0, 1.1005]];
+    b.lathe(prof, F ? 24 : 8, STONE);
+    if (F) for (let k = 0; k < 6; k++) {    // six small glowing studs round the lip
+      const a = k * TAU / 6 + PI / 6, x = Math.cos(a) * 0.226, z = Math.sin(a) * 0.226; fq(b, [[x - 0.008, 1.1375, z - 0.008], [x + 0.008, 1.1375, z - 0.008], [x + 0.008, 1.1375, z + 0.008], [x - 0.008, 1.1375, z + 0.008]], GLOW, [0, 1, 0]);
+    }
+    // the channel: across the cap top, down the cap face, down the tapered body, over the plinth and out along the floor
+    const w = F ? 0.03 : 0.04, cw = 0.012;
+    const fz = (y) => 0.33 - (0.33 - 0.285) * (y - 0.08) / 0.94;
+    const capZ = F ? 0.33 - 0.012 : 0.33;
+    strip(b, [0, 1.1, 0.246], [0, 1.1, capZ], w, [0, 1, 0], 0.0015, GLOW);
+    if (F) { const a = [0, 1.1, capZ], q = [0, 1.088, 0.33]; strip(b, a, q, w, norm([0, 1, 1]), 0.0015, GLOW); }
+    strip(b, [0, F ? 1.088 : 1.1, 0.33], [0, 1.04, 0.33], w, [0, 0, 1], 0.0015, GLOW);
+    { const a = [0, 1.02, fz(1.02)], q = [0, 0.08, fz(0.08)], n = norm([0, 0.045, 0.94]); strip(b, a, q, w, n, 0.0015, GLOW); }
+    if (F) { const a = [0, 1.04, 0.33], q = [0, 1.02, fz(1.02)]; strip(b, a, q, w, norm([0, -1, 2]), 0.0015, GLOW); }
+    strip(b, [0, 0.08, 0.38 - (F ? 0.015 : 0)], [0, 0.08, 0.31], w, [0, 1, 0], 0.0015, GLOW);
+    if (F) strip(b, [0, 0.08, 0.38 - 0.015], [0, 0.065, 0.38], w, norm([0, 1, 1]), 0.0015, GLOW);
+    strip(b, [0, F ? 0.065 : 0.08, 0.38], [0, 0, 0.38], w, [0, 0, 1], 0.0015, GLOW);
+    strip(b, [0, 0, 0.38], [0, 0, 0.98], w, [0, 1, 0], 0.003, GLOW);
+    if (F) {
+      fq(b, [[-0.03, 0.003, 0.98], [0, 0.003, 0.95], [0.03, 0.003, 0.98], [0, 0.003, 1.01]], GLOW, [0, 1, 0]);   // the channel ends in a diamond
+      // faint side channels framing the main one, and a column of glyphs either side
+      for (const s of [-1, 1]) {
+        const x = s * 0.09; strip(b, [x, 0.98, fz(0.98)], [x, 0.14, fz(0.14)], cw * 0.5, norm([0, 0.045, 0.94]), 0.0015, FAINT);
+        for (let i = 0; i < 4; i++) {
+          const y = 0.88 - i * 0.17, cx = s * 0.17, z = fz(y), n = norm([0, 0.045, 0.94]), uy = norm([0, 0.94, -0.045]);
+          glyph(b, glyphPrims(r), planeMap([0, y, z], [1, 0, 0], uy, n, cx, 0, 0.085, 0.0018), n, GLOW, 8, 0.1);
+        }
+      }
+      // faint ring line round the body just under the cap
+      for (let i = 0; i < 8; i++) { const a = bodyT[i], q = bodyT[(i + 1) % 8], y = 0.98, k = (fz(y) / 0.285); const n = norm([(a[0] + q[0]) / 2, 0.04, (a[1] + q[1]) / 2]); if (Math.abs(n[2] - 1) < 0.01) continue; strip(b, [a[0] * k * 1.0, y, a[1] * k], [q[0] * k, y, q[1] * k], 0.006, n, 0.0015, FAINT); }
+    }
+    return b;
+  }
+
+  // ======================= floor_plate =======================
+  // A hexagonal plate 2.4 m across (corner to corner), 0.08 m tall, with a glowing ring near its edge and one glyph in the middle.
+  function floorPlate(d) {
+    const b = new MB(), F = d > 0, Y = 0.08, n = [0, 1, 0];
+    const top = tier(b, ngon(6, 1.2, 0), 0, Y, F ? 0.02 : 0, STONE, STONE);
+    const ringSeg = F ? 36 : 12;
+    glyph(b, [{ t: 'c', x: 0, y: 0, rad: 0.95 }], (x, y) => [x, Y + 0.002, y], n, GLOW, ringSeg, 0.07);
+    if (F) {
+      const Q = ngon(6, 0.83, 0); for (let i = 0; i < 6; i++) { const a = Q[i], q = Q[(i + 1) % 6]; strip(b, [a[0], Y, a[1]], [q[0], Y, q[1]], 0.02, n, 0.0015, FAINT); }
+      for (const p of ngon(6, 1.07, 0)) fq(b, [[p[0] - 0.035, Y + 0.002, p[1]], [p[0], Y + 0.002, p[1] - 0.035], [p[0] + 0.035, Y + 0.002, p[1]], [p[0], Y + 0.002, p[1] + 0.035]], GLOW, n);
+    }
+    // the central glyph: a ring pierced by a stem, a seed in the ring, an arc beneath and two dots
+    const prims = F ? [{ t: 'c', x: 0, y: 0.12, rad: 0.24 }, { t: 's', x0: 0, y0: -0.5, x1: 0, y1: -0.12 }, { t: 'd', x: 0, y: 0.12, s: 0.14 },
+      { t: 'a', x: 0, y: -0.2, rad: 0.36, a0: PI + 0.5, a1: TAU - 0.5 }, { t: 'd', x: -0.34, y: 0.3, s: 0.1 }, { t: 'd', x: 0.34, y: 0.3, s: 0.1 }, { t: 's', x0: -0.18, y0: 0.5, x1: 0.18, y1: 0.5 }]
+      : [{ t: 'c', x: 0, y: 0.12, rad: 0.24 }, { t: 's', x0: 0, y0: -0.5, x1: 0, y1: -0.12 }, { t: 'd', x: 0, y: 0.12, s: 0.14 }];
+    glyph(b, prims, (x, y) => [x * 1.1, Y + 0.002, -y * 1.1], n, GLOW, F ? 20 : 8, 0.07);
+    return b;
+  }
+
+  // ======================= dais =======================
+  // Octagonal, 9 m across the flats, three 0.4 m steps up to 1.2 m. Eight glowing channels run in from the edge, up every
+  // step, to an emitter ring in the middle of the top. A ring of glyphs circles the emitter.
+  const DAIS_EMIT = [0, 1.32, 0];
+  function dais(d) {
+    const b = new MB(), F = d > 0, r = rnd(9090), APO = [4.5, 3.75, 3.0], TOP = [0.4, 0.8, 1.2], CH = F ? 0.05 : 0;
+    const oct = a => ngon(8, a / Math.cos(PI / 8), PI / 8);
+    for (let i = 0; i < 3; i++) tier(b, oct(APO[i]), i ? TOP[i - 1] : 0, TOP[i], CH, STONE, i === 2 ? STONE : STONE);
+    // radial channels on the face mid-lines
+    const w = F ? 0.09 : 0.12;
+    for (let k = 0; k < 8; k++) {
+      const a = k * PI / 4, dx = Math.cos(a), dz = Math.sin(a), P = (rr, y) => [dx * rr, y, dz * rr], nf = [dx, 0, dz];
+      for (let i = 0; i < 3; i++) {
+        const y0 = i ? TOP[i - 1] : 0, y1 = TOP[i], A = APO[i], inner = i < 2 ? APO[i + 1] : 1.45;
+        strip(b, P(A, y0), P(A, y1 - CH), w, nf, 0.003, GLOW);
+        if (F) strip(b, P(A, y1 - CH), P(A - CH, y1), w, norm([dx, 1, dz]), 0.003, GLOW);
+        strip(b, P(A - CH, y1), P(inner, y1), w, [0, 1, 0], 0.003, GLOW);
+      }
+      if (F) fq(b, [P(1.45 - 0.09, 1.203), add(P(1.45, 1.203), [-dz * 0.09, 0, dx * 0.09]), P(1.45 + 0.09, 1.203), add(P(1.45, 1.203), [dz * 0.09, 0, -dx * 0.09])], GLOW, [0, 1, 0]);
+    }
+    // faint lines just inside each step's edge
+    if (F) for (let i = 0; i < 3; i++) { const Q = oct(APO[i] - 0.22), y = TOP[i]; for (let k = 0; k < 8; k++) { const a = Q[k], q = Q[(k + 1) % 8]; strip(b, [a[0], y, a[1]], [q[0], y, q[1]], 0.025, [0, 1, 0], 0.002, FAINT); } }
+    // emitter ring: a low raised ring with a glowing inner bevel round a dished lens
+    const prof = F ? [[1.3, 1.2, EDGE], [1.26, 1.3, STONE], [1.1, 1.32, STONE], [0.96, 1.32, GLOW], [0.9, 1.31, STONE], [0.84, 1.25, ACC], [0.6, 1.235, FAINT], [0.5, 1.232, ACC], [0, 1.22]]
+      : [[1.3, 1.2, STONE], [1.1, 1.32, STONE], [0.9, 1.31, GLOW], [0.6, 1.235, ACC], [0, 1.22]];
+    b.lathe(prof, F ? 40 : 12, STONE);
+    if (F) {
+      b.lathe([[0.2, 1.221, CLEAR], [0, 1.222]], 12, CLEAR);
+      // ring of glyphs round the emitter, curved along the circle
+      const N = 23, Rg = 1.95, s = 0.32;
+      for (let i = 0; i < N; i++) {
+        const th = i / N * TAU + 0.05, prims = glyphPrims(r);
+        glyph(b, prims, (x, y) => { const rr = Rg + y * s, t = th - x * s / Rg; return [rr * Math.cos(t), 1.2025, rr * Math.sin(t)]; }, [0, 1, 0], GLOW, 8, 0.1);
+      }
+      // two faint guide circles either side of the glyph ring
+      for (const rr of [1.7, 2.2]) glyph(b, [{ t: 'c', x: 0, y: 0, rad: rr }], (x, y) => [x, 1.2015, y], [0, 1, 0], FAINT, 48, 0.02);
+    }
+    return b;
+  }
+  const DAIS_COL = [];
+  for (const [a, t] of [[4.5, 0.4], [3.75, 0.8], [3.0, 1.2]]) for (const rot of [0, PI / 4]) DAIS_COL.push({ type: 'box', x: 0, z: 0, hx: a, hz: a, rot, top: t, solid: false });
+  DAIS_COL.push({ type: 'cyl', x: 0, z: 0, r: 1.3, top: 1.32, solid: false });
+
+  // ======================= monolith =======================
+  // A 2.2 x 0.9 x 10 m slab with chamfered edges and a vertical column of glowing glyphs on each broad face (+z and -z).
+  function monolith(d) {
+    const b = new MB(), F = d > 0, r = rnd(31337), HX = 1.1, HZ = 0.45, Ht = 10, c = 0.12;
+    const P = cutRect(HX, HZ, c);
+    tier(b, P, 0, Ht, F ? 0.1 : 0, STONE, EDGE);
+    if (F) for (const s of [-1, 1]) for (const x of [-1, 1]) strip(b, [x * (HX - c / 2), 0, s * (HZ - c / 2)], [x * (HX - c / 2), Ht - 0.1, s * (HZ - c / 2)], 0.012, norm([x, 0, s]), 0.003, FAINT);
+    for (const s of [-1, 1]) {
+      const n = [0, 0, s], ux = [s, 0, 0], z = s * HZ;
+      // the column: two faint rails, glyphs between them, a glowing foot bar and crown bar
+      for (const x of [-0.42, 0.42]) strip(b, [x, 0.6, z], [x, 9.3, z], F ? 0.025 : 0.04, n, 0.004, FAINT);
+      strip(b, [-0.42, 0.6, z], [0.42, 0.6, z], 0.05, n, 0.004, GLOW);
+      strip(b, [-0.42, 9.3, z], [0.42, 9.3, z], 0.05, n, 0.004, GLOW);
+      const N = F ? 13 : 13;
+      for (let i = 0; i < N; i++) {
+        const y = 1.05 + i * 0.63;
+        if (F) glyph(b, glyphPrims(r), planeMap([0, 0, z], ux, [0, 1, 0], n, 0, y, 0.5, 0.005), n, GLOW, 6, 0.1);
+        else { const w2 = 0.12 + 0.12 * ((i * 7) % 3); strip(b, [-w2, y, z], [w2, y, z], 0.18, n, 0.005, GLOW); }
+      }
+    }
+    return b;
+  }
+
+  // ======================= portal_ring =======================
+  // A thick stone ring framing a round tunnel mouth: inner radius 3.0, outer 4.2, 0.8 m deep, centred on the origin with its
+  // axis along +z. Bold glowing ring and a ring of glyphs on the -z face; a single glowing ring on the +z face.
+  function portalRing(d) {
+    const b = new MB(), F = d > 0, r = rnd(777), RI = 3.0, RO = 4.2, D2 = 0.4, seg = F ? 32 : 14, ch = 0.12;
+    b.push(rotX(PI / 2));                 // lathe axis (local y) -> +z ; local z -> -y
+    // profile in [radius, z]: start on the inner bore at the -z face and go round the cross-section with outward normals
+    const prof = F ? [[RI, D2, STONE], [RI, -D2 + ch, EDGE], [RI + ch, -D2, STONE], [RO - ch, -D2, EDGE], [RO, -D2 + ch, STONE], [RO, D2, STONE], [RI, D2]]
+      : [[RI, D2, STONE], [RI, -D2, STONE], [RO, -D2, STONE], [RO, D2, STONE], [RI, D2]];
+    // lathe normals point "right" of travel; this order (bore, front face outward, rim, back face inward) gives outward normals
+    b.lathe(prof.map(p => [p[0], -p[1], p[2]]), seg, STONE);
+    b.pop();
+    // glowing inlays: map polar (radius, angle) on the plane z = zf facing nz
+    const face = (zf, nz) => (x, y) => [x, y, zf + nz * 0.006];
+    const F0 = face(-D2, -1), F1 = face(D2, 1);
+    glyph(b, [{ t: 'c', x: 0, y: 0, rad: 3.95 }], F0, [0, 0, -1], GLOW, seg, 0.17);
+    glyph(b, [{ t: 'c', x: 0, y: 0, rad: RI + 0.24 }], F0, [0, 0, -1], GLOW, seg, F ? 0.08 : 0.1);
+    if (F) {
+      glyph(b, [{ t: 'c', x: 0, y: 0, rad: 3.95 }], F1, [0, 0, 1], FAINT, 16, 0.08);
+      // twelve-fold key marks on the rim face and glyph ring between the rings
+      const N = 16, Rg = 3.6, s = 0.5;
+      for (let i = 0; i < N; i++) {
+        const th = PI / 2 - i / N * TAU, prims = glyphPrims(r);
+        glyph(b, prims, (x, y) => { const rr = Rg + y * s, t = th - x * s / Rg; return [rr * Math.cos(t), rr * Math.sin(t), -D2 - 0.006]; }, [0, 0, -1], GLOW, 6, 0.15);
+      }
+      for (let i = 0; i < 12; i++) {
+        const t = i / 12 * TAU, c = Math.cos(t), s2 = Math.sin(t);
+        fq(b, [[c * (RO + 0.005) - s2 * 0.05, s2 * (RO + 0.005) + c * 0.05, -0.25], [c * (RO + 0.005) + s2 * 0.05, s2 * (RO + 0.005) - c * 0.05, -0.25], [c * (RO + 0.005) + s2 * 0.05, s2 * (RO + 0.005) - c * 0.05, 0.25], [c * (RO + 0.005) - s2 * 0.05, s2 * (RO + 0.005) + c * 0.05, 0.25]], GLOW, [c, s2, 0]);
+      }
+    } else {
+      for (let i = 0; i < 8; i++) { const t = i / 8 * TAU + PI / 8, c = Math.cos(t), s2 = Math.sin(t); strip(b, [c * 3.45, s2 * 3.45, -D2], [c * 3.75, s2 * 3.75, -D2], 0.2, [0, 0, -1], 0.006, GLOW); }
+    }
+    return b;
+  }
+
+  // ======================= entity: hologram of an ancient builder =======================
+  // About 6.5 m tall, lowest point (the tail tip) at y = 0, facing +z. Tall slender body, long narrow faceless head that
+  // sweeps back into a crest, four long arms (upper pair cupping an empty space in front of the chest, lower pair hanging),
+  // a tail instead of legs, a pointed shoulder mantle and long thin drapes.
+  // Channels: r = rim emphasis (1 on silhouettes/edges), g = inner structure (ribs, seams, spine), b = glyph markings, a = density.
+  const ENT_CHART = [0, 4.45, 0.98];
+  const E_H0 = [0, 5.22, 0.1], E_TL = 0.5, E_AX = [0, Math.cos(E_TL), -Math.sin(E_TL)], E_AZ = [0, Math.sin(E_TL), Math.cos(E_TL)], E_HL = 1.2;
+  const ENT_HEAD = [0, +(E_H0[1] + E_AX[1] * (-0.08 + 0.45 * E_HL)).toFixed(3), +(E_H0[2] + E_AX[2] * (-0.08 + 0.45 * E_HL)).toFixed(3)];
+  function entity(d) {
+    const b = new MB(), F = d > 0, r = rnd(6502);
+    const rim = n => cl01(Math.pow(1 - Math.abs(n[2]) * 0.92, 1.7) * 0.85 + 0.12);   // silhouette as seen from the front
+    const C = (rr, g, bb, a) => [cl01(rr), cl01(g), cl01(bb), a === undefined ? 1 : a];
+
+    // ---- body: tail tip (y = 0) to the base of the neck ----
+    // keyframes: [y, centre z, half-width x, half-depth z]
+    const KF = [[0, -0.62, 0.0, 0.0], [0.35, -0.5, 0.035, 0.035], [1.0, -0.3, 0.09, 0.085], [1.8, -0.12, 0.16, 0.14], [2.6, -0.02, 0.24, 0.2], [3.05, 0.0, 0.27, 0.21],
+      [3.45, 0.0, 0.19, 0.155], [3.75, 0.0, 0.2, 0.16], [4.15, 0.02, 0.33, 0.22], [4.5, 0.02, 0.41, 0.245], [4.78, 0.0, 0.36, 0.22], [4.96, 0.0, 0.14, 0.12], [5.02, 0.02, 0.1, 0.09]];
+    const YT = 5.02;
+    const kf = y => { let i = 0; while (i < KF.length - 2 && KF[i + 1][0] < y) i++; const a = KF[i], q = KF[i + 1], t = cl01((y - a[0]) / (q[0] - a[0])), s = t * t * (3 - 2 * t); return [y, a[1] + (q[1] - a[1]) * s, a[2] + (q[2] - a[2]) * s, a[3] + (q[3] - a[3]) * s]; };
+    // cross-section: rounded, with a keel down the front of the chest and a flatter back
+    const body = (u, v) => {
+      const [y, cz, hx, hz] = kf(v * YT), th = u * TAU, c = Math.cos(th), s = Math.sin(th);
+      const keel = 1 + 0.16 * Math.pow(Math.max(0, s), 8) * cl01((y - 3.8) / 0.3), back = s < 0 ? 0.86 : 1;
+      return [hx * c, y, cz + hz * s * keel * back];
+    };
+    // crisp structure lines: rows sit tight round each line so the g band stays thin
+    const LINES = F ? [0.8, 1.4, 2.0, 2.6, 3.3, 4.0, 4.18, 4.36, 4.54, 4.88] : [1.4, 3.3, 4.18, 4.54];
+    const FILL = F ? [0, 0.18, 0.4, 0.6, 1.1, 1.7, 2.3, 2.85, 3.05, 3.5, 3.68, 3.84, 4.72, 4.96, 5.02] : [0, 0.3, 0.8, 2.2, 3.0, 3.75, 4.75, 4.96, 5.02];
+    const hw = F ? 0.022 : 0.04, rowsY = FILL.slice(); for (const l of LINES) rowsY.push(l - hw, l, l + hw);
+    rowsY.sort((a, c) => a - c); const vs = rowsY.map(y => y / YT);
+    const base = F ? 12 : 6, us = []; for (let i = 0; i < base; i++) us.push(i / base); if (F) us.push(0.25 - 0.012, 0.25 + 0.012, 0.75 - 0.012, 0.75 + 0.012);
+    us.sort((a, c) => a - c); us.push(1);
+    const bodyCol = (u, v, p, n) => {
+      const y = p[1], front = Math.sin(u * TAU);
+      let g = LINES.some(l => Math.abs(y - l) < 0.004) ? (y > 3.9 && y < 4.7 ? (front > -0.3 ? 1 : 0.45) : 0.85) : 0;
+      if (Math.abs(u - 0.75) < 0.004 && y > 0.4) g = 1;                    // spine line down the back
+      if (Math.abs(u - 0.25) < 0.004 && y > 3.85 && y < 4.95) g = 1;       // keel line down the chest
+      return C(rim(n) + (y < 0.7 ? 0.35 : 0), g, 0, 1);
+    };
+    grid(b, us.length - 1, vs.length - 1, body, bodyCol, true, true, us, vs);
+
+    // ---- neck and head (the head leans back along E_AX) ----
+    tubeC(b, [[0, 4.92, 0.01], [0, 5.06, 0.05], [0, 5.18, 0.09], [0, 5.3, 0.08]], t => 0.088 - 0.012 * t, F ? 8 : 4, (t, k, p, n) => C(rim(n), t < 0.12 ? 0.8 : 0, 0, 1));
+    const headR = t => { const s = Math.max(0, Math.sin(PI * Math.pow(t, 0.68))); return [0.14 * Math.pow(s, 0.55), 0.22 * Math.pow(s, 0.5)]; };
+    const headP = (u, t) => {
+      const [rx, rz] = headR(t), th = u * TAU, c = Math.cos(th), s = Math.sin(th);
+      const front = s > 0 ? 1 + 0.1 * Math.sin(PI * Math.min(1, t * 1.3)) : 0.9;       // smooth forward dome where a face would be
+      const along = -0.08 + t * E_HL;
+      return [rx * c, E_H0[1] + E_AX[1] * along + E_AZ[1] * rz * s * front, E_H0[2] + E_AX[2] * along + E_AZ[2] * rz * s * front];
+    };
+    const hvs = F ? [0, 0.05, 0.1, 0.16, 0.2, 0.24, 0.32, 0.42, 0.52, 0.62, 0.72, 0.82, 0.9, 0.96, 1] : [0, 0.12, 0.35, 0.6, 0.85, 1];
+    const hus = []; const hb = F ? 12 : 6; for (let i = 0; i < hb; i++) hus.push(i / hb); if (F) hus.push(0.5 - 0.015, 0.5 + 0.015, 1 - 0.015); hus.sort((a, c) => a - c); hus.push(1);
+    grid(b, hus.length - 1, hvs.length - 1, headP, (u, v, p, n) => {
+      let g = Math.abs(v - 0.2) < 0.001 ? 0.9 : 0;                                    // seam ring where the head meets the neck
+      if ((Math.abs(u - 0.5) < 0.001 || u < 0.001 || u > 0.999) && v > 0.3 && v < 0.9) g = 0.75;   // lines along both sides
+      return C(rim(n) + (v > 0.9 ? 0.3 : 0), g, 0, 1);
+    }, true, true, hus, hvs);
+    // crest: a thin blade along the back midline that sweeps over the top and past it
+    {
+      const n = F ? 12 : 4, bases = [], tips = [];
+      for (let i = 0; i <= n; i++) {
+        const t = 0.26 + 0.74 * i / n, p = headP(0.75, Math.min(t, 0.999)), q = headP(0.75, Math.min(t, 0.999) - 0.01), w = headP(0.74, Math.min(t, 0.999));
+        let nn = norm(cross(sub(w, p), sub(q, p))); if (dot(nn, sub(p, add(E_H0, scale(E_AX, -0.08 + t * E_HL)))) < 0) nn = scale(nn, -1);
+        if (t > 0.97) nn = norm(lerp(nn, E_AX, (t - 0.97) / 0.03));
+        const hgt = 0.03 + 0.24 * Math.pow((t - 0.26) / 0.74, 1.6);
+        bases.push(add(p, scale(nn, -0.01))); tips.push(add(add(p, scale(nn, hgt)), scale(E_AX, 0.08 * Math.pow((t - 0.26) / 0.74, 3))));
+      }
+      for (const sx of [-1, 1]) for (let i = 0; i < n; i++) {
+        const th = 0.014 * (1 - i / n) + 0.004, P = [add(bases[i], [sx * th, 0, 0]), add(bases[i + 1], [sx * th, 0, 0]), tips[i + 1], tips[i]];
+        const id = P.map((p, k) => b.v(p[0], p[1], p[2], sx, 0, 0, C(k < 2 ? 0.5 : 1, k < 2 ? 0.5 : 0, 0, 0.9))); if (sx > 0) b.quad(id[0], id[1], id[2], id[3]); else b.quad(id[0], id[3], id[2], id[1]);
+      }
+    }
+    // markings on the head: a column of three small glyphs where a face would be, and a short arc either side (b channel)
+    const headSurf = (t, th, off) => { const u = th / TAU, p = headP(u, t), q = headP(u, t + 0.01), w = headP(u + 0.01, t); let n = norm(cross(sub(w, p), sub(q, p))); if (n[2] < 0 && Math.sin(th) > 0.5) n = scale(n, -1); return { p: add(p, scale(n, off)), n, up: norm(sub(q, p)), rt: norm(sub(w, p)) }; };
+    const surfMap = (S, s) => (x, y) => add(add(S.p, scale(S.rt, -x * s)), scale(S.up, y * s));
+    const GC = C(0.6, 0, 1, 1);
+    for (const [t, kind] of (F ? [[0.3, 1], [0.41, 0], [0.52, 4]] : [[0.38, 1]])) { const S = headSurf(t, PI / 2, 0.006); glyph(b, glyphPrims(r, kind), surfMap(S, F ? 0.085 : 0.11), S.n, GC, F ? 8 : 6, 0.12); }
+    if (F) for (const sx of [-1, 1]) { const th = PI / 2 - sx * 0.95, S = headSurf(0.42, th, 0.006); const out = [S.p[0] * 0 + sx, 0, 0.3]; if (dot(S.n, out) < 0) S.n = scale(S.n, -1); glyph(b, [{ t: 'a', x: 0, y: 0, rad: 0.32, a0: PI * 0.55, a1: PI * 1.45 }, { t: 's', x0: 0.05, y0: -0.3, x1: 0.05, y1: 0.3 }], surfMap(S, 0.14), S.n, GC, 6, 0.12); }
+
+    // ---- shoulder mantle: a thin plate round the neck base, drawn out into points over the shoulders ----
+    {
+      const mant = (u, v) => { const th = u * TAU, c = Math.cos(th), s = Math.sin(th), ac = Math.pow(Math.abs(c), 3), R0 = 0.14 + v * (0.15 + 0.6 * ac); return [R0 * c, 4.99 - 0.14 * Math.pow(v, 1.4) - 0.24 * ac * v * v, R0 * s * (s > 0 ? 0.75 : 1.0) - 0.04 * v]; };
+      const mu = F ? 20 : 8;
+      grid(b, mu, F ? 3 : 1, mant, (u, v, p, n) => C(v > 0.99 ? 1 : 0.3 + rim(n) * 0.4, Math.abs(v - 0.67) < 0.01 ? 0.8 : 0, 0, 0.85), true, false, null, F ? [0, 0.6, 0.72, 1] : null);
+      grid(b, mu, 1, (u, v) => { const p = mant(u, v); return [p[0], p[1] - 0.04 * (1 - v), p[2]]; }, (u, v) => C(v > 0.99 ? 1 : 0.4, 0, 0, 0.8), true, true);
+    }
+
+    // ---- arms ----
+    function limb(ctrl, r0, r1, seams, per, segs) {
+      const P = smooth(ctrl, per);
+      tubeC(b, P, t => r0 + (r1 - r0) * t + 0.012 * Math.exp(-Math.pow((t - seams[0]) / 0.04, 2)), segs, (t, k, p, nn) => {
+        const g = seams.reduce((m, s) => Math.max(m, 1 - Math.abs(t - s) / 0.03), 0);
+        return C(rim(nn), g, 0, 1);
+      });
+      return P;
+    }
+    const UPA = sx => [[sx * 0.4, 4.74, 0.0], [sx * 0.72, 4.58, 0.0], [sx * 0.97, 4.24, 0.24], [sx * 0.9, 4.08, 0.6], [sx * 0.66, 4.1, 0.88], [sx * 0.5, 4.16, 0.96]];
+    const LOA = sx => [[sx * 0.3, 4.3, -0.04], [sx * 0.52, 4.0, -0.1], [sx * 0.66, 3.4, -0.12], [sx * 0.7, 2.8, -0.04], [sx * 0.67, 2.3, 0.08]];
+    for (const sx of [-1, 1]) {
+      const up = UPA(sx), lo = LOA(sx);
+      limb(up, 0.095, 0.05, [0.45, 0.97], F ? 3 : 1, F ? 7 : 4);
+      limb(lo, 0.075, 0.042, [0.5, 0.97], F ? 3 : 1, F ? 6 : 4);
+      // upper hand: palm low on the side of a 0.42 m ball of space round the chart point; four long fingers spread front to
+      // back and curl up round the ball, so the two hands hold it like a globe
+      const wrist = up[up.length - 1], Cc = ENT_CHART, Rr = 0.42, fs = F ? 4 : 3, n0 = norm([sx * 0.85, -0.5, 0.05]), palm = add(Cc, scale(n0, Rr + 0.03));
+      tubeC(b, [wrist, palm], t => 0.05 - 0.01 * t, fs, (t, k, p, nn) => C(rim(nn), t < 0.15 ? 0.9 : 0, 0, 1));
+      const az0 = Math.atan2(n0[2], n0[0]), el0 = Math.asin(n0[1]);
+      for (const [spread, curl] of (F ? [[-0.42, 1.05], [-0.08, 1.2], [0.27, 1.15], [0.66, 0.8]] : [[-0.25, 1.1], [0.45, 1.0]])) {
+        const pts = [palm], NF = F ? 6 : 3;
+        for (let i = 1; i <= NF; i++) {
+          const t = i / NF, az = az0 + sx * spread * (0.35 + 0.65 * t), elv = el0 + curl * t, rr = Rr + 0.03 - 0.035 * t;
+          pts.push([Cc[0] + rr * Math.cos(elv) * Math.cos(az), Cc[1] + rr * Math.sin(elv), Cc[2] + rr * Math.cos(elv) * Math.sin(az)]);
+        }
+        tubeC(b, pts, t => 0.03 * (1 - 0.7 * t), fs, (t, k, p, nn) => C(rim(nn) + (t > 0.85 ? 0.4 : 0), (Math.abs(t - 0.38) < 0.06 || Math.abs(t - 0.7) < 0.06) ? 0.85 : 0, 0, 1));
+      }
+      // lower hand: palm and three long fingers, relaxed and slightly curled
+      const lw = lo[lo.length - 1], d0 = norm(sub(lo[4], lo[3])), lp = add(lw, scale(d0, 0.12));
+      tubeC(b, [lw, lp], t => 0.042 - 0.006 * t, fs, (t, k, p, nn) => C(rim(nn), t < 0.15 ? 0.9 : 0, 0, 1));
+      for (const off of (F ? [-1, 0, 1] : [-0.6, 0.6])) {
+        const pts = [lp], NF = F ? 4 : 2, spread = [sx * 0.02 * (1 + off), 0, 0.05 * off];
+        for (let i = 1; i <= NF; i++) { const t = i / NF; pts.push(add(add(lp, scale(d0, 0.4 * t)), add(scale(spread, t * 2), [-sx * 0.05 * t * t, 0, 0.12 * t * t]))); }
+        tubeC(b, pts, t => 0.022 * (1 - 0.65 * t), fs, (t, k, p, nn) => C(rim(nn) + (t > 0.85 ? 0.4 : 0), Math.abs(t - 0.45) < 0.08 ? 0.85 : 0, 0, 1));
+      }
+      // glyph band down the outer side of the upper forearm (b channel)
+      if (F) {
+        const P = smooth(up.slice(2, 5), 3);
+        for (let i = 0; i < 3; i++) {
+          const t = 0.15 + i * 0.3, k = Math.min(P.length - 2, Math.floor(t * (P.length - 1))), p = P[k], q = P[k + 1], dir = norm(sub(q, p));
+          const outw = norm(sub([sx, 0.7, 0], scale(dir, dot([sx, 0.7, 0], dir)))), rt = norm(cross(outw, dir));
+          glyph(b, glyphPrims(r), surfMap({ p: add(p, scale(outw, 0.074 + 0.012)), n: outw, up: dir, rt }, 0.075), outw, GC, 6, 0.13);
+        }
+      }
+    }
+
+    // ---- chest markings: a ring sigil on the breastbone and an arc of glyphs over it ----
+    {
+      const at = (x, y) => { const [, , hx] = kf(y), u = Math.acos(Math.max(-1, Math.min(1, x / hx))) / TAU, v = y / YT; const p = body(u, v), q = body(u, v + 0.003), w = body(u + 0.003, v); return { p, n: norm(cross(sub(q, p), sub(w, p))) }; };
+      const map = (cx, cy, s) => (x, y) => { const X = cx + x * s, Y = cy + y * s, S = at(-X, Y); return add(S.p, scale(S.n, 0.01)); };
+      glyph(b, [{ t: 'c', x: 0, y: 0, rad: 0.36 }, { t: 'd', x: 0, y: 0, s: 0.2 }, { t: 's', x0: 0, y0: -0.48, x1: 0, y1: -0.8 }], map(0, 4.45, 0.2), at(0, 4.45).n, GC, F ? 14 : 8, 0.1);
+      if (F) for (let i = 0; i < 6; i++) { const a = PI * (0.12 + 0.76 * i / 5), cx = Math.cos(a) * 0.29, cy = 4.4 + Math.sin(a) * 0.22; glyph(b, glyphPrims(r), map(cx, cy, 0.085), at(-cx, cy).n, GC, 6, 0.13); }
+    }
+
+    // ---- inner structure seen through the hologram: a spine with nodes and a geometric heart (g channel) ----
+    if (F) {
+      const sp = []; for (let i = 0; i <= 12; i++) { const y = 0.35 + (4.95 - 0.35) * i / 12, [, cz] = kf(y); sp.push([0, y, cz - 0.03]); }
+      sp.push([0, 5.15, 0.07], [0, 5.5, -0.02]);
+      tubeC(b, sp, 0.016, 3, C(0.2, 1, 0, 0.6));
+      for (let i = 2; i < 13; i += 2) { const p = sp[i]; b.push(tr(p[0], p[1], p[2])); b.lathe([[0, -0.03], [0.05, 0], [0, 0.03]], 4, C(0.2, 1, 0, 0.6)); b.pop(); }
+      b.push(mulAll(tr(0, 4.36, 0.02), rotY(PI / 4))); b.lathe([[0, -0.15], [0.1, 0], [0, 0.15]], 4, C(0.3, 1, 0.6, 0.7)); b.pop();
+    }
+
+    // ---- drapes: long thin translucent fins from the back of the mantle, tapering to points ----
+    {
+      const nu = F ? 3 : 1, nv = F ? 11 : 3;
+      for (const sx of [-1, 1]) {
+        const t0 = [sx * 0.3, 4.86, -0.24], t1 = [sx * 0.66, 4.76, -0.12], L = 3.3;
+        grid(b, nu, nv, (u, v) => {
+          const w = Math.pow(1 - v, 0.8), uu = 0.5 + (u - 0.5) * w, p = lerp(t0, t1, uu);
+          return [p[0] + sx * (0.18 * v + 0.05 * Math.sin(v * 5)), p[1] - L * v, p[2] - 0.22 * v + 0.05 * Math.sin(v * 6 + u * 2)];
+        }, (u, v) => C(u < 0.01 || u > 0.99 ? 1 : 0.3, Math.abs(u - 0.5) < 0.2 ? 0.5 : 0, 0, 0.3 + 0.15 * (1 - v)), false, sx < 0);
+      }
+      grid(b, F ? 2 : 1, F ? 10 : 3, (u, v) => { const w = 0.17 * Math.pow(1 - v, 0.7) + 0.01; return [(u - 0.5) * 2 * w, 4.88 - v * 3.9, -0.26 - 0.3 * v * v - 0.04 * Math.sin(v * 7)]; },
+        (u, v) => C(u < 0.01 || u > 0.99 ? 1 : 0.3, Math.abs(u - 0.5) < 0.2 ? 0.6 : 0, 0, 0.3 + 0.15 * (1 - v)), false, true);
+    }
+    return b;
+  }
+
+  return {
+    name: 'ancient',
+    items: [
+      { name: 'relic_lens', budget: 900, build: relicLens, colliders: [] },
+      { name: 'relic_key', budget: 900, build: relicKey, colliders: [] },
+      { name: 'relic_tablet', budget: 900, build: relicTablet, colliders: [] },
+      { name: 'relic_sphere', budget: 900, build: relicSphere, colliders: [] },
+      { name: 'relic_seed', budget: 900, build: relicSeed, colliders: [] },
+      { name: 'socket_pillar', budget: 600, build: socketPillar, colliders: [{ type: 'box', x: 0, z: 0, hx: 0.38, hz: 0.38, rot: 0, top: 1.1, solid: true }], attach: [PIL_SEAT] },
+      { name: 'floor_plate', budget: 300, build: floorPlate, colliders: [] },
+      { name: 'dais', budget: 1500, build: dais, colliders: DAIS_COL, attach: [DAIS_EMIT] },
+      { name: 'monolith', budget: 400, build: monolith, colliders: [{ type: 'box', x: 0, z: 0, hx: 1.1, hz: 0.45, rot: 0, top: 10, solid: true }] },
+      { name: 'portal_ring', budget: 800, build: portalRing, colliders: [] },
+      // attach order: [chart, head] (names in attachNames)
+      { name: 'entity', budget: 4000, build: entity, colliders: [], attach: [ENT_CHART, ENT_HEAD], attachNames: ['chart', 'head'] }
+    ]
+  };
 }) }
 };
 /* ---------- placed assets: modelled by sub-agents with the AssetKit, placed here ---------- */
@@ -11602,7 +12364,7 @@ function gameHud() {
   $('gstat').textContent = game.trial ? courses[game.trial.c].name + '  ' + fmtTime(game.t - game.trial.t0) : 'Dishes ' + game.online + '/7' + (game.carrying ? '  ·  carrying ' + game.carrying : '');
   const ob = objective(), mk = $('marker');
   const us = $('ustat'); us.hidden = !cave.under;
-  if (cave.under) us.textContent = (cave.dead ? 'Light dead' : 'Light ' + Math.ceil(cave.batt) + '%') + (cave.spares ? ' +' + cave.spares : '') + (line.reel ? ' · Line ' + Math.round(line.left) + ' m' : '') + (CAVR.humid > 80 ? ' · Humidity ' + Math.round(CAVR.humid) + '%' : '') + (LAKER.air < 99.5 || inWater(state.px, state.py + 1.6, state.pz) ? ' · Air ' + Math.round(LAKER.air) + '%' : '');
+  if (cave.under) us.textContent = (cave.dead ? 'Light dead' : 'Light ' + Math.ceil(cave.batt) + '%') + (cave.spares ? ' +' + cave.spares : '') + (line.reel ? ' · Line ' + Math.round(line.left) + ' m' : '') + (CAVR.humid > 80 ? ' · Humidity ' + Math.round(CAVR.humid) + '%' : '') + (LAKER.air < 99.5 || inWater(state.px, state.py + 1.6, state.pz) ? ' · Air ' + Math.round(LAKER.air) + '%' : '') + (SITER.inSiteP && !siteState().solved ? ' · Artifacts ' + siteState().r.filter(v => v > 0).length + '/5' : '');
   if (!ob || cave.under) { mk.hidden = true; return; }
   const m = cam.vp, x = ob.p[0], y = ob.p[1], z = ob.p[2]; let cx = m[0] * x + m[4] * y + m[8] * z + m[12], cy = m[1] * x + m[5] * y + m[9] * z + m[13]; const cw = m[3] * x + m[7] * y + m[11] * z + m[15];
   let nx = cx / Math.abs(cw), ny = cy / Math.abs(cw); if (cw < 0) { nx = -nx; ny = -ny; const k = 0.9 / Math.max(Math.abs(nx), Math.abs(ny), 1e-6); nx *= k; ny *= k; }
@@ -12149,6 +12911,7 @@ function lakeUpdate(dt) {
   LAKER.camUnder = inWater(cam.eye[0], cam.eye[1], cam.eye[2]);
 }
 function logShow(i) {
+  if (i < 0 && SITER.card >= 0) siteTake();
   LAKER.read = i; const c = $('logCard'); if (!c) return; if (i >= 0) $('logBtn').hidden = true; c.hidden = i < 0; game.paused = i >= 0 ? true : !$('menu').hidden;
   if (i >= 0) { $('logTitle').textContent = LOG[i][0]; $('logText').textContent = LOG[i][1]; $('logPage').textContent = (i + 1) + ' / ' + LOG.length; $('logPrev').disabled = i === 0; $('logNext').disabled = i === LOG.length - 1; tone([660], 0.08, 'square', 0.05); }
 }
@@ -12245,7 +13008,7 @@ function geoScatter(hits) {
   const pick = opts => { let x = r() * opts.reduce((a, o) => a + o[1], 0); for (const o of opts) { x -= o[1]; if (x <= 0) return o[0]; } return opts[0][0]; };
   const hueOf = () => (pick([[0.0, 4], [0.2, 2], [0.4, 3], [0.6, 1.5], [0.8, 0.35]]) + (r() - 0.5) * 0.06 + 1) % 1;   // cyan, mint, violet, rose, a rare gold
   const poolD = p => Math.hypot(p[0] - C.pool[0], p[2] - C.pool[1]);
-  const LG = CV.GEO.ledge, free = (p, gap) => Math.hypot(p[0] - LG[0], p[1] - LG[1], p[2] - LG[2]) > 30 && titans.every(t => Math.hypot(t.p[0] - p[0], t.p[1] - p[1], t.p[2] - p[2]) > gap);   // and none on or right by the balcony
+  const LG = CV.GEO.ledge, free = (p, gap) => Math.hypot(p[0] - LG[0], p[1] - LG[1], p[2] - LG[2]) > 30 && Math.hypot(p[0] - CV.SITE.bore[0][0], p[2] - CV.SITE.bore[0][2]) > 45 && titans.every(t => Math.hypot(t.p[0] - p[0], t.p[1] - p[1], t.p[2] - p[2]) > gap);   // and none on or right by the balcony
   const addTitan = (p, ax, L, wf, kind) => { titans.push({ p: [p[0] - ax[0] * 0.05 * L, p[1] - ax[1] * 0.05 * L, p[2] - ax[2] * 0.05 * L], ax, L, wf, roll: r() * 6.283, hue: hueOf(), glow: 0.8 + r() * 0.45, v: ['titan_a', 'titan_b', 'titan_c'][(r() * 3) | 0], kind }); };
   const floors = hits.filter(h => h.n[1] > 0.6 && h.p[1] > LWL + 0.5), walls = hits.filter(h => Math.abs(h.n[1]) < 0.45 && h.p[1] > LWL + 18), ceils = hits.filter(h => h.n[1] < -0.6);
   const rnd = a => a[(r() * a.length) | 0];
@@ -12270,7 +13033,7 @@ function geoScatter(hits) {
     const p = h.p, n = h.n; if (!clear(p) || inTitan(p)) continue;
     const t = near(p), hv = t && r() < 0.85 ? (t.hue + (r() - 0.5) * 0.1 + 1) % 1 : hueOf(), ceil = n[1] < -0.45, floor = n[1] > 0.55;
     if (r() < 0.62) { const s = 0.8 + r() * 1.5; push('druse_patch', [p[0] - n[0] * 0.05, p[1] - n[1] * 0.05, p[2] - n[2] * 0.05, s, n[0], n[1], n[2], 1, hv, 0.9 + r() * 0.5, r() * 6.283, 0]); }
-    if (r() < 0.32 && tunnelD(p[0], p[1], p[2]) > 4.5 && Math.hypot(p[0] - LG[0], p[2] - LG[2]) > LG[3] + 1) {
+    if (r() < 0.32 && tunnelD(p[0], p[1], p[2]) > 4.5 && !(p[0] > CV.SITE.bore[0][0] - 7 && Math.abs(p[2] - CV.SITE.bore[0][2]) < 6.5) && Math.hypot(p[0] - LG[0], p[2] - LG[2]) > LG[3] + 1) {
       const item = floor ? pick([['crystal_cluster', 3], ['druse_cluster', 3], ['crystal_point', 2]]) : ceil ? pick([['druse_cluster', 3], ['crystal_spray', 2], ['crystal_point', 2]]) : pick([['crystal_cluster', 2], ['druse_cluster', 3], ['crystal_point', 2], ['crystal_spray', 1]]);
       const [ta, tb] = tangent(n), j = 0.5, L = item === 'druse_cluster' ? 0.8 + r() * 1.4 : 0.5 * Math.exp(r() * 2.1);
       const ax = norm([n[0] + (ta[0] * (r() - 0.5) + tb[0] * (r() - 0.5)) * j * 2, n[1] + (ta[1] * (r() - 0.5) + tb[1] * (r() - 0.5)) * j * 2, n[2] + (ta[2] * (r() - 0.5) + tb[2] * (r() - 0.5)) * j * 2]);
@@ -12443,13 +13206,184 @@ function drawGeoFx() {
   }
   gl.depthMask(true); gl.disable(gl.BLEND); gl.bindVertexArray(null);
 }
+/* ---------- the ancient site: black stone halls, five artifacts, the answer to the signal, and the hologram ---------- */
+const SITEC = CV.SITE, SF = SITEC.floor, SITE_C = [SITEC.chamber[0], SF, SITEC.chamber[1]], SITE_SH = SITEC.bore[1];
+const SITE_NOTES = [261.6, 293.7, 329.6, 392, 440];                       // each socket hums one note (C D E G A)
+const SITE_SEQ = [0, 2, 4, 1, 3];                                        // the answer: walking it traces a five-pointed star
+const SITE_ANG = k => Math.PI + 0.6283 + k * 1.2566;                     // sockets and plates sit round the dais, none in front of the doorway
+const RELICS = [   // [model, name, where it rests, scan text (draft: Christopher may rewrite any of it)]
+  ['relic_lens', 'the lens', 'vest', 'A disc of black stone, harder than anything in the suit\'s tables. Dating: about 4 million years. It is warm. It should not be warm.'],
+  ['relic_key', 'the rod', 0, 'A six-sided rod. Its channels spiral at exactly the rhythm of the signal\'s pulse: the suit counts the turns, and they match the array\'s carrier beat for beat.'],
+  ['relic_tablet', 'the tablet', 1, 'Rows of glyphs. The suit AI finds 212 different symbols, and no row repeats. Its best guess: not writing. A map, or a count.'],
+  ['relic_sphere', 'the sphere', 2, 'Nested shells, each turning very slowly against the next. No motor, and no power source the suit can find. It has been turning for four million years.'],
+  ['relic_seed', 'the seed', 3, 'A spiral, grown rather than carved: the same spiral the giant crystals grow in. Did they carve the crystals, or grow them?'],
+];
+const SITE_MSG = [   // the hologram's message as the suit AI hears it: [seconds after it appears, text, seconds shown] (draft text)
+  [2.5, 'SUIT AI: Unknown language. Listening…', 5],
+  [8.5, 'SUIT AI · translation 2%: "…long ago… we [listened]… [far]…"', 6],
+  [15.5, 'SUIT AI · translation 5%: "…the signal… [was ours]… you [answered]…"', 6],
+  [22.5, 'SUIT AI: It is showing a star chart. Matching it against the survey catalogue…', 6],
+  [29, 'SUIT AI: 97% match. It is speaking about one star system: catalogue K-2271, 418 light years from here.', 8],
+  [38, 'SUIT AI: Translation stalls at 7%. It keeps returning to the same star.', 7],
+];
+const SITER = { props: [], relics: [], sockets: [], plates: [], cols: [], dais: null, ring: null, card: -1, phase: 'idle', pt: 0, step: 0, lit: [0, 0, 0, 0, 0], flash: [0, 0, 0, 0, 0],
+  power: 0.35, holo: 0, msgT: -1, said: 0, chart: 0, big: 0, hl: 0, inSite: false, seen: false, near: -1, ent: null, entYaw: 0, emit: null, stars: null, nStars: 0, motes: null, nMotes: 0, lx: 0, lz: 0, sp: 0, onPrev: -2, inSiteP: false };
+function siteState() { if (!cave.site) cave.site = { r: [0, 0, 0, 0, 0], solved: 0, seen: 0 }; return cave.site; }   // r: 0 at rest, 1 carried, 2+k set in socket k
+function siteInit() {
+  const M = (x, y, z, yaw, s) => new Float32Array(mulAll(tr(x, y, z), rotY(yaw || 0), sc(s || 1, s || 1, s || 1)));
+  const put = (item, x, y, z, yaw, opt) => { const a = assetItem('ancient', item); if (!a) return null; const cs = Math.cos(yaw || 0), sn = Math.sin(yaw || 0);
+    const p = Object.assign({ item, mesh: a, p: [x, y, z], yaw: yaw || 0, m: M(x, y, z, yaw), r: a.r || 3, glow: 1, at: (a.it.attach || []).map(q => [x + q[0] * cs + q[2] * sn, y + q[1], z - q[0] * sn + q[2] * cs]) }, opt || {});
+    SITER.props.push(p);
+    for (const c of a.it.colliders || []) { const wx = x + c.x * cs + c.z * sn, wz = z - c.x * sn + c.z * cs, top = y + c.top;   // the same shapes the surface uses
+      if (c.type === 'cyl') SITER.cols.push({ top, solid: !!c.solid, h: (px, pz) => (px - wx) ** 2 + (pz - wz) ** 2 <= c.r * c.r });
+      else { const an = (yaw || 0) + (c.rot || 0), ca = Math.cos(an), sa = Math.sin(an); SITER.cols.push({ top, solid: !!c.solid, h: (px, pz) => { const dx = px - wx, dz = pz - wz; return Math.abs(dx * ca - dz * sa) <= c.hx && Math.abs(dx * sa + dz * ca) <= c.hz; } }); } }
+    return p; };
+  const H = SITEC.hall, C = SITE_C;
+  // the portal on the giant cavern's east terrace, seen from the balcony across the whole cavern
+  const B0 = SITEC.bore[0]; SITER.ring = put('portal_ring', B0[0] + 6, B0[1], B0[2], Math.PI / 2, { glow: 1.4, far: 400 });
+  // the hall of monoliths: six pairs, broad faces to the middle
+  for (let i = 0; i < 6; i++) { const x = H[0] - 30 + i * 12; for (const s of [-1, 1]) put('monolith', x, SF, H[1] + s * 7.6, 0); }
+  // the five artifacts on their pedestals: one in the round room under the shaft, one in each side room
+  RELICS.forEach((R, i) => { let x, z, fx, fz; if (R[2] === 'vest') { x = SITEC.vest[0]; z = SITEC.vest[1] + 4.2; fx = SITEC.vest[0]; fz = SITEC.vest[1]; } else { const rm = SITEC.rooms[R[2]]; x = rm[0]; z = rm[1] + (rm[1] > H[1] ? 2.6 : -2.6); fx = rm[0]; fz = H[1]; }
+    const ped = put('socket_pillar', x, SF, z, Math.atan2(fx - x, fz - z)); const seat = ped && ped.at[0] ? ped.at[0] : [x, SF + 1.1, z];
+    SITER.relics.push({ i, item: R[0], name: R[1], text: R[3], home: seat, ped, mesh: assetItem('ancient', R[0]) }); });
+  // the final chamber: the dais, five sockets, five floor plates
+  SITER.dais = put('dais', C[0], SF, C[2], 0);
+  for (let k = 0; k < 5; k++) { const a = SITE_ANG(k), sx = C[0] + Math.cos(a) * 15, sz = C[2] + Math.sin(a) * 15, px = C[0] + Math.cos(a) * 9, pz = C[2] + Math.sin(a) * 9, face = Math.atan2(C[0] - sx, C[2] - sz);
+    const s = put('socket_pillar', sx, SF, sz, face); SITER.sockets.push({ k, p: [sx, SF, sz], seat: s && s.at[0] ? s.at[0] : [sx, SF + 1.1, sz], prop: s });
+    const pl = put('floor_plate', px, SF + 0.005, pz, face, { plate: k }); SITER.plates.push({ k, p: [px, SF, pz], prop: pl }); }
+  // the star chart: a few hundred stars in a ball, a band of the galaxy through it, and one star that matters
+  { const r = cavRnd(4271), P = []; for (let i = 0; i < 700; i++) { let x, y, z; do { x = r() * 2 - 1; y = r() * 2 - 1; z = r() * 2 - 1; } while (x * x + y * y + z * z > 1); if (i % 3 === 0) y *= 0.15; P.push(x, y, z, r() * 0.98); }
+    const S = [0.52, 0.18, -0.34]; P.push(...S, 1);                                                       // the star the entity keeps pointing to
+    for (let i = 0; i < 28; i++) { const a = i / 28 * Math.PI * 2; P.push(S[0] + Math.cos(a) * 0.08, S[1] + Math.sin(a) * 0.08, S[2], 2); }   // a ring round it
+    const vao = gl.createVertexArray(); gl.bindVertexArray(vao); const vb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vb); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(P), gl.STATIC_DRAW); gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 4, gl.FLOAT, false, 16, 0); gl.bindVertexArray(null); SITER.stars = vao; SITER.nStars = P.length / 4; }
+  // light rising from the dais while the hologram is on
+  { const r = cavRnd(777), P = []; for (let i = 0; i < 260; i++) { const a = r() * 6.283, d = Math.sqrt(r()) * 1.6; P.push(Math.cos(a) * d, r(), Math.sin(a) * d, r()); }
+    const vao = gl.createVertexArray(); gl.bindVertexArray(vao); const vb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vb); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(P), gl.STATIC_DRAW); gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 4, gl.FLOAT, false, 16, 0); gl.bindVertexArray(null); SITER.motes = vao; SITER.nMotes = P.length / 4; }
+  SITER.ent = assetItem('ancient', 'entity');
+  SITER.emit = SITER.dais && SITER.dais.at[0] ? SITER.dais.at[0] : [C[0], SF + 1.2, C[2]];
+}
+const siteIn = (x, y, z) => x > SITEC.vest[0] - 9 && y < SF + 40 && Math.abs(z - SITEC.hall[1]) < 40;
+function siteFloorY(x, z, py) { let top = -1e9; if (!SITER.inSiteP) return top; for (const c of SITER.cols) if ((c.solid ? py >= c.top - 0.3 : c.top <= py + 1.3) && c.top > top && c.h(x, z)) top = c.top; return top; }   // dais steps you climb; pillars only if you land on top
+function sitePush() {                        // pillars and monoliths stop you; the dais's steps you climb
+  if (!SITER.inSiteP) { SITER.lx = state.px; SITER.lz = state.pz; return; }
+  for (const c of SITER.cols) if ((c.solid ? state.py < c.top - 0.3 : c.top > state.py + 1.3) && c.h(state.px, state.pz)) { state.px = SITER.lx; state.pz = SITER.lz; state.vx = state.vz = 0; return; }
+  SITER.lx = state.px; SITER.lz = state.pz;
+}
+function siteCard(i) {                       // the scan card for artifact i (reuses the dive log's card)
+  const R = SITER.relics[i]; SITER.card = i; LAKER.read = -1;
+  $('logTitle').textContent = 'SCAN · ' + R.name[0].toUpperCase() + R.name.slice(1); $('logText').textContent = R.text; $('logPage').textContent = 'Artifact ' + (i + 1) + ' of 5';
+  $('logPrev').style.display = $('logNext').style.display = 'none'; $('logCard').hidden = false; $('siteBtn').hidden = true; game.paused = true; tone([523, 784], 0.25, 'sine', 0.06);
+}
+function siteTake() {                        // closing the scan: the artifact goes into your pack
+  const i = SITER.card; SITER.card = -1; $('logPrev').style.display = $('logNext').style.display = '';
+  const st = siteState(); if (i >= 0 && st.r[i] === 0) { st.r[i] = 1; const n = st.r.filter(v => v > 0).length; toast('You take ' + SITER.relics[i].name + '. Artifacts found: ' + n + ' of 5.' + (n === 1 ? ' Something in the far chamber must fit it.' : ''), 5); saveGame(); }
+}
+function siteAct() { if (SITER.near >= 0) siteCard(SITER.near); }
+function siteSay(t, d) { toast(t, d); (SITER.log = SITER.log || []).push(t); }
+function siteUpdate(dt) {
+  const st = siteState(), P = [state.px, state.py, state.pz], E = cam.eye, t = state.time;
+  SITER.inSite = siteIn(E[0], E[1], E[2]); SITER.inSiteP = cave.under && siteIn(P[0], P[1], P[2]);
+  // first steps into the site
+  if (SITER.inSiteP && !st.seen && P[1] < SF + 3) { st.seen = 1; toast('The shaft opens into a room of black stone, cut perfectly smooth. Faint lines of light run away into the dark.', 8); tone([98, 147, 196], 3.5, 'sine', 0.06, 0.6); saveGame(); }
+  // artifacts: walk up to one to scan it
+  let near = -1; if (SITER.inSiteP) for (const R of SITER.relics) if (st.r[R.i] === 0 && Math.hypot(R.home[0] - P[0], R.home[2] - P[2]) < 2.3 && Math.abs(R.home[1] - P[1] - 1) < 2) near = R.i;
+  SITER.near = near; const b = $('siteBtn'); if (b) { b.hidden = near < 0 || SITER.card >= 0 || !$('logCard').hidden; if (near >= 0) b.textContent = 'Scan the artifact'; }
+  // sockets: carry an artifact to an empty one and it settles in
+  if (SITER.inSiteP && !st.solved) for (const S of SITER.sockets) {
+    if (st.r.some(v => v === 2 + S.k) || Math.hypot(S.p[0] - P[0], S.p[2] - P[2]) > 2.4) continue;
+    const i = st.r.indexOf(1); if (i < 0) break;
+    st.r[i] = 2 + S.k; tone([SITE_NOTES[S.k], SITE_NOTES[S.k] * 2], 1.6, 'sine', 0.07, 0.05); SITER.flash[S.k] = 1;
+    const placed = st.r.filter(v => v >= 2).length; toast(SITER.relics[i].name[0].toUpperCase() + SITER.relics[i].name.slice(1) + ' settles into the socket and hums one note. (' + placed + ' of 5)', 5);
+    if (placed === 5) { SITER.phase = 'wake'; SITER.pt = t; toast('All five notes sound together. Then the chamber plays them back to you in a pattern. It is waiting for an answer.', 9); }
+    saveGame(); break;
+  }
+  // the answer: the chamber plays the pattern on the plates; you walk it
+  const all = st.r.every(v => v >= 2);
+  if (!st.solved && all && SITER.phase === 'idle') { SITER.phase = 'wake'; SITER.pt = t; }
+  if (SITER.phase === 'wake' && t - SITER.pt > 3) { SITER.phase = 'play'; SITER.pt = t; SITER.step = 0; }
+  let on = -1; if (SITER.inSiteP) for (const p of SITER.plates) if (Math.hypot(p.p[0] - P[0], p.p[2] - P[2]) < 1.15 && P[1] < SF + 0.8) on = p.k;
+  if (SITER.phase !== 'answer') SITER.onPrev = on;   // only stepping onto a plate while it listens counts, not standing on one
+  if (SITER.phase === 'play') { const i = Math.floor((t - SITER.pt) / 0.9); if (i < 5 && i >= SITER.step) { const k = SITE_SEQ[i]; SITER.flash[k] = 1; tone([SITE_NOTES[k]], 0.7, 'sine', 0.08, 0.02); SITER.step = i + 1; }
+    if (t - SITER.pt > 5 * 0.9 + 0.6) { SITER.phase = 'answer'; SITER.step = 0; SITER.lit = [0, 0, 0, 0, 0]; SITER.pt = t; } }
+  if (SITER.phase === 'answer') {
+    const stepped = on >= 0 && on !== SITER.onPrev; SITER.onPrev = on;
+    if (stepped && !SITER.lit[on]) {
+      if (on === SITE_SEQ[SITER.step]) { SITER.lit[on] = 1; SITER.flash[on] = 1; SITER.step++; tone([SITE_NOTES[on]], 0.8, 'sine', 0.08, 0.02); SITER.pt = t;
+        if (SITER.step === 5) { st.solved = 1; SITER.phase = 'holo'; SITER.msgT = 0; SITER.said = 0; tone([130.8, 196, 261.6, 392, 523.3], 5, 'sine', 0.06, 1.2); toast('You answered. Light climbs out of the dais.', 6); saveGame(); } }
+      else { SITER.lit = [0, 0, 0, 0, 0]; SITER.step = 0; tone([110, 104], 0.6, 'sawtooth', 0.05); toast('The notes fall silent. The pattern plays again.', 4); SITER.phase = 'wake'; SITER.pt = t; } }
+    else if (SITER.step === 0 && t - SITER.pt > 14) { SITER.phase = 'wake'; SITER.pt = t - 2; }   // waited too long: play it again
+  }
+  if (st.solved && SITER.phase !== 'holo') { SITER.phase = 'holo'; SITER.lit = [1, 1, 1, 1, 1]; SITER.msgT = st.heard ? 999 : 0; }
+  // the hologram: rises from the bottom, speaks, shows the chart; step on the dais's middle to hear it again
+  if (SITER.phase === 'holo') {
+    SITER.holo = Math.min(1, SITER.holo + dt / 3.5);
+    if (SITER.inSiteP && Math.hypot(P[0] - SITE_C[0], P[2] - SITE_C[2]) < 1.6 && SITER.msgT > 47) { SITER.msgT = 0; SITER.said = 0; }
+    if (SITER.msgT >= 0 && SITER.msgT < 999) { SITER.msgT += dt;
+      while (SITER.said < SITE_MSG.length && SITER.msgT >= SITE_MSG[SITER.said][0]) { const m = SITE_MSG[SITER.said++]; siteSay(m[1], m[2]); }
+      if (SITER.msgT > 47 && !st.heard) { st.heard = 1; saveGame(); } }
+    const mt = SITER.msgT >= 999 ? 60 : SITER.msgT;
+    SITER.sp = mt > 2 && mt < 22 ? 0.5 + 0.5 * Math.sin(mt * 2.3) * Math.sin(mt * 0.7) : mt >= 22 && mt < 44 ? 0.3 : 0;   // the glyphs flicker as it speaks
+    if (SITER.sp > 0.6 && Math.random() < dt * 1.5 && SITER.inSite) tone([55 + 30 * Math.random(), 82 + 40 * Math.random()], 0.9, 'sine', 0.035, 0.3);
+    SITER.chart = Math.min(1, Math.max(0, (mt - 20) / 2)); SITER.big = Math.min(1, Math.max(0, (mt - 27) / 3)); SITER.hl = mt > 29 ? 1 : 0;
+  }
+  // the chamber's power: dim at first, brighter with each artifact, full once answered
+  const placed = st.r.filter(v => v >= 2).length; SITER.power += ((st.solved ? 1.25 : 0.35 + placed * 0.12 + (SITER.phase === 'wake' || SITER.phase === 'play' || SITER.phase === 'answer' ? 0.2 : 0)) - SITER.power) * Math.min(1, dt * 1.5);
+  for (let k = 0; k < 5; k++) SITER.flash[k] = Math.max(0, SITER.flash[k] - dt * 1.4);
+  // the entity turns slowly to face you
+  if (SITER.holo > 0) { const want = Math.atan2(P[0] - SITE_C[0], P[2] - SITE_C[2]); let d = want - SITER.entYaw; d = Math.atan2(Math.sin(d), Math.cos(d)); SITER.entYaw += d * Math.min(1, dt * 0.6); }
+}
+function siteUniforms(p) {
+  if (p.u.uSite) gl.uniform4f(p.u.uSite, SITE_C[0], SF, SITE_C[2], SITER.power);
+  if (p.u.uSiteH) { const e = SITER.emit || SITE_C; gl.uniform4f(p.u.uSiteH, e[0], e[1] + 4.5, e[2], SITER.holo * 1.6 * (0.9 + 0.1 * Math.sin(state.time * 13))); }
+}
+function siteEntM() { const e = SITER.emit || SITE_C, bob = Math.sin(state.time * 0.8) * 0.15; return mulAll(tr(e[0], e[1] + 0.9 + bob, e[2]), rotY(SITER.entYaw), sc(1, 1, 1)); }
+function drawSite() {                        // the builders' stone pieces, the artifacts, the portal ring
+  const E = cam.eye, inS = SITER.inSite, inG = GEOR.inGeo; if (!inS && !inG) return;
+  setCommon(pAnc); gl.uniform4f(pAnc.u.uUG, 1, cave.flash, cave.pday, cave.expo);
+  const st = siteState(), drawOne = (mesh, m, pos, glow, fl, gold, far) => { const d = Math.hypot(pos[0] - E[0], pos[1] - E[1], pos[2] - E[2]); if (d > (far || 160)) return;
+    gl.uniformMatrix4fv(pAnc.u.uM, false, m); gl.uniform4f(pAnc.u.uAnc, glow, fl, gold, 0); const g = d < 40 ? mesh.hi : mesh.lo; gl.bindVertexArray(g.vao); stats.cave += drawElems(g.count, gl.UNSIGNED_INT, 0); };
+  for (const p of SITER.props) { if (p === SITER.ring ? !inG && !inS : !inS) continue;
+    const pl = p.plate !== undefined ? p.plate : -1, lit = pl >= 0 ? Math.max(SITER.lit[pl] * 0.8, SITER.flash[pl] * 1.6) : 0;
+    drawOne(p.mesh, p.m, p.p, p === SITER.ring ? 1.4 : (p.glow || 1) * SITER.power, lit, pl >= 0 && lit > 0 ? 1 : 0, p.far); }   // the portal ring always burns bright: it is the landmark
+  if (inS) for (const R of SITER.relics) { const v = st.r[R.i]; if (v === 1 || !R.mesh) continue;   // carried ones are in your pack
+    const at = v === 0 ? R.home : SITER.sockets[v - 2].seat, k = v >= 2 ? v - 2 : -1;
+    drawOne(R.mesh, new Float32Array(mulAll(tr(at[0], at[1], at[2]), rotY(state.time * 0.3 + R.i))), at, 1.2 + (v === 0 ? 0.3 * Math.sin(state.time * 2 + R.i) : 0.5), k >= 0 ? SITER.flash[k] * 1.5 : 0, 1, 120); }
+  gl.uniform4f(pAnc.u.uUG, 0, cave.flash, cave.pday, cave.expo); gl.bindVertexArray(null);
+}
+function drawSiteFx() {                      // the hologram, the star chart, the light rising from the dais
+  if (!SITER.inSite || SITER.holo <= 0 || !SITER.ent) return;
+  gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE); gl.depthMask(false);
+  const M = siteEntM(), t = state.time, e = SITER.emit;
+  gl.useProgram(pHolo.p); gl.uniformMatrix4fv(pHolo.u.uVP, false, cam.vp32); gl.uniform3fv(pHolo.u.uCam, cam.eye); gl.uniformMatrix4fv(pHolo.u.uM, false, new Float32Array(M));
+  gl.uniform4f(pHolo.u.uHolo, SITER.holo, SITER.sp, t, SITER.holo < 1 ? 1 - SITER.holo : (Math.random() < 0.02 ? 0.6 : 0));
+  const g = SITER.ent.hi; gl.bindVertexArray(g.vao); stats.cave += drawElems(g.count, gl.UNSIGNED_INT, 0);
+  // light rising from the emitter
+  gl.useProgram(pMote.p); gl.uniformMatrix4fv(pMote.u.uVP, false, cam.vp32); gl.uniform1f(pMote.u.uT, t); gl.uniform1f(pMote.u.uPx, canvas.height / 900); gl.uniform4f(pMote.u.uBase, e[0], e[1], e[2], SITER.holo);
+  gl.bindVertexArray(SITER.motes); gl.drawArrays(gl.POINTS, 0, SITER.nMotes); stats.calls++;
+  // the star chart: first cupped in its upper hands, then spread out round it
+  if (SITER.chart > 0) { const ca = SITER.ent.it.attach && SITER.ent.it.attach[0] ? SITER.ent.it.attach[0] : [0, 4.2, 0.8], w = [M[0] * ca[0] + M[4] * ca[1] + M[8] * ca[2] + M[12], M[1] * ca[0] + M[5] * ca[1] + M[9] * ca[2] + M[13], M[2] * ca[0] + M[6] * ca[1] + M[10] * ca[2] + M[14]];
+    const bg = SITER.big, cx = w[0] + (e[0] - w[0]) * bg, cy = w[1] + (e[1] + 6 - w[1]) * bg, cz = w[2] + (e[2] - w[2]) * bg, R = 0.8 + bg * 7.2;
+    gl.useProgram(pStar.p); gl.uniformMatrix4fv(pStar.u.uVP, false, cam.vp32); gl.uniform1f(pStar.u.uPx, canvas.height / 900); gl.uniform4f(pStar.u.uChart, cx, cy, cz, R); gl.uniform4f(pStar.u.uChartB, SITER.chart * SITER.holo, t, SITER.hl, t * 0.05);
+    gl.bindVertexArray(SITER.stars); gl.drawArrays(gl.POINTS, 0, SITER.nStars); stats.calls++; }
+  gl.depthMask(true); gl.disable(gl.BLEND); gl.bindVertexArray(null);
+}
+function drawSiteGlow() {                  // glows: artifacts waiting on their pedestals, and lights round the portal that read from across the giant cavern
+  const E = cam.eye, t = state.time, st = siteState(), dist = p => Math.hypot(p[0] - E[0], p[1] - E[1], p[2] - E[2]);
+  if (SITER.inSite) for (const R of SITER.relics) { if (st.r[R.i] !== 0) continue; const d = dist(R.home); if (d > 90) continue; const b = 0.55 + 0.06 * Math.sin(t * 2 + R.i);
+    glowDraw(crystal, mulAll(tr(R.home[0], R.home[1] + b, R.home[2]), rotY(t * 0.8), sc(0.16, 0.22, 0.16)), 1.0, 0.8, 0.42, 1.1 + 0.3 * Math.sin(t * 3 + R.i), 0);
+    glowDraw(crystal, mulAll(tr(R.home[0], R.home[1] + b, R.home[2]), rotY(-t * 0.5), sc(0.5, 0.6, 0.5)), 0.6, 0.45, 0.2, 0.3, 0); }
+  const B0 = SITEC.bore[0], c = [B0[0] + 5.6, B0[1], B0[2]], d = dist(c);
+  if ((GEOR.inGeo || SITER.inSite) && d < 420) for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2 + t * 0.15, w = 0.5 + 0.5 * Math.sin(t * 2.2 - k * 0.785), sz = 0.13 * Math.max(1, d / 14) * (0.8 + 0.4 * w);
+    glowDraw(crystal, mulAll(tr(c[0], c[1] + Math.cos(a) * 3.6, c[2] + Math.sin(a) * 3.6), sc(sz, sz, sz)), 0.35, 0.85, 1.0, 1.0 + 0.8 * w, 0); }
+}
 function caveStep(nx, nz, f) {
   if (cave.under && doorBlocks(nx, nz, state.py) && !doorBlocks(state.px, state.pz, state.py)) return 1e9;   // a closed door: but never trap someone already behind it
   if (f > 1e8 && cave.under && CV.sdf(nx, state.py + 1.25, nz) < CV.sdf(state.px, state.py + 1.25, state.pz) - 0.002) return CV.floorAt(nx, state.py, nz, true);
   return f;
 }
 // is a body at (x, py, z) below the ground, i.e. in the shaft or the caves?
-const CAVE_AREA = [CV.SX - 200, CV.SZ - 220, CV.SX + 780, CV.SZ + 320];   // the caves lie wholly under this patch of the map
+const CAVE_AREA = [CV.SX - 200, CV.SZ - 220, CV.SX + 1000, CV.SZ + 320];   // the caves lie wholly under this patch of the map
 function caveUnder(x, z, py) {
   if (x < CAVE_AREA[0] || z < CAVE_AREA[1] || x > CAVE_AREA[2] || z > CAVE_AREA[3]) return false;
   return CV.inShaft(x, z) ? py < CV.TOP + 1.6 : py < T.height(x, z) - 6;   // exact terrain, never the drawn mesh
@@ -12633,7 +13567,7 @@ function lineRebuild() {
 /* ---------- per frame: battery, pickups, the line, passing out in the dark ---------- */
 function caveUpdate(dt) {
   const px = state.px, py = state.py, pz = state.pz;
-  doorUpdate(dt); lakeUpdate(dt); geoUpdate(dt);
+  doorUpdate(dt); lakeUpdate(dt); geoUpdate(dt); siteUpdate(dt);
   PICKS.forEach((pk, i) => {
     if (cave.picked[i] || !cave.under) return; const a = pk.at;
     if (Math.hypot(a[0] - px, a[2] - pz) > 2.0 || Math.abs(a[1] - py) > 2.4) return;
@@ -12698,6 +13632,11 @@ function caveTeleport(where) {
   else if (where === 'door' || where === 'crystal') { state.px = DOOR.x + 0.6; state.pz = DOOR.z - 4.2; state.py = CV.floorAt(state.px, -55, state.pz); state.yaw = Math.PI; state.heading = 0; state.pitch = 0.18; }
   else if (where === 'lake') { const C = CV.LAKE; state.px = C.drop[0] - 1.5; state.pz = C.drop[1] + 1; state.py = CV.floorAt(state.px, C.y + 20, state.pz); state.yaw = -Math.PI / 2; state.heading = Math.PI / 2; state.pitch = 0.2; }
   else if (where === 'd8' || where === 'd9' || where === 'd10') { const D = DOORS.find(d => d.name === (where === 'd8' ? 'D-8' : where === 'd9' ? 'D-9' : 'D-10')), f = doorWorld(D, 0.6, -4.5); state.px = f[0]; state.pz = f[1]; state.py = CV.floorAt(f[0], D.y + 2, f[1]); state.yaw = D.yaw + Math.PI; state.heading = D.yaw; state.pitch = 0.18; }
+  else if (where === 'portal' || where === 'site' || where === 'chamber') { const B0 = SITEC.bore[0];
+    if (where === 'portal') { state.px = B0[0] - 12; state.pz = B0[2]; state.py = CV.floorAt(state.px, B0[1] + 2, state.pz); }
+    else if (where === 'site') { state.px = SITEC.vest[0] - 2.5; state.pz = SITEC.vest[1] - 2; state.py = SF; }
+    else { state.px = SITE_C[0] - 19; state.pz = SITE_C[2]; state.py = SF; }
+    state.yaw = -Math.PI / 2; state.heading = Math.PI / 2; state.pitch = 0.15; }
   else if (where === 'ledge') { const g = CV.GEO.ledge, C = GEOC; state.px = g[0] - 2; state.pz = g[2] - 1; state.py = CV.floorAt(state.px, g[1] + 3, state.pz); state.heading = Math.atan2(C.x - state.px, C.z - state.pz); state.yaw = state.heading + Math.PI; state.pitch = 0.18; }
   else if (where === 'pool' || where === 'geo') { const C = GEOC; state.px = where === 'pool' ? C.pool[0] - 6 : C.pool[0] - 4; state.pz = C.pool[1] + (where === 'pool' ? 0 : 24); state.py = where === 'pool' ? LWL - 1.25 : CV.floorAt(state.px, LWL + 12, state.pz); state.yaw = -Math.PI / 2; state.heading = Math.PI / 2; state.pitch = where === 'pool' ? 0.12 : 0.2; }
   else if (where === 'drip') { const C = CV.DRIP; state.px = C.drop[0] + 1.5; state.pz = C.drop[1] + 2; state.py = CV.floorAt(state.px, C.y + 10, state.pz); state.yaw = -Math.PI / 2; state.heading = Math.PI / 2; state.pitch = 0.2; }
@@ -12712,10 +13651,10 @@ function drawCave() {
   setCommon(pCave); gl.disable(gl.CULL_FACE); gl.uniform1f(pCave.u.uSink, 0); const under = [];
   const P = cam.planes, E = cam.eye, D7 = CV.CAV.drop, D8 = CV.DRIP.drop;
   const nearCol = (c, D) => Math.hypot(c.x0 + 12 - D[0], c.z0 + 12 - D[1]) < 30, inCol = D => Math.hypot(E[0] - D[0], E[2] - D[1]) < 14;
-  const D9 = CV.LAKE.drop, GX = CV.SX + 470, zone = (E[0] > GX || GEOR.tun) && E[1] < -200 ? 4 : E[1] > -118 && !inCol(D7) ? 0 : E[1] > -225 ? 1 : E[1] > -345 ? 2 : 3;   // 0: Level 1, 1: crystal cavern, 2: stalactite cavern, 3: flooded cavern, 4: giant crystal cavern
+  const D9 = CV.LAKE.drop, GX = CV.SX + 470, nearSh = c => Math.abs(c.x0 + 12 - SITE_SH[0]) < 30 && Math.abs(c.z0 + 12 - SITE_SH[2]) < 30, zone = E[0] > CV.SX + 728 && E[1] < -440 ? 5 : (E[0] > GX || GEOR.tun) && E[1] < -200 ? 4 : E[1] > -118 && !inCol(D7) ? 0 : E[1] > -225 ? 1 : E[1] > -345 ? 2 : 3;   // 0: Level 1, 1: crystal cavern, 2: stalactite cavern, 3: flooded cavern, 4: giant crystal cavern
   for (const c of cave.ch) {
     const top = c.y0 + CAVE_CH;
-    if (zone === 0 ? top < -136 : zone === 1 ? (c.y0 > -110 && !nearCol(c, D7)) || (top < -235 && !nearCol(c, D8)) : zone === 2 ? (c.y0 > -230 && !nearCol(c, D8)) || (top < -355 && !nearCol(c, D9)) : zone === 3 ? (c.y0 > -350 && !nearCol(c, D9)) || (c.x0 > GX && c.y0 > -432) : c.x0 + CAVE_CH < CV.SX + 380 || c.y0 > -200) continue;
+    if (zone === 0 ? top < -136 : zone === 1 ? (c.y0 > -110 && !nearCol(c, D7)) || (top < -235 && !nearCol(c, D8)) : zone === 2 ? (c.y0 > -230 && !nearCol(c, D8)) || (top < -355 && !nearCol(c, D9)) : zone === 3 ? (c.y0 > -350 && !nearCol(c, D9)) || (c.x0 > GX && c.y0 > -432) : zone === 4 ? c.x0 + CAVE_CH < CV.SX + 380 || c.y0 > -200 || (c.x0 > CV.SX + 728 && top < -445 && !nearSh(c)) : c.x0 + CAVE_CH < CV.SX + 720 || (c.y0 > -446 && !nearSh(c))) continue;
     if (CAVR.off.rock || c.d > 330 || !classify(P, c.x0, c.y0, c.z0, c.x0 + CAVE_CH, c.y0 + CAVE_CH, c.z0 + CAVE_CH, 0)) continue;
     const m = (c.d < LOD0_R && c.m[0]) || c.m[1] || c.m[0]; if (!m || !m.count) continue;
     gl.bindVertexArray(m.vao); stats.cave += drawElems(m.count, gl.UNSIGNED_INT, 0);
@@ -12728,6 +13667,7 @@ function drawCave() {
   drawDrip();
   drawLake();
   drawGeo();
+  drawSite();
 }
 function drawCaveFx() {
   if (!cave.visible) return;
@@ -12735,6 +13675,7 @@ function drawCaveFx() {
   drawDripFx();
   drawLakeFx();
   drawGeoFx();
+  drawSiteFx();
   if (cave.lineDirty && state.time - cave.lineT > 0.2) { cave.lineT = state.time; lineRebuild(); }
   gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE); gl.depthMask(false);
   const m = cave.lineMesh;
@@ -12744,7 +13685,7 @@ function drawCaveFx() {
   }
   gl.useProgram(pGlow.p); gl.uniformMatrix4fv(pGlow.u.uVP, false, cam.vp32);
   const t = state.time;
-  drawDoorLamp(); drawLakeGlow();
+  drawDoorLamp(); drawLakeGlow(); drawSiteGlow();
   PICKS.forEach((pk, i) => {
     if (cave.picked[i]) return; const p = pk.at, bob = 0.5 + 0.08 * Math.sin(t * 2 + i);
     if (pk.kind === 'reel') glowDraw(ring, mulAll(tr(p[0], p[1] + bob, p[2]), rotY(t), rotX(1.2), sc(0.045, 0.045, 0.045)), 1.0, 0.85, 0.3, 1.3, 0);
@@ -12754,11 +13695,11 @@ function drawCaveFx() {
 }
 
 /* ---------- saving ---------- */
-function caveSave() { return { doors: DOORS.map(d => d.open >= 1 ? 1 : 0), parts: (cave.parts || []).slice(), tank: cave.tank ? 1 : 0, geo: GEOR.seen ? 1 : 0, batt: Math.round(cave.batt * 10) / 10, spares: cave.spares, picked: cave.picked, reel: line.reel, left: Math.round(line.left * 10) / 10, warn: line.warn, pts: line.pts.map(p => [Math.round(p.x * 100) / 100, Math.round(p.y * 100) / 100, Math.round(p.z * 100) / 100, p.p]) }; }
-function caveReset() { DOORS.forEach(d => { d.open = 0; d.moving = false; }); cave.parts = PARTS.map(() => false); cave.tank = false; GEOR.seen = false; GEOR.pt0 = 0; cave.batt = 100; cave.spares = 0; cave.dead = false; cave.darkWalk = 0; cave.picked = [false, false, false, false]; line.pts = []; line.left = 0; line.reel = 0; line.active = false; line.warn = 0; cave.lineDirty = true; }
+function caveSave() { return { doors: DOORS.map(d => d.open >= 1 ? 1 : 0), parts: (cave.parts || []).slice(), tank: cave.tank ? 1 : 0, geo: GEOR.seen ? 1 : 0, site: cave.site ? JSON.parse(JSON.stringify(cave.site)) : null, batt: Math.round(cave.batt * 10) / 10, spares: cave.spares, picked: cave.picked, reel: line.reel, left: Math.round(line.left * 10) / 10, warn: line.warn, pts: line.pts.map(p => [Math.round(p.x * 100) / 100, Math.round(p.y * 100) / 100, Math.round(p.z * 100) / 100, p.p]) }; }
+function caveReset() { DOORS.forEach(d => { d.open = 0; d.moving = false; }); cave.parts = PARTS.map(() => false); cave.tank = false; GEOR.seen = false; GEOR.pt0 = 0; cave.site = null; SITER.phase = 'idle'; SITER.holo = 0; cave.batt = 100; cave.spares = 0; cave.dead = false; cave.darkWalk = 0; cave.picked = [false, false, false, false]; line.pts = []; line.left = 0; line.reel = 0; line.active = false; line.warn = 0; cave.lineDirty = true; }
 function caveLoad(c) {
   caveReset(); if (!c) return;
-  DOORS.forEach((d, i) => { d.open = (Array.isArray(c.doors) ? c.doors[i] : (i ? 0 : c.door)) ? 1 : 0; }); if (Array.isArray(c.parts)) cave.parts = PARTS.map((p, i) => !!c.parts[i]); cave.tank = !!c.tank; if (c.geo) { GEOR.seen = true; GEOR.pt0 = -1e4; }
+  DOORS.forEach((d, i) => { d.open = (Array.isArray(c.doors) ? c.doors[i] : (i ? 0 : c.door)) ? 1 : 0; }); if (Array.isArray(c.parts)) cave.parts = PARTS.map((p, i) => !!c.parts[i]); cave.tank = !!c.tank; cave.site = c.site && Array.isArray(c.site.r) ? c.site : null; SITER.phase = 'idle'; SITER.holo = 0; if (c.geo) { GEOR.seen = true; GEOR.pt0 = -1e4; }
   cave.batt = +c.batt || 0; cave.spares = c.spares | 0; cave.dead = cave.batt <= 0; if (Array.isArray(c.picked)) cave.picked = cave.picked.map((v, i) => !!c.picked[i]);
   line.reel = c.reel | 0; line.left = +c.left || 0; line.warn = c.warn | 0;
   if (Array.isArray(c.pts)) for (const q of c.pts) { const par = line.pts[q[3]]; line.pts.push({ x: q[0], y: q[1], z: q[2], p: q[3], d: par ? par.d + Math.hypot(q[0] - par.x, q[1] - par.y, q[2] - par.z) : 0 }); }
@@ -12954,7 +13895,7 @@ function update(dt) {
       if (!dx && !dz) return true; const nx = lim(state.px + dx), nz = lim(state.pz + dz), f = caveStep(nx, nz, floorAt(nx, nz, state.py)), l = Math.hypot(dx, dz);
       if (state.grounded) { let ah = floorAt(state.px + dx / l, state.pz + dz / l, state.py); if (ah > 1e8 && cave.under) ah = -1e9;   // cave walls are caught by the step itself
         if (ah - state.py > 1.3 || f - state.py > Math.max(1.3, 1.3 * l)) return false; }
-      else if (f > state.py + 0.45) return false;
+      else if (f > state.py + 0.45) { if (cave.under && f > 1e8) for (const d of [0.4, 0.8, 1.2, 1.6, 2.0]) { const f2 = caveStep(nx, nz, floorAt(nx, nz, state.py - d)); if (f2 <= state.py - d + 0.45) { state.py -= Math.min(d, 3 * dt); break; } } return false; }
       state.px = nx; state.pz = nz; return true; };
     const dx = state.vx * dt, dz = state.vz * dt;
     if (!tryMove(dx, dz)) { if (tryMove(dx, 0)) state.vz = 0; else if (tryMove(0, dz)) state.vx = 0; else { state.vx = 0; state.vz = 0; } }
@@ -12963,7 +13904,7 @@ function update(dt) {
     else state.roll *= Math.max(0, 1 - dt * 5);
     let floorY = floorAt(state.px, state.pz, state.py);
     if (floorY > 1e8) floorY = CV.floorAt(state.px, state.py, state.pz, true);   // pressed against cave rock: land on the floor, not on the wall
-    if (cave.under) floorY = Math.max(floorY, geoFloorY(state.px, state.pz, state.py));   // the top of a titan
+    if (cave.under) floorY = Math.max(floorY, geoFloorY(state.px, state.pz, state.py), siteFloorY(state.px, state.pz, state.py));   // the top of a titan, or the dais's steps
     // jetpack: Space climbs, letting go settles into a slow free drift down, C dives
     if (jet) { state.vy = Math.min(state.vy + 60 * dt, boost ? (cave.under ? 15 : 45) : (cave.under ? 9 : 28)); state.grounded = false; state.hover = true; if (play) game.fuel = Math.max(0, game.fuel - (boost ? 14 : 9) * dt); }
     if (state.grounded) { if (state.py - floorY > 0.9) state.grounded = false; else { state.py = floorY; state.vy = 0; if (play) game.fuel = Math.min(game.tank, game.fuel + 45 * dt); } }
@@ -12982,7 +13923,7 @@ function update(dt) {
     state.moving = state.grounded ? hs > 0.4 : ml > 0;
     state.airK = ease(state.airK, state.grounded ? 0 : 1, 7); state.gait = ease(state.gait, state.grounded ? Math.min(1, hs / 6) : 0, 9); if (state.grounded && hs > 0.3) state.walk += dt * (3 + hs * 0.85);
     state.thrust = ease(state.thrust, swim ? 0 : jet ? 1 : state.grounded ? 0 : (keys.Space && !hasFuel) ? 0.12 : drop ? 0.08 : state.hover && hasFuel ? 0.55 : 0.38, 10); state.hspeed = ease(state.hspeed, hs, 6);
-    if (cave.under) { geoPush(); cave.ceil = CV.ceilAt(state.px, state.py, state.pz); }
+    if (cave.under) { geoPush(); sitePush(); cave.ceil = CV.ceilAt(state.px, state.py, state.pz); }
     caveUpdate(dt);
     if (play) gameUpdate(dt, prev);
   }
@@ -13024,7 +13965,7 @@ function setCommon(p) {
   if (p.u.uCav) gl.uniform4f(p.u.uCav, CV.CAV.x, CV.CAV.y, CV.CAV.z, 1); if (p.u.uCavR) gl.uniform3f(p.u.uCavR, CV.CAV.rx, CV.CAV.ry, CV.CAV.rz);
   if (p.u.uLke) gl.uniform4f(p.u.uLke, CV.LAKE.x, CV.LAKE.y, CV.LAKE.z, 1); if (p.u.uLkeR) gl.uniform3f(p.u.uLkeR, CV.LAKE.rx, CV.LAKE.ry, CV.LAKE.rz); if (p.u.uUW) gl.uniform4f(p.u.uUW, LAKER.camUnder ? 1 : 0, CV.LAKE.water, 1, 0.115 - 0.093 * GEOR.clearK);
   if (p.u.uDrp) gl.uniform4f(p.u.uDrp, CV.DRIP.x, CV.DRIP.y, CV.DRIP.z, 1); if (p.u.uDrpR) gl.uniform3f(p.u.uDrpR, CV.DRIP.rx, CV.DRIP.ry, CV.DRIP.rz);
-  geoUniforms(p);
+  geoUniforms(p); siteUniforms(p);
   if (p.u.uFdP) { const F = cave.flood; if (F && cave.visible) { gl.uniform4f(p.u.uFdP, F.lp[0], F.lp[1], F.lp[2], 1.35); gl.uniform4f(p.u.uFdD, F.dir[0], F.dir[1], F.dir[2], 0.78); } else gl.uniform4f(p.u.uFdP, 0, 0, 0, 0); }
 }
 function render() {
@@ -13327,7 +14268,7 @@ function start() {
     $('loadBar').style.width = (row / GRID * 100) + '%';
     if (row < GRID) { setTimeout(chunk, 0); return; }
     setLight(bakeLight(hg, W, H, CX * LODS[BASE], CZ * LODS[BASE], SUN, WORLD, false), W, H, CX * LODS[BASE], CZ * LODS[BASE], 'coarse');
-    buildBlocks(baseData); buildProps(); buildCharacter(); buildGame(); placeAssets(); caveInit(); cavernInit(); geoInit(); doorInit(); dripInit(); lakeInit(); buildPlants(); if (!params.has('coarselight')) startFineLight();
+    buildBlocks(baseData); buildProps(); buildCharacter(); buildGame(); placeAssets(); caveInit(); cavernInit(); geoInit(); siteInit(); doorInit(); dripInit(); lakeInit(); buildPlants(); if (!params.has('coarselight')) startFineLight();
     world = worldTotals();
     $('cWorld').textContent = fmt(world.total);
     $('cWorld').title = fmt(world.terrain) + ' terrain + ' + fmt(world.land) + ' landmarks + ' + fmt(world.wat + world.chr) + ' water & character';
@@ -13336,13 +14277,13 @@ function start() {
     setMode(0); resetView();
     $('loading').hidden = true; window.__loadMs = Math.round(performance.now());
     if (params.has('play')) { const pv = params.get('play'); game.free = pv === 'free' || pv === 'freenew'; startPlay(pv === 'new' || pv === 'freenew', game.free); } else if (params.has('bench') || params.has('mode')) { game.inMode = 'bench'; startBench(); if (params.get('mode') === 'explore') setMode(0); } else showMenu(true);
-    { const at = params.get('at'); if (at === 'mine') caveTeleport('top'); else if (at === 'cave') caveTeleport('station'); else if (['crystal', 'door', 'cavern', 'd8', 'd9', 'drip', 'lake', 'd10', 'pool', 'geo', 'ledge'].includes(at)) caveTeleport(at); }
+    { const at = params.get('at'); if (at === 'mine') caveTeleport('top'); else if (at === 'cave') caveTeleport('station'); else if (['crystal', 'door', 'cavern', 'd8', 'd9', 'drip', 'lake', 'd10', 'pool', 'geo', 'ledge', 'portal', 'site', 'chamber'].includes(at)) caveTeleport(at); }
     setTimeout(() => $('hint').classList.add('fade'), 9000);
     last = performance.now(); requestAnimationFrame(loop);
   })();
 }
 canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); $('banner').hidden = false; $('banner').textContent = 'The graphics context was lost (the GPU ran out of memory or was reset). Reload the page to restart.'; });
-window.__bench = { DOOR, DOORS, PARTS, FLOODS, STAKES, DRIPR, LAKER, GEOR, GEOQ, inWater, logShow, state, stats, cam, sel, selfCheck, setMode, resetView, cycleOverlay, toggleDetails, shared, cache, pending, T, get perf() { return hudPerf; }, get gpu() { return gpuName; }, get gpuMs() { return gpuMs; }, get world() { return world; }, get evictions() { return evictions; }, placedLog, props, place, K, game, cells, dishes, courses, colliders, floorAt, startPlay, startBench, showMenu, get plantTotal() { return plantTotal; }, cave, line, CV, caveTeleport, update, CAVR, cavePrebuild, get workerMode() { return workerMode; }, get light() { return lightInfo; }, pose, get charTris() { return [charFullTris, charLowTris]; }, groundAt, MAX_FULL, N_FULL, TRIM_LOD, N_SEL, keys };
+window.__bench = { DOOR, DOORS, PARTS, FLOODS, STAKES, DRIPR, LAKER, GEOR, GEOQ, SITER, siteState, siteAct, inWater, logShow, state, stats, cam, sel, selfCheck, setMode, resetView, cycleOverlay, toggleDetails, shared, cache, pending, T, get perf() { return hudPerf; }, get gpu() { return gpuName; }, get gpuMs() { return gpuMs; }, get world() { return world; }, get evictions() { return evictions; }, placedLog, props, place, K, game, cells, dishes, courses, colliders, floorAt, startPlay, startBench, showMenu, get plantTotal() { return plantTotal; }, cave, line, CV, caveTeleport, update, CAVR, cavePrebuild, get workerMode() { return workerMode; }, get light() { return lightInfo; }, pose, get charTris() { return [charFullTris, charLowTris]; }, groundAt, MAX_FULL, N_FULL, TRIM_LOD, N_SEL, keys };
 start();
 })();
 

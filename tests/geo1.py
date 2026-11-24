@@ -20,6 +20,17 @@ VIEWS = {
  'mouth': "B.GEOR.seen=false; B.GEOR.pt0=0; const T=B.CV.GEO.tunnel, n=T.length, a=T[n-2], c=T[n-1]; const d=[c[0]-a[0],c[2]-a[2]], l=Math.hypot(d[0],d[1]); s.px=c[0]-d[0]/l*3; s.pz=c[2]-d[1]/l*3; s.py=B.CV.floorAt(s.px,c[1],s.pz); s.grounded=true; s.vx=s.vy=s.vz=0; s.heading=Math.atan2(B.CV.GEO.x-s.px,B.CV.GEO.z-s.pz); s.yaw=s.heading+Math.PI; s.pitch=0.06; s.dist=5;",
  'ledge': WAKE + "B.caveTeleport('ledge'); s.pitch=0.12; s.dist=8;",
  'ledgedim': "B.caveTeleport('ledge'); s.pitch=0.12; s.dist=8;",
+ 'site': "B.caveTeleport('site'); s.pitch=0.1; s.dist=6;",
+ 'hall': "const H=B.CV.SITE.hall; s.px=H[0]-30; s.pz=H[1]+2; s.py=B.CV.SITE.floor; s.grounded=true; s.vx=s.vy=s.vz=0; s.heading=Math.PI/2; s.yaw=-Math.PI/2; s.pitch=0.12; s.dist=6;",
+ 'chamber': "B.caveTeleport('chamber'); s.pitch=0.2; s.dist=7;",
+ 'portalview': WAKE + "B.caveTeleport('ledge'); const P=B.CV.SITE.bore[0]; s.heading=Math.atan2(P[0]-s.px,P[2]-s.pz); s.yaw=s.heading+Math.PI; s.pitch=0.05; s.dist=7;",
+ 'holo': "const st=B.siteState(); st.r=[2,3,4,5,6]; st.solved=1; st.heard=1; st.seen=1; B.SITER.phase='holo'; B.SITER.holo=1; B.SITER.msgT=31; B.SITER.said=6; B.SITER.power=1.25;  const C=B.SITER.emit; s.px=C[0]-17; s.pz=C[2]+3; s.py=B.CV.SITE.floor; s.grounded=true; s.vx=s.vy=s.vz=0; s.heading=Math.atan2(C[0]-s.px,C[2]-s.pz); s.yaw=s.heading+Math.PI; s.pitch=-0.12; s.dist=9;",
+ 'holoclose': "const st=B.siteState(); st.r=[2,3,4,5,6]; st.solved=1; st.heard=1; st.seen=1; B.SITER.phase='holo'; B.SITER.holo=1; B.SITER.msgT=31; B.SITER.said=6; B.SITER.power=1.25;  const C=B.SITER.emit; s.px=C[0]-8.5; s.pz=C[2]-4; s.py=B.CV.SITE.floor; s.grounded=true; s.vx=s.vy=s.vz=0; s.heading=Math.atan2(C[0]-s.px,C[2]-s.pz); s.yaw=s.heading+Math.PI; s.pitch=-0.35; s.dist=5;",
+ 'relic': "const R=B.SITER.relics[1]; s.px=R.home[0]+1.5; s.pz=R.home[2]-3.2; s.py=B.CV.SITE.floor; s.grounded=true; s.vx=s.vy=s.vz=0; s.heading=Math.atan2(R.home[0]-s.px,R.home[2]-s.pz); s.yaw=s.heading+Math.PI; s.pitch=0.1; s.dist=4;",
+ 'portal': WAKE + "B.caveTeleport('portal'); s.pitch=0.08; s.dist=6;",
+ 'relic2': "const R=B.SITER.relics[1]; s.px=R.home[0]-2.2; s.pz=R.home[2]-2.6; s.py=B.CV.SITE.floor; s.grounded=true; s.vx=s.vy=s.vz=0; s.heading=Math.atan2(R.home[0]-s.px,R.home[2]-s.pz); s.yaw=s.heading+Math.PI+0.5; s.pitch=0.3; s.dist=3;",
+ 'answer': "const st=B.siteState(); st.r=[2,3,4,5,6]; st.solved=0; st.seen=1; B.SITER.phase='answer'; B.SITER.step=2; B.SITER.lit=[1,0,1,0,0]; B.SITER.flash=[0,0,0,0,0.9]; B.SITER.power=0.95; const C=B.SITER.emit, P=B.SITER.plates[4].p; s.px=P[0]+(C[0]-P[0])*-0.25; s.pz=P[2]+(C[2]-P[2])*-0.25; s.py=B.CV.SITE.floor; s.grounded=true; s.vx=s.vy=s.vz=0; s.heading=Math.atan2(C[0]-s.px,C[2]-s.pz); s.yaw=s.heading+Math.PI; s.pitch=0.32; s.dist=8;",
+ 'holomsg': "const st=B.siteState(); st.r=[2,3,4,5,6]; st.solved=1; st.heard=1; st.seen=1; B.SITER.phase='holo'; B.SITER.holo=1; B.SITER.msgT=31; B.SITER.said=6; B.SITER.power=1.25;  const C=B.SITER.emit; s.px=C[0]-15; s.pz=C[2]-6; s.py=B.CV.SITE.floor; s.grounded=true; s.vx=s.vy=s.vz=0; s.heading=Math.atan2(C[0]-s.px,C[2]-s.pz); s.yaw=s.heading+Math.PI; s.pitch=-0.18; s.dist=8;",
  'up':    WAKE + "const C=B.CV.GEO; s.px=C.x-20; s.pz=C.z-10; s.py=B.CV.floorAt(s.px,C.y,s.pz); s.yaw=-Math.PI/2; s.heading=Math.PI/2; s.pitch=-0.9; s.dist=6;",
 }
 async def main():
@@ -31,6 +42,8 @@ async def main():
             await pg.evaluate('__bench.game.paused=false'); await pg.evaluate('(()=>{const B=__bench,s=B.state; ' + VIEWS[name] + '})()')
             await pg.evaluate(SIM+'(1,{})'); await pg.evaluate('__bench.cavePrebuild(330)'); await pg.evaluate(SIM+'(0.5,{})'); await pg.evaluate('__bench.game.paused=true')
             if name in ('dim','ledgedim','tunwet','tunup','mouth'): await pg.evaluate('__bench.GEOR.seen=false; __bench.GEOR.pt0=0')
+            if name == 'holomsg': await pg.evaluate("(()=>{const T=document.getElementById('toast'); T.style.visibility='visible'; T.textContent='SUIT AI: 97% match. It is speaking about one star system: catalogue K-2271, 418 light years from here.'; T.classList.add('show');})()")
+            if name == 'answer': await pg.evaluate("(()=>{const T=document.getElementById('toast'); T.style.visibility='visible'; T.textContent='All five notes sound together. Then the chamber plays them back to you in a pattern. It is waiting for an answer.'; T.classList.add('show');})()")
             await pg.wait_for_timeout(int(os.environ.get('W', '30000'))); await pg.screenshot(path=f'v12_{name}.png', timeout=240000)
             print(name, await pg.evaluate('(()=>{const s=__bench.stats,st=__bench.state,G=__bench.GEOR; return {pos:[st.px,st.py,st.pz].map(v=>+v.toFixed(1)), under:__bench.LAKER.camUnder, lights:G.nl, grabs:G.grabs, lining:G.tris, cave:s.cave, submitted:Math.round(s.submitted), calls:s.calls}})()'))
         print('errors', errs[:3]); await b.close()

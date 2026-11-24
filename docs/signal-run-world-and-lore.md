@@ -55,6 +55,31 @@ Status (23 Nov 2026): Christopher is **sitting with these ideas**. Treat everyth
 
 This draft ties together several open ideas: something unearthed, ancient non-human builders, the array and the signal, and the couplings. None of it is locked.
 
+## The ancient site (v14)
+Christopher's choices (23 Nov):
+- **Decided: the ancient site lies beyond the giant crystal cavern**, the deepest and oldest place in the game.
+- **Decided: the builders' work is black stone cut with perfect geometry, with glowing channels and glyphs.**
+- **Decided: there are artifacts to find and scan, and a final chamber.**
+- **Decided: the final chamber holds a hologram of an ancient entity with a message.** A puzzle turns it on: "answer the signal" (you repeat the chamber's pattern on its floor plates).
+- **Decided: the message is only fractionally understood. The suit's AI deduces that the hologram is speaking about a specific star system.**
+- **Decided: the suit has an AI** that listens, translates and reasons.
+- Built as drafts (Christopher may rewrite any of it):
+  - The builder: 6.5 m, faceless, four arms, a tail instead of legs.
+  - The artifacts' scan texts:
+    - the lens: about 4 million years old, and warm
+    - the rod: spirals at the exact rhythm of the array's carrier
+    - the tablet: 212 symbols; not writing, a map or a count
+    - the sphere: still turning after 4 million years
+    - the seed: grown in the same spiral as the giant crystals
+  - The message lines: "…long ago… we [listened]… [far]…", "…the signal… [was ours]… you [answered]…".
+  - The star system: catalogue K-2271, 418 light years away. **This designation is a placeholder.**
+  - The answer pattern traces a five-pointed star.
+- **Open:**
+  - What is that star system: their home, where they went, a warning, an invitation?
+  - What does "you answered" set in motion?
+  - Can the player interact with the hologram more?
+  - How does this tie to "something was unearthed", the array and the signal?
+
 ## Surface reskin (done in v5/v6)
 - **Vehicles:** rugged outpost truck KR-07, scout buggy, cargo trailer.
 - **Camp:** hab shelter, data table, survey scanner, heater beacon, comms mast, sealed cases.

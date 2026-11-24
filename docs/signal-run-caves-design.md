@@ -1,6 +1,6 @@
 # Signal Run — Caves & Mine Expansion (design plan)
 
-Status (23 Nov 2026): **the four stacked caverns are built.** Current game file: signal-run-v13-dry-tunnel.html (also `game/signal-run.html` in the GitHub repo `chriskizer91-ops/Signal-run-crystal-cavern-`). See `claude/signal-run-engine-handoff.md` for how the built parts work.
+Status (23 Nov 2026): **the four stacked caverns and the ancient site are built.** Current game file: signal-run-v14-ancient-site.html (also `game/signal-run.html` in the GitHub repo `chriskizer91-ops/Signal-run-crystal-cavern-`). See `claude/signal-run-engine-handoff.md` for how the built parts work.
 
 ## Built so far
 - **v4: Level 1.**
@@ -32,7 +32,7 @@ Status (23 Nov 2026): **the four stacked caverns are built.** Current game file:
   - the **crystal cavern** (built)
   - a **stalactite/stalagmite cavern** (columns, dripstone, rimstone pools)
   - a **partly flooded cavern** where you swim underwater with your headlamp and the suit's air is the limit (a likely home for the eerie part)
-  - an **ancient alien site** near the crystal cavern with artifacts to find (lore: "something was unearthed")
+  - an **ancient alien site** with artifacts to find (lore: "something was unearthed"). **Built in v14**, beyond the giant crystal cavern.
 - This replaces the old "Levels 2–4 of ~3 km tunnel each" plan below where they conflict. The level table stays as a rough guide to what's deeper.
 
 ## Agreed plan (23 Nov, later): stacked caverns, door to door
@@ -87,6 +87,15 @@ Christopher, after seeing the crystal cavern: "We absolutely have to have an add
 - It ends at a **balcony** high in the cavern's west wall, 38 m above the water. The reveal happens as you step out: the cavern is dim, then the first ring of the pulse comes across it toward you and wakes it.
 - Whole dive without the spare tank: 32 s under water out of 75 s; the air never drops below 55%.
 - The pool is still there, with its half-drowned titans, but nothing leads into it from below now.
+
+**Built in v14, the ancient site** (Christopher's choices, 23 Nov: beyond the giant cavern; black stone with glowing lines; artifacts to scan; a final chamber; "answer the signal" as the puzzle; a hologram of an ancient entity whose message is fractionally understood, the suit AI deducing it is about a specific star system):
+- A ring of lights marks a second opening low on the giant cavern's far (east) wall, visible from the balcony.
+- Its bore runs 60 m, then drops 71 m into a round room of black stone. A passage leads to a 76 m hall of glowing monoliths with four side rooms, then a doorway to the eight-sided final chamber (48 m across, 34 m high).
+- **Five artifacts:** one in the round room, one in each side room. A gold glow marks each; walk up and press "Scan the artifact" to read it and take it.
+- **The final chamber:** a dais, five socket pedestals and five floor plates. Set an artifact in each socket (each hums a note).
+- **The puzzle:** the chamber then plays the notes on the plates in a pattern, and you answer by walking the plates in the same order. The pattern traces a five-pointed star. A wrong step plays it again.
+- **The hologram:** a 6.5 m builder rises over the dais: faceless, four-armed, a tail instead of legs. It speaks in tones and gold glyphs. The suit AI translates only fragments, then matches its star chart: "it is speaking about one star system". The star is highlighted in gold. Step on the dais's middle to hear it again.
+- Flying back up the shaft takes about 9 s.
 
 **Flying (v10):** no more sliding after letting go, slower and steadier in caves, and **hover** when you let go of JET (DIVE to go down).
 

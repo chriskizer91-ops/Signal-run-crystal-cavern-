@@ -1,6 +1,6 @@
 # Signal Run — engine & state handoff (read this first in any new session)
 
-Status as of 23 Nov 2026: **v13 (signal-run-v13-dry-tunnel.html, ~1.1 MB)** is current.
+Status as of 23 Nov 2026: **v14 (signal-run-v14-ancient-site.html, ~1.18 MB)** is current.
 
 **Everything lives in the GitHub repo `chriskizer91-ops/Signal-run-crystal-cavern-`:** the game (`game/signal-run.html` plus every older version), the CaveLib mirror, patch scripts, all model modules and model tools, agent briefs, tests, these docs and screenshots. Start there in a new session, and read its `CLAUDE.md`. It is one self-contained HTML file: WebGL 2, no images; every texture, mesh and sound is generated in code.
 - Design plans: `claude/signal-run-caves-design.md`.
@@ -75,6 +75,7 @@ It started as a rendering benchmark: 147M triangles at full detail, plus a "10M 
 - **v11: the flooded cavern** behind D-9 (details in its own section below). The surface is pixel-identical to v10.
 - **v12: the giant crystal cavern** behind D-10 (details in its own section below): see-through titan crystals, the crystals' light on everything, the pulse and the reveal. The surface is pixel-identical to v11.
 - **v13: a new way into the giant crystal cavern**: past D-10 the tunnel climbs out of the water to a balcony high in the cavern's wall (details in its own section). The surface is pixel-identical to v12.
+- **v14: the ancient site** beyond the giant cavern (details in its own section). Christopher confirmed the giant cavern runs smoothly on the Pixel 7a and the MSI laptop. The surface is pixel-identical to v13.
 
 ## Map facts (metres; y is up)
 - World 3072 × 3072 (48 × 48 tiles of 64 m). Canyon floor ≈ 95, lowest terrain 87.5, highest ≈ 632.
@@ -467,6 +468,66 @@ Christopher couldn't get through v12's flooded tunnel on one breath. He chose "d
   - The surface is pixel-identical to v12.
 - **Teleport** `&at=ledge`. Test views: `tests/geo1.py tunwet tunup mouth ledgedim ledge`.
 
+## The ancient site (v14)
+Christopher's choices: beyond the giant cavern; black stone with glowing lines; artifacts to scan; a final chamber; a puzzle that answers the signal; and a hologram of an ancient builder whose message the suit AI only fractionally understands, deducing that it is about one specific star system.
+- **Geometry (CaveLib):**
+  - `BORE2` (kind 12): from the giant cavern's east terrace (2124, −399.2, 1471; its floor is flush with the terrace at −402) east to (2186, −399.2), then straight down a 71 m shaft to (2186, −470).
+  - New kinds with no rock noise: **14** is a rounded box (the default box branch of `segD`) and **15** is an eight-sided room. Both use vertex kind 5, so the shader knows they are cut stone. They are all one path, so their joins are crisp.
+  - The rooms, with the floor at −479 everywhere:
+    - the round room under the shaft: (2186, 1471), apothem 7, 10 m high
+    - a passage 5 m wide
+    - the **hall** (2252, 1471): 76 × 20 m, 26 m high
+    - **four side rooms**: (2232 and 2268, 1485.5 and 1456.5), 10 × 11 × 9 m
+    - a doorway 8 m wide and 12 m high
+    - the **final chamber** (2322, 1471): eight-sided, apothem 24, 34 m high
+  - Exports `CV.SITE` (floor, bore, vest, hall, rooms, door, chamber). `CAVE_AREA` reaches x 2444. Chunks: 3519.
+  - Node check: floors flat at −479; nothing else's open air within the site.
+- **Models** (`ancient` module, Opus 5.5 sub-agent, brief `assets/briefs/ANCIENT_BRIEF.md`):
+  - The five artifacts, each 650–840 triangles: `relic_lens`, `relic_key`, `relic_tablet`, `relic_sphere`, `relic_seed`.
+  - Pieces: `socket_pillar` (attach = the seat at 1.1 m, a solid box), `floor_plate`, `dais` (9 m octagon with 3 steps to 1.2 m; attach = the emitter at 1.32 m; non-solid step boxes), `monolith` (10 m, solid), and `portal_ring` (axis +Z, bold face −Z).
+  - `entity`: 3,984 triangles, 6.5 m tall. Four arms; the upper pair cups the star chart. Attach `chart` [0, 4.45, 0.98] and `head`.
+  - Colour convention: rgb = stone colour, a = glow. The entity uses r rim, g inner lines, b glyphs, a density.
+- **Rendering:**
+  - **Black stone** (`CAVE_FS`, k > 4.5): near-black (0.032, 0.034, 0.04), polished.
+  - **Glowing lines** (`siteLines()`, a thin core plus a soft halo):
+    - two channels down the hall
+    - rings at 6.4, 10, 17 and 21.5 m round the dais, with spokes to the sockets
+    - a band of glyphs at eye height on every flat wall, between lines at 1.95 and 2.95 m, with six glyph shapes picked per 0.55 m cell. They are skipped on rounded corners, where they would turn to static.
+  - The glow pulses in waves toward the chamber (`sitePulse`) and brightens with the site's power: 0.35 at first, +0.12 per artifact set, 1.25 once answered.
+  - Uniforms `uSite` (chamber centre, floor, power) and `uSiteH` (the hologram's light). `siteLight` and `siteAmb` reach rock and props; the haze in the site is still dark air.
+  - `ANC_FS` (with `PROP_VS`) draws the stone pieces: polished, with the inlays glowing cyan (the artifacts and lit plates gold), and the glow added after the haze so it carries.
+  - `HOLO_VS/FS`: the hologram is additive. It builds from the bottom up over 3.5 s and has scanlines, a rising bright band, flicker, a fresnel rim, inner lines, and gold glyphs that flicker while it speaks. It turns slowly to face you.
+  - `STAR_VS/FS`: 700 stars plus the one gold star and a ring round it. First cupped in its hands (radius 0.8 m), then spread to a radius of 8 m around it.
+  - `MOTE_VS/FS`: 260 motes rising from the emitter.
+  - `drawSiteGlow`:
+    - a gold glow over each artifact still on its pedestal
+    - 8 cyan lights circling the portal ring, which grow with distance like the route stakes, so the opening reads from the balcony 190 m away
+- **Play (`siteUpdate`):**
+  - The first time you land, a toast describes the room.
+  - **Artifacts:**
+    - The lens is in the round room; the rod, tablet, sphere and seed are in the four side rooms, each on a pedestal.
+    - Within 2.3 m a "Scan the artifact" button appears (key E). It opens the scan card (the dive log's card).
+    - Closing the card puts the artifact in your pack. The status line shows "Artifacts n/5" while you're in the site.
+  - **Sockets:** five pedestals at radius 15 round the dais, none in front of the door. Walk up with an artifact carried and it settles in, humming its note (C, D, E, G, A).
+  - **The answer:**
+    - Once all five are in, after 3 s the chamber flashes the plates (radius 9) in the order 0, 2, 4, 1, 3, one note every 0.9 s. Walking it traces a five-pointed star.
+    - Then it listens. Only stepping *onto* a plate counts. A wrong plate resets it and the pattern plays again. Waiting 14 s replays it.
+  - **The hologram:** it rises; the message runs on a timeline (`SITE_MSG`, about 45 s). The chart appears at 20 s, spreads at 27 s, and the star is highlighted at 29 s. Stepping on the middle of the dais replays the message.
+  - **Saved** as `cave.site` = { r: per artifact 0 at rest / 1 carried / 2+k in socket k, solved, heard, seen }.
+- **Physics:**
+  - The model colliders feed `siteFloorY` and `sitePush`: you climb the dais's steps, but solid pillars and monoliths stop you.
+  - New everywhere underground: flying into a lower opening ducks you under its lip, instead of sticking to the ceiling of a round tunnel.
+- **Draw zone 5** (camera x > SX+728 and below −440): only the site's chunks and the shaft column. Zone 4 skips the site's chunks under the giant cavern.
+- **Keeping things clear:** titans are kept 45 m from the second bore's mouth (a 104 m colossus had grown right across it), and big crystal clusters are kept out of the mouth.
+- **Numbers** (headless; `tests/site_play.py`, `tests/site_phys.py`):
+  - Walking from the portal into the bore and off the shaft's edge: 10.8 s. The fall to the round room: 11.4 s with glide fins.
+  - Every artifact can be scanned and taken. The sockets fill in order. The chamber plays 0, 2, 4, 1, 3. A wrong first plate resets it; the right order solves it.
+  - All 6 message lines play; the chart, its spreading and the highlight all trigger. Solved and heard stay saved after a reload.
+  - The dais: you reach 1.32 m on top. A pillar stops you 0.4 m from its middle.
+  - Flying back up the shaft: 80.6 m in 8.8 s for 80 fuel (a brand-new game's tank of 100 leaves 20), then out to the giant cavern in 5.9 s.
+  - Triangles: about 0.4–0.65M in the site. The surface is pixel-identical to v13.
+- **Teleports:** `&at=portal`, `&at=site`, `&at=chamber`.
+
 ## Controls
 - Keyboard: WASD move, Space jetpack, Shift boost, C dive, drag to look, wheel to zoom, Esc menu, R back to the lookout, N sound, I details.
 - Phone: as in v3.
@@ -477,6 +538,7 @@ Christopher couldn't get through v12's flooded tunnel on one breath. He chose "d
   - `?play=free` (free play, continue), `?play=freenew` (new free play)
   - `&at=d8`, `&at=d9` (in front of those doors), `&at=drip` (the stalactite cavern landing)
   - `&at=lake` (the beach), `&at=d10` (in the bore), `&at=ledge` (the giant cavern's balcony), `&at=pool` (its pool), `&at=geo` (its floor)
+  - `&at=portal` (in front of the ancient site's opening), `&at=site` (its round room), `&at=chamber` (its final chamber)
   - `&geoq=lo|hi` (phone or laptop version of the giant cavern), `&geok=0.14` (its light strength)
   - `&battery=fast`, `?noworker`, `?bench`, `?mode=explore`
   - `&cavedbg=N`: debug views of the rock shader. 1 daylight/kind, 2 face term, 3 normals, 4 ambient only, 5 albedo, 6 exposure, 7 colour + specular, 8 headlamp only, 9 vein glow.
@@ -498,7 +560,6 @@ Use headless Chrome through Playwright with `--use-angle=swiftshader --enable-un
 - Rock up close still looks a bit tile-like (it reuses the terrain's rock texture).
 - Sky and water are Earth-like on purpose (terraformed), and the timber mine fits the colonists' own mine.
 - Not built yet:
-  - the ancient alien artifact site
   - flares, the scanner
   - wall-touch feedback, hard mode and sonar, first-person view
   - the sinkhole and dam-pipe entrances
@@ -508,4 +569,4 @@ Use headless Chrome through Playwright with `--use-angle=swiftshader --enable-un
   - wall-touch feedback in the dark
   - flares, the scanner, and a stationary light elsewhere
   - crystal collision (the giant cavern's titans are solid; the smaller crystals are not)
-  - Pixel 7a performance check of the caverns, especially the giant one (`&geoq=lo` is its phone version, untested on a real phone)
+  - (Christopher reports the giant cavern runs smoothly on the Pixel 7a and the laptop.)
